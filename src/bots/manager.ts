@@ -8,12 +8,17 @@ import env from '@/config';
 import getBot, { BotStatuses } from './factory/index';
 import { Server } from 'http';
 
+export enum Cache {
+    ORIGINAL = "original",
+    BUFFER = "buffer",
+    NO_CACHE = "no_cache"
+}
 
 export interface BotState {
     id: number;
     token: string;
     status: BotStatuses;
-    privileged: boolean;
+    cache: Cache;
     created_time: string;
 }
 

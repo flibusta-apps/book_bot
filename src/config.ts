@@ -12,5 +12,7 @@ export default cleanEnv(process.env, {
     CACHE_SERVER_URL: str(),
     CACHE_SERVER_API_KEY: str(),
     BUFFER_SERVER_URL: str(),
-    BUFFER_SERVER_API_KEY: str()
+    BUFFER_SERVER_API_KEY: str(),
+    DOWNLOADER_URL: str(),
+    DOWNLOADER_API_KEY: str(),
 });

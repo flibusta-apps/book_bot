@@ -40,6 +40,19 @@ export interface Book extends AuthorBook {
 }
 
 
+export interface Source {
+    id: number;
+    name: string;
+}
+
+
+export interface DetailBook extends Book {
+    source: Source;
+    remote_id: number;
+    is_deleted: boolean;
+}
+
+
 export interface Author {
     id: number;
     last_name: string;
@@ -73,6 +86,11 @@ async function _makeRequest<T>(url: string, searchParams?: string | Record<strin
     });
 
     return response.body;
+}
+
+
+export async function getBookById(book_id: number): Promise<DetailBook> {
+    return _makeRequest<DetailBook>(`/api/v1/books/${book_id}`);
 }
 
 

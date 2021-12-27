@@ -1,6 +1,6 @@
 import { Context, Telegraf, Markup } from 'telegraf';
 
-import { BotState } from '@/bots/manager';
+import { BotState, Cache } from '@/bots/manager';
 
 import env from '@/config';
 
@@ -11,6 +11,7 @@ import * as CallbackData from "./callback_data";
 import * as BookLibrary from "./services/book_library";
 import { CachedMessage, getBookCache } from './services/book_cache';
 import { getBookCacheBuffer } from './services/book_cache_buffer';
+import { download } from './services/downloader';
 import { formatBook, formatAuthor, formatSequence } from './format';
 import { getPaginatedMessage, registerPaginationCommand } from './utils';
 import { getRandomKeyboard } from './keyboard';
@@ -109,10 +110,17 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         let cache: CachedMessage;
 
-        if (state.privileged) {
+        if (state.cache === Cache.ORIGINAL) {
             cache = await getBookCache(parseInt(id), format);
-        } else {
+        } else if (state.cache === Cache.BUFFER) {
             cache = await getBookCacheBuffer(parseInt(id), format);
+        } else {
+            const book = await BookLibrary.getBookById(parseInt(id));
+            const data = await download(book.source.id, book.remote_id, format);
+            ctx.telegram.sendDocument(ctx.message.chat.id, data, {
+                reply_to_message_id: ctx.message.message_id
+            })
+            return;
         }
 
         ctx.telegram.copyMessage(ctx.message.chat.id, cache.chat_id, cache.message_id, {
