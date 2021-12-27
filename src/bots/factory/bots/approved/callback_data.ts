@@ -6,3 +6,7 @@ export const SEARCH_SERIES_PREFIX = 'ss_';
 
 export const AUTHOR_BOOKS_PREFIX = 'ba_';
 export const SEQUENCE_BOOKS_PREFIX = 'bs_';
+
+export const RANDOM_BOOK = 'random_book';
+export const RANDOM_AUTHOR = 'random_author';
+export const RANDOM_SEQUENCE = 'random_sequence';

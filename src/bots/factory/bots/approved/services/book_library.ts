@@ -119,3 +119,15 @@ export async function getSequenceBooks(sequenceId: number, page: number): Promis
         size: PAGE_SIZE,
     });
 }
+
+export async function getRandomBook(): Promise<Book> {
+    return _makeRequest<Book>('/api/v1/books/random');
+}
+
+export async function getRandomAuthor(): Promise<Author> {
+    return _makeRequest<Author>('/api/v1/authors/random');
+}
+
+export async function getRandomSequence(): Promise<Sequence> {
+    return _makeRequest<Sequence>('/api/v1/sequences/random');
+}

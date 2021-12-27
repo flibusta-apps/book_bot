@@ -13,6 +13,7 @@ import { CachedMessage, getBookCache } from './services/book_cache';
 import { getBookCacheBuffer } from './services/book_cache_buffer';
 import { formatBook, formatAuthor, formatSequence } from './format';
 import { getPaginatedMessage, registerPaginationCommand } from './utils';
+import { getRandomKeyboard } from './keyboard';
 
 
 export async function createApprovedBot(token: string, state: BotState): Promise<Telegraf> {
@@ -23,7 +24,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     });
 
     await bot.telegram.setMyCommands([
-        {command: "random_book", description: "Случайная книга"},
+        {command: "random", description: "Попытать удачу"},
         {command: "update_log", description: "Информация об обновлении каталога"},
         {command: "settings", description: "Настройки"},
         {command: "help", description: "Помощь"},
@@ -47,8 +48,57 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     registerPaginationCommand(bot, CallbackData.SEARCH_BOOK_PREFIX, BookLibrary.searchByBookName, formatBook);
     registerPaginationCommand(bot, CallbackData.SEARCH_AUTHORS_PREFIX, BookLibrary.searchAuthors, formatAuthor);
     registerPaginationCommand(bot, CallbackData.SEARCH_SERIES_PREFIX, BookLibrary.searchSequences, formatSequence);
+
     registerPaginationCommand(bot, CallbackData.AUTHOR_BOOKS_PREFIX, BookLibrary.getAuthorBooks, formatBook);
     registerPaginationCommand(bot, CallbackData.SEQUENCE_BOOKS_PREFIX, BookLibrary.getSequenceBooks, formatBook);
+
+    bot.command("random", async (ctx: Context) => {
+        ctx.reply("Что хотим получить?", {
+            reply_markup: getRandomKeyboard().reply_markup
+        })
+    });
+
+    bot.action(CallbackData.RANDOM_BOOK, async (ctx: Context) => {
+        const book = await BookLibrary.getRandomBook();
+
+        const keyboard = Markup.inlineKeyboard([
+            [Markup.button.callback("Повторить?", CallbackData.RANDOM_BOOK)]
+        ]);
+
+        ctx.editMessageReplyMarkup(undefined);
+
+        ctx.reply(formatBook(book), {
+            reply_markup: keyboard.reply_markup,
+        });
+    });
+
+    bot.action(CallbackData.RANDOM_AUTHOR, async (ctx: Context) => {
+        const author = await BookLibrary.getRandomAuthor();
+
+        const keyboard = Markup.inlineKeyboard([
+            [Markup.button.callback("Повторить?", CallbackData.RANDOM_AUTHOR)]
+        ]);
+
+        ctx.editMessageReplyMarkup(undefined);
+
+        ctx.reply(formatAuthor(author), {
+            reply_markup: keyboard.reply_markup,
+        });
+    });
+
+    bot.action(CallbackData.RANDOM_SEQUENCE, async (ctx: Context) => {
+        const sequence = await BookLibrary.getRandomSequence();
+
+        const keyboard = Markup.inlineKeyboard([
+            [Markup.button.callback("Повторить?", CallbackData.RANDOM_SEQUENCE)]
+        ]);
+
+        ctx.editMessageReplyMarkup(undefined);
+
+        ctx.reply(formatSequence(sequence), {
+            reply_markup: keyboard.reply_markup,
+        });
+    });
 
     bot.hears(/^\/d_[a-zA-Z0-9]+_[\d]+$/gm, async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {

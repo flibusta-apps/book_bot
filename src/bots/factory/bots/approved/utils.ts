@@ -49,7 +49,7 @@ export function registerPaginationCommand<T>(
                 reply_markup: pMessage.keyboard.reply_markup
             });
         } catch (err) {
-            // console.log(err);
+            console.log(err);
         }
     })
 }
