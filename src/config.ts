@@ -15,4 +15,6 @@ export default cleanEnv(process.env, {
     BUFFER_SERVER_API_KEY: str(),
     DOWNLOADER_URL: str(),
     DOWNLOADER_API_KEY: str(),
+    USER_SETTINGS_URL: str(),
+    USER_SETTINGS_API_KEY: str(),
 });

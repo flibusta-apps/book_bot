@@ -12,6 +12,7 @@ import * as BookLibrary from "./services/book_library";
 import { CachedMessage, getBookCache } from './services/book_cache';
 import { getBookCacheBuffer } from './services/book_cache_buffer';
 import { download } from './services/downloader';
+import { createOrUpdateUserSettings } from './services/user_settings';
 import { formatBook, formatAuthor, formatSequence } from './format';
 import { getPaginatedMessage, registerPaginationCommand } from './utils';
 import { getRandomKeyboard } from './keyboard';
@@ -30,6 +31,20 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         {command: "settings", description: "Настройки"},
         {command: "help", description: "Помощь"},
     ]);
+
+    bot.use(async (ctx: Context, next) => {
+        if (ctx.from) {
+            const user = ctx.from;
+            createOrUpdateUserSettings({
+                user_id: user.id,
+                last_name: user.last_name || '',
+                first_name: user.first_name,
+                username: user.username || '',
+                source: ctx.botInfo.username,
+            });
+        }
+        await next();
+    });
 
     bot.help((ctx: Context) => ctx.reply(Messages.HELP_MESSAGE));
 
