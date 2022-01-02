@@ -97,7 +97,13 @@ export default class BotsManager {
 
     static async launch() {
         const application = express();
+
+        application.get("/healthcheck", (req, res) => {
+            res.send("Ok!");
+        });
+
         application.use((req: Request, res: Response, next: NextFunction) => this.handleUpdate(req, res, next));
+
         this.server = application.listen(env.WEBHOOK_PORT);
         console.log("Server started!");
 
