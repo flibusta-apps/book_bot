@@ -1,4 +1,7 @@
 import express, { Response, Request, NextFunction } from 'express';
+import { Server } from 'http';
+
+import * as dockerIpTools from "docker-ip-get";
 
 import got from 'got';
 
@@ -6,7 +9,6 @@ import { Telegraf } from 'telegraf';
 
 import env from '@/config';
 import getBot, { BotStatuses } from './factory/index';
-import { Server } from 'http';
 
 export enum Cache {
     ORIGINAL = "original",
@@ -84,8 +86,12 @@ export default class BotsManager {
             console.log(e);
         }
 
+        const dockerIp = await dockerIpTools.getContainerIp();
+
         await bot.telegram.setWebhook(
-            `${env.WEBHOOK_BASE_URL}:${env.WEBHOOK_PORT}/${state.id}/${bot.telegram.token}`
+            `${env.WEBHOOK_BASE_URL}:${env.WEBHOOK_PORT}/${state.id}/${bot.telegram.token}`, {
+                ip_address: dockerIp,
+            }
         );
     }
 

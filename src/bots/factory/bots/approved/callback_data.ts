@@ -10,3 +10,7 @@ export const SEQUENCE_BOOKS_PREFIX = 'bs_';
 export const RANDOM_BOOK = 'random_book';
 export const RANDOM_AUTHOR = 'random_author';
 export const RANDOM_SEQUENCE = 'random_sequence';
+
+export const LANG_SETTINGS = 'lang_settings';
+export const ENABLE_LANG_PREFIX = 'lang_on_';
+export const DISABLE_LANG_PREFIX = 'lang_off_';

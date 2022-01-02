@@ -12,10 +12,10 @@ import * as BookLibrary from "./services/book_library";
 import { CachedMessage, getBookCache } from './services/book_cache';
 import { getBookCacheBuffer } from './services/book_cache_buffer';
 import { download } from './services/downloader';
-import { createOrUpdateUserSettings } from './services/user_settings';
+import { createOrUpdateUserSettings, getUserSettings } from './services/user_settings';
 import { formatBook, formatAuthor, formatSequence } from './format';
-import { getPaginatedMessage, registerPaginationCommand, registerRandomItemCallback } from './utils';
-import { getRandomKeyboard } from './keyboard';
+import { getPaginatedMessage, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
+import { getRandomKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
 
 
 export async function createApprovedBot(token: string, state: BotState): Promise<Telegraf> {
@@ -88,6 +88,29 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     registerRandomItemCallback(bot, CallbackData.RANDOM_AUTHOR, BookLibrary.getRandomAuthor, formatAuthor);
     registerRandomItemCallback(bot, CallbackData.RANDOM_SEQUENCE, BookLibrary.getRandomSequence, formatSequence);
 
+    bot.command("settings", async (ctx: Context) => {
+        const keyboard = Markup.inlineKeyboard([
+            [Markup.button.callback("Языки", CallbackData.LANG_SETTINGS)]
+        ]);
+
+        ctx.reply("Настройки:", {
+            reply_markup: keyboard.reply_markup
+        });
+    });
+
+    bot.action(CallbackData.LANG_SETTINGS, async (ctx: Context) => {
+        if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
+
+        const keyboard = await getUserAllowedLangsKeyboard(ctx.callbackQuery.from.id);
+
+        ctx.editMessageText("Настройки языков:", {
+            reply_markup: keyboard.reply_markup,
+        });
+    });
+
+    registerLanguageSettingsCallback(bot, 'on', CallbackData.ENABLE_LANG_PREFIX);
+    registerLanguageSettingsCallback(bot, 'off', CallbackData.DISABLE_LANG_PREFIX);
+
     bot.hears(/^\/d_[a-zA-Z0-9]+_[\d]+$/gm, async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {
             return;
@@ -134,7 +157,10 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const authorId = ctx.message.text.split('_')[1];
 
-        const pMessage = await getPaginatedMessage(CallbackData.AUTHOR_BOOKS_PREFIX, authorId, 1, BookLibrary.getAuthorBooks, formatBook);
+        const userSettings = await getUserSettings(ctx.message.from.id);
+        const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
+
+        const pMessage = await getPaginatedMessage(CallbackData.AUTHOR_BOOKS_PREFIX, authorId, 1, allowedLangs, BookLibrary.getAuthorBooks, formatBook);
 
         await ctx.reply(pMessage.message, {
             reply_markup: pMessage.keyboard.reply_markup
@@ -148,7 +174,10 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const sequenceId = ctx.message.text.split('_')[1];
 
-        const pMessage = await getPaginatedMessage(CallbackData.SEQUENCE_BOOKS_PREFIX, sequenceId, 1, BookLibrary.getSequenceBooks, formatBook);
+        const userSettings = await getUserSettings(ctx.message.from.id);
+        const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
+
+        const pMessage = await getPaginatedMessage(CallbackData.SEQUENCE_BOOKS_PREFIX, sequenceId, 1, allowedLangs, BookLibrary.getSequenceBooks, formatBook);
 
         await ctx.reply(pMessage.message, {
             reply_markup: pMessage.keyboard.reply_markup

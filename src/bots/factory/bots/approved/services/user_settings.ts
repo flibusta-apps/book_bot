@@ -25,6 +25,7 @@ export interface UserSettingsUpdateData {
     first_name: string;
     username: string;
     source: string;
+    allowed_langs?: string[];
 }
 
 
@@ -46,8 +47,8 @@ export async function getLanguages(): Promise<Language[]> {
 }
 
 
-export async function getUserSettings(user_id: number): Promise<UserSettings | null> {
-    return _makeGetRequest<UserSettings>(`/users/${user_id}`);
+export async function getUserSettings(userId: number): Promise<UserSettings> {
+    return _makeGetRequest<UserSettings>(`/users/${userId}`);
 }
 
 export async function createOrUpdateUserSettings(data: UserSettingsUpdateData): Promise<UserSettings> {

@@ -1,6 +1,7 @@
 import got from 'got';
 
 import env from '@/config';
+import { getAllowedLangsSearchParams } from '../utils';
 
 
 const PAGE_SIZE = 7;
@@ -94,27 +95,30 @@ export async function getBookById(book_id: number): Promise<DetailBook> {
 }
 
 
-export async function searchByBookName(query: string, page: number): Promise<Page<Book>> {
-    return _makeRequest<Page<Book>>(`/api/v1/books/search/${query}`, {
-        page: page,
-        size: PAGE_SIZE,
-    })
+export async function searchByBookName(query: string, page: number, allowedLangs: string[]): Promise<Page<Book>> {
+    const searchParams = getAllowedLangsSearchParams(allowedLangs);
+    searchParams.append('page', page.toString());
+    searchParams.append('size', PAGE_SIZE.toString());
+
+    return _makeRequest<Page<Book>>(`/api/v1/books/search/${query}`, searchParams);
 }
 
 
-export async function searchAuthors(query: string, page: number): Promise<Page<Author>> {
-    return _makeRequest<Page<Author>>(`/api/v1/authors/search/${query}`, {
-        page: page,
-        size: PAGE_SIZE,
-    });
+export async function searchAuthors(query: string, page: number, allowedLangs: string[]): Promise<Page<Author>> {
+    const searchParams = getAllowedLangsSearchParams(allowedLangs);
+    searchParams.append('page', page.toString());
+    searchParams.append('size', PAGE_SIZE.toString());
+
+    return _makeRequest<Page<Author>>(`/api/v1/authors/search/${query}`, searchParams);
 }
 
 
-export async function searchSequences(query: string, page: number): Promise<Page<Sequence>> {
-    return _makeRequest<Page<Sequence>>(`/api/v1/sequences/search/${query}`, {
-        page: page,
-        size: PAGE_SIZE,
-    });
+export async function searchSequences(query: string, page: number, allowedLangs: string[]): Promise<Page<Sequence>> {
+    const searchParams = getAllowedLangsSearchParams(allowedLangs);
+    searchParams.append('page', page.toString());
+    searchParams.append('size', PAGE_SIZE.toString());
+
+    return _makeRequest<Page<Sequence>>(`/api/v1/sequences/search/${query}`, searchParams);
 }
 
 
@@ -123,29 +127,31 @@ export async function getBookAnnotation(bookId: number): Promise<BookAnnotation>
 }
 
 
-export async function getAuthorBooks(authorId: number, page: number): Promise<Page<AuthorBook>> {
-    return _makeRequest<Page<AuthorBook>>(`/api/v1/authors/${authorId}/books`, {
-        page: page,
-        size: PAGE_SIZE,
-    });
+export async function getAuthorBooks(authorId: number, page: number, allowedLangs: string[]): Promise<Page<AuthorBook>> {
+    const searchParams = getAllowedLangsSearchParams(allowedLangs);
+    searchParams.append('page', page.toString());
+    searchParams.append('size', PAGE_SIZE.toString());
+
+    return _makeRequest<Page<AuthorBook>>(`/api/v1/authors/${authorId}/books`, searchParams);
 }
 
 
-export async function getSequenceBooks(sequenceId: number, page: number): Promise<Page<Book>> {
-    return _makeRequest<Page<Book>>(`/api/v1/sequences/${sequenceId}/books`, {
-        page: page,
-        size: PAGE_SIZE,
-    });
+export async function getSequenceBooks(sequenceId: number, page: number, allowedLangs: string[]): Promise<Page<Book>> {
+    const searchParams = getAllowedLangsSearchParams(allowedLangs);
+    searchParams.append('page', page.toString());
+    searchParams.append('size', PAGE_SIZE.toString());
+
+    return _makeRequest<Page<Book>>(`/api/v1/sequences/${sequenceId}/books`, searchParams);
 }
 
-export async function getRandomBook(): Promise<Book> {
-    return _makeRequest<Book>('/api/v1/books/random');
+export async function getRandomBook(allowedLangs: string[]): Promise<Book> {
+    return _makeRequest<Book>('/api/v1/books/random', getAllowedLangsSearchParams(allowedLangs));
 }
 
-export async function getRandomAuthor(): Promise<Author> {
-    return _makeRequest<Author>('/api/v1/authors/random');
+export async function getRandomAuthor(allowedLangs: string[]): Promise<Author> {
+    return _makeRequest<Author>('/api/v1/authors/random', getAllowedLangsSearchParams(allowedLangs));
 }
 
-export async function getRandomSequence(): Promise<Sequence> {
-    return _makeRequest<Sequence>('/api/v1/sequences/random');
+export async function getRandomSequence(allowedLangs: string[]): Promise<Sequence> {
+    return _makeRequest<Sequence>('/api/v1/sequences/random', getAllowedLangsSearchParams(allowedLangs));
 }
