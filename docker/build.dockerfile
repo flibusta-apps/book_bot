@@ -14,6 +14,7 @@ FROM node:lts-alpine as runtime-image
 WORKDIR /root/app
 
 COPY ./package.json ./
+COPY ./scripts/healthcheck.js ./
 
 RUN npm i --only=production
 
