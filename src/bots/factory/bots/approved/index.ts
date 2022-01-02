@@ -14,7 +14,7 @@ import { getBookCacheBuffer } from './services/book_cache_buffer';
 import { download } from './services/downloader';
 import { createOrUpdateUserSettings } from './services/user_settings';
 import { formatBook, formatAuthor, formatSequence } from './format';
-import { getPaginatedMessage, registerPaginationCommand } from './utils';
+import { getPaginatedMessage, registerPaginationCommand, registerRandomItemCallback } from './utils';
 import { getRandomKeyboard } from './keyboard';
 
 
@@ -74,47 +74,9 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         })
     });
 
-    bot.action(CallbackData.RANDOM_BOOK, async (ctx: Context) => {
-        const book = await BookLibrary.getRandomBook();
-
-        const keyboard = Markup.inlineKeyboard([
-            [Markup.button.callback("Повторить?", CallbackData.RANDOM_BOOK)]
-        ]);
-
-        ctx.editMessageReplyMarkup(undefined);
-
-        ctx.reply(formatBook(book), {
-            reply_markup: keyboard.reply_markup,
-        });
-    });
-
-    bot.action(CallbackData.RANDOM_AUTHOR, async (ctx: Context) => {
-        const author = await BookLibrary.getRandomAuthor();
-
-        const keyboard = Markup.inlineKeyboard([
-            [Markup.button.callback("Повторить?", CallbackData.RANDOM_AUTHOR)]
-        ]);
-
-        ctx.editMessageReplyMarkup(undefined);
-
-        ctx.reply(formatAuthor(author), {
-            reply_markup: keyboard.reply_markup,
-        });
-    });
-
-    bot.action(CallbackData.RANDOM_SEQUENCE, async (ctx: Context) => {
-        const sequence = await BookLibrary.getRandomSequence();
-
-        const keyboard = Markup.inlineKeyboard([
-            [Markup.button.callback("Повторить?", CallbackData.RANDOM_SEQUENCE)]
-        ]);
-
-        ctx.editMessageReplyMarkup(undefined);
-
-        ctx.reply(formatSequence(sequence), {
-            reply_markup: keyboard.reply_markup,
-        });
-    });
+    registerRandomItemCallback(bot, CallbackData.RANDOM_BOOK, BookLibrary.getRandomBook, formatBook);
+    registerRandomItemCallback(bot, CallbackData.RANDOM_AUTHOR, BookLibrary.getRandomAuthor, formatAuthor);
+    registerRandomItemCallback(bot, CallbackData.RANDOM_SEQUENCE, BookLibrary.getRandomSequence, formatSequence);
 
     bot.hears(/^\/d_[a-zA-Z0-9]+_[\d]+$/gm, async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {

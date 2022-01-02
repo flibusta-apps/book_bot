@@ -1,4 +1,4 @@
-import got, { HTTPError } from 'got';
+import got from 'got';
 
 import env from '@/config';
 

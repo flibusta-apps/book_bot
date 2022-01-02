@@ -53,3 +53,24 @@ export function registerPaginationCommand<T>(
         }
     })
 }
+
+export function registerRandomItemCallback<T>(
+    bot: Telegraf,
+    callback_data: string,
+    itemGetter: () => Promise<T>,
+    itemFormatter: (item: T) => string,
+) {
+    bot.action(callback_data, async (ctx: Context) => {
+        const item = await itemGetter();
+
+        const keyboard = Markup.inlineKeyboard([
+            [Markup.button.callback("Повторить?", callback_data)]
+        ]);
+
+        ctx.editMessageReplyMarkup(undefined);
+
+        ctx.reply(itemFormatter(item), {
+            reply_markup: keyboard.reply_markup,
+        });
+    });
+}
