@@ -1,4 +1,3 @@
 import BotsManager from './bots/manager';
 
-
-BotsManager.start();
+setTimeout(() => BotsManager.start(), 5000);

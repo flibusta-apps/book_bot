@@ -1,4 +1,4 @@
-import { Context, Telegraf, Markup } from 'telegraf';
+import { Context, Telegraf, Markup, TelegramError } from 'telegraf';
 
 import { BotState, Cache } from '@/bots/manager';
 
@@ -25,12 +25,22 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         }
     });
 
-    await bot.telegram.setMyCommands([
-        {command: "random", description: "Попытать удачу"},
-        {command: "update_log", description: "Информация об обновлении каталога"},
-        {command: "settings", description: "Настройки"},
-        {command: "help", description: "Помощь"},
-    ]);
+    async function setMyCommands() {
+        await bot.telegram.setMyCommands([
+            {command: "random", description: "Попытать удачу"},
+            {command: "update_log", description: "Информация об обновлении каталога"},
+            {command: "settings", description: "Настройки"},
+            {command: "help", description: "Помощь"},
+        ]);
+    }
+
+    try {
+        await setMyCommands();
+    } catch (e: unknown) {
+        if (e instanceof TelegramError && e.response.error_code === 429) {
+            setTimeout(() => setMyCommands(), 1000 * (e.response.parameters?.retry_after || 5));
+        }
+    }
 
     bot.use(async (ctx: Context, next) => {
         if (ctx.from) {
