@@ -69,6 +69,14 @@ export interface Sequence {
 }
 
 
+export interface AuthorAnnnotation {
+    id: number;
+    title: string;
+    text: string;
+    file: string | null;
+}
+
+
 export interface BookAnnotation {
     id: number;
     title: string;
@@ -124,6 +132,11 @@ export async function searchSequences(query: string, page: number, allowedLangs:
 
 export async function getBookAnnotation(bookId: number): Promise<BookAnnotation> {
     return _makeRequest<BookAnnotation>(`/api/v1/books/${bookId}/annotation`);
+}
+
+
+export async function getAuthorAnnotation(authorId: number): Promise<AuthorAnnnotation> {
+    return _makeRequest<AuthorAnnnotation>(`/api/v1/authors/${authorId}/annotation`);
 }
 
 

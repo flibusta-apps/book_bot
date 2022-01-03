@@ -150,6 +150,18 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         ctx.reply(annotation.text);
     });
 
+    bot.hears(/^\/a_info_[\d]+$/gm, async (ctx: Context) => {
+        if (!ctx.message || !('text' in ctx.message)) {
+            return;
+        }
+
+        const authorId = ctx.message.text.split('_')[2];
+
+        const annotation = await BookLibrary.getAuthorAnnotation(parseInt(authorId));
+
+        ctx.reply(annotation.text);
+    });
+
     bot.hears(/^\/a_[\d]+$/gm, async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {
             return;
