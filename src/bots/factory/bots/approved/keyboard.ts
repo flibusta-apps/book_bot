@@ -1,11 +1,12 @@
 import { Markup } from 'telegraf';
 import { InlineKeyboardMarkup } from 'typegram';
+import moment from 'moment';
 
-import { RANDOM_BOOK, RANDOM_AUTHOR, RANDOM_SEQUENCE, ENABLE_LANG_PREFIX, DISABLE_LANG_PREFIX } from './callback_data';
+import { RANDOM_BOOK, RANDOM_AUTHOR, RANDOM_SEQUENCE, ENABLE_LANG_PREFIX, DISABLE_LANG_PREFIX, UPDATE_LOG_PREFIX } from './callback_data';
 import { getUserSettings, getLanguages } from './services/user_settings';
 
 
-export function getPaginationKeyboard(prefix: string, query: string, page: number, totalPages: number): Markup.Markup<InlineKeyboardMarkup> {
+export function getPaginationKeyboard(prefix: string, query: string | number, page: number, totalPages: number): Markup.Markup<InlineKeyboardMarkup> {
     function getRow(delta: number) {
         const row = [];
 
@@ -42,6 +43,23 @@ export function getRandomKeyboard(): Markup.Markup<InlineKeyboardMarkup> {
         [Markup.button.callback('Серию', RANDOM_SEQUENCE)],
     ]);
 }
+
+
+export function getUpdateLogKeyboard(): Markup.Markup<InlineKeyboardMarkup> {
+    const format = "YYYY-MM-DD";
+
+    const now = moment().format(format);
+    const d3 = moment().subtract(3, 'days').format(format);
+    const d7 = moment().subtract(7, 'days').format(format);
+    const d30 = moment().subtract(30, 'days').format(format);
+
+    return Markup.inlineKeyboard([
+        [Markup.button.callback('За 3 дня', `${UPDATE_LOG_PREFIX}${d3}_${now}_1`)],
+        [Markup.button.callback('За 7 дней', `${UPDATE_LOG_PREFIX}${d7}_${now}_1`)],
+        [Markup.button.callback('За 30 дней', `${UPDATE_LOG_PREFIX}${d30}_${now}_1`)],
+    ]);
+}
+
 
 const DEFAULT_ALLOWED_LANGS_CODES = ['ru', 'be', 'uk'];
 

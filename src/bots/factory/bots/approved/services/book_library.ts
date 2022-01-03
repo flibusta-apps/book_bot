@@ -108,6 +108,19 @@ async function _makeRequest<T>(url: string, searchParams?: string | Record<strin
 }
 
 
+export async function getBooks(query: string, page: number, allowedLangs: string[]): Promise<Page<Book>> {
+    const queryDates = query.split("_");
+
+    const searchParams = getAllowedLangsSearchParams(allowedLangs);
+    searchParams.append('page', page.toString());
+    searchParams.append('size', PAGE_SIZE.toString());
+    searchParams.append('uploaded_gte', queryDates[0]);
+    searchParams.append('uploaded_lte', queryDates[1]);
+
+    return _makeRequest<Page<Book>>(`/api/v1/books/`, searchParams);
+}
+
+
 export async function getBookById(book_id: number): Promise<DetailBook> {
     return _makeRequest<DetailBook>(`/api/v1/books/${book_id}`);
 }

@@ -16,3 +16,5 @@ export const RANDOM_SEQUENCE = 'random_sequence';
 export const LANG_SETTINGS = 'lang_settings';
 export const ENABLE_LANG_PREFIX = 'lang_on_';
 export const DISABLE_LANG_PREFIX = 'lang_off_';
+
+export const UPDATE_LOG_PREFIX = 'update_log_';

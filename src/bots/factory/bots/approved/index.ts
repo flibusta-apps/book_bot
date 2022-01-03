@@ -15,7 +15,7 @@ import { download } from './services/downloader';
 import { createOrUpdateUserSettings, getUserSettings } from './services/user_settings';
 import { formatBook, formatAuthor, formatSequence, formatTranslator } from './format';
 import { getPaginatedMessage, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
-import { getRandomKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
+import { getRandomKeyboard, getUpdateLogKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
 
 
 export async function createApprovedBot(token: string, state: BotState): Promise<Telegraf> {
@@ -28,7 +28,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     async function setMyCommands() {
         await bot.telegram.setMyCommands([
             {command: "random", description: "Попытать удачу"},
-            {command: "update_log", description: "Информация об обновлении каталога"},
+            {command: "update_log", description: "Обновления каталога"},
             {command: "settings", description: "Настройки"},
             {command: "help", description: "Помощь"},
         ]);
@@ -82,13 +82,37 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
     bot.command("random", async (ctx: Context) => {
         ctx.reply("Что хотим получить?", {
-            reply_markup: getRandomKeyboard().reply_markup
+            reply_markup: getRandomKeyboard().reply_markup,
         })
     });
 
     registerRandomItemCallback(bot, CallbackData.RANDOM_BOOK, BookLibrary.getRandomBook, formatBook);
     registerRandomItemCallback(bot, CallbackData.RANDOM_AUTHOR, BookLibrary.getRandomAuthor, formatAuthor);
     registerRandomItemCallback(bot, CallbackData.RANDOM_SEQUENCE, BookLibrary.getRandomSequence, formatSequence);
+
+    bot.command("update_log", async (ctx: Context) => {
+        ctx.reply("Обновление каталога: ", {
+            reply_markup: getUpdateLogKeyboard().reply_markup,
+        });
+    });
+
+    bot.action(new RegExp(CallbackData.UPDATE_LOG_PREFIX), async (ctx: Context) => {
+        if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
+
+        const userSettings = await getUserSettings(ctx.callbackQuery.from.id);
+        const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
+
+        const data = ctx.callbackQuery.data.split("_");
+        const page = parseInt(data[4]);
+
+        const arg = `${data[2]}_${data[3]}`;
+
+        const pMessage = await getPaginatedMessage(CallbackData.UPDATE_LOG_PREFIX, arg, page, allowedLangs, BookLibrary.getBooks, formatBook);
+
+        await ctx.reply(pMessage.message, {
+            reply_markup: pMessage.keyboard.reply_markup
+        });
+    });
 
     bot.command("settings", async (ctx: Context) => {
         const keyboard = Markup.inlineKeyboard([

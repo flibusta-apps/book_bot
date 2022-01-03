@@ -13,12 +13,12 @@ interface PreparedMessage {
 }
 
 
-export async function getPaginatedMessage<T>(
+export async function getPaginatedMessage<T, D extends string | number>(
     prefix: string,
-    data: any,
+    data: D,
     page: number,
     allowedLangs: string[],
-    itemsGetter: (data: any, page: number, allowedLangs: string[]) => Promise<BookLibrary.Page<T>>,
+    itemsGetter: (data: D, page: number, allowedLangs: string[]) => Promise<BookLibrary.Page<T>>,
     itemFormater: (item: T) => string,
 ): Promise<PreparedMessage> {
     const itemsPage = await itemsGetter(data, page, allowedLangs);
@@ -33,6 +33,7 @@ export async function getPaginatedMessage<T>(
         keyboard
     };
 } 
+
 
 export function registerPaginationCommand<T>(
     bot: Telegraf,
