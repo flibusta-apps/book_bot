@@ -147,7 +147,9 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const annotation = await BookLibrary.getBookAnnotation(parseInt(bookId));
 
-        ctx.reply(annotation.text);
+        ctx.reply(annotation.text, {
+            parse_mode: "HTML",
+        });
     });
 
     bot.hears(/^\/a_info_[\d]+$/gm, async (ctx: Context) => {
@@ -159,7 +161,9 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const annotation = await BookLibrary.getAuthorAnnotation(parseInt(authorId));
 
-        ctx.reply(annotation.text);
+        ctx.reply(annotation.text, {
+            parse_mode: "HTML",
+        });
     });
 
     bot.hears(/^\/a_[\d]+$/gm, async (ctx: Context) => {
