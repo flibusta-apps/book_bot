@@ -13,7 +13,7 @@ import { CachedMessage, getBookCache } from './services/book_cache';
 import { getBookCacheBuffer } from './services/book_cache_buffer';
 import { download } from './services/downloader';
 import { createOrUpdateUserSettings, getUserSettings } from './services/user_settings';
-import { formatBook, formatAuthor, formatSequence } from './format';
+import { formatBook, formatAuthor, formatSequence, formatTranslator } from './format';
 import { getPaginatedMessage, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
 import { getRandomKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
 
@@ -72,10 +72,12 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     });
 
     registerPaginationCommand(bot, CallbackData.SEARCH_BOOK_PREFIX, BookLibrary.searchByBookName, formatBook);
+    registerPaginationCommand(bot, CallbackData.SEARCH_TRANSLATORS_PREFIX, BookLibrary.searchTranslators, formatTranslator);
     registerPaginationCommand(bot, CallbackData.SEARCH_AUTHORS_PREFIX, BookLibrary.searchAuthors, formatAuthor);
     registerPaginationCommand(bot, CallbackData.SEARCH_SERIES_PREFIX, BookLibrary.searchSequences, formatSequence);
 
     registerPaginationCommand(bot, CallbackData.AUTHOR_BOOKS_PREFIX, BookLibrary.getAuthorBooks, formatBook);
+    registerPaginationCommand(bot, CallbackData.TRANSLATOR_BOOKS_PREFIX, BookLibrary.getTranslatorBooks, formatBook);
     registerPaginationCommand(bot, CallbackData.SEQUENCE_BOOKS_PREFIX, BookLibrary.getSequenceBooks, formatBook);
 
     bot.command("random", async (ctx: Context) => {
@@ -183,6 +185,23 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         });
     });
 
+    bot.hears(/^\/t_[\d]+$/gm, async (ctx: Context) => {
+        if (!ctx.message || !('text' in ctx.message)) {
+            return;
+        }
+
+        const translatorId = ctx.message.text.split('_')[1];
+
+        const userSettings = await getUserSettings(ctx.message.from.id);
+        const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
+
+        const pMessage = await getPaginatedMessage(CallbackData.TRANSLATOR_BOOKS_PREFIX, translatorId, 1, allowedLangs, BookLibrary.getTranslatorBooks, formatBook);
+
+        await ctx.reply(pMessage.message, {
+            reply_markup: pMessage.keyboard.reply_markup
+        });
+    });
+
     bot.hears(/^\/s_[\d]+$/gm, async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {
             return;
@@ -215,10 +234,10 @@ export async function createApprovedBot(token: string, state: BotState): Promise
                 Markup.button.callback('Автора',  `${CallbackData.SEARCH_AUTHORS_PREFIX}${query}_1`),
             ],
             [
-                Markup.button.callback('Серию', `${CallbackData.SEARCH_SERIES_PREFIX}${query}_1`)
+                Markup.button.callback('Серию', `${CallbackData.SEARCH_SERIES_PREFIX}${query}_1`),
             ],
             [
-                Markup.button.callback('Переводчика', '# ToDO'),
+                Markup.button.callback('Переводчика', `${CallbackData.SEARCH_TRANSLATORS_PREFIX}${query}_1`),
             ]
         ]);
 

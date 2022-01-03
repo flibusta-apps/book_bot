@@ -24,7 +24,7 @@ interface BookAuthor {
 }
 
 
-export interface AuthorBook {
+export interface BaseBook {
     id: number;
     title: string;
     lang: string;
@@ -32,12 +32,22 @@ export interface AuthorBook {
     available_types: string[];
     uploaded: string;
     annotation_exists: boolean;
+}
+
+
+export interface AuthorBook extends BaseBook {
     translators: BookAuthor[];
+}
+
+
+export interface TranslatorBook extends BaseBook {
+    authors: BookAuthor[];
 }
 
 
 export interface Book extends AuthorBook {
     authors: BookAuthor[];
+    translators: BookAuthor[];
 }
 
 
@@ -121,6 +131,15 @@ export async function searchAuthors(query: string, page: number, allowedLangs: s
 }
 
 
+export async function searchTranslators(query: string, page: number, allowedLangs: string[]): Promise<Page<Author>> {
+    const searchParams = getAllowedLangsSearchParams(allowedLangs);
+    searchParams.append('page', page.toString());
+    searchParams.append('size', PAGE_SIZE.toString());
+
+    return _makeRequest<Page<Author>>(`/api/v1/translators/search/${query}`, searchParams);
+}
+
+
 export async function searchSequences(query: string, page: number, allowedLangs: string[]): Promise<Page<Sequence>> {
     const searchParams = getAllowedLangsSearchParams(allowedLangs);
     searchParams.append('page', page.toString());
@@ -146,6 +165,15 @@ export async function getAuthorBooks(authorId: number, page: number, allowedLang
     searchParams.append('size', PAGE_SIZE.toString());
 
     return _makeRequest<Page<AuthorBook>>(`/api/v1/authors/${authorId}/books`, searchParams);
+}
+
+
+export async function getTranslatorBooks(translatorId: number, page: number, allowedLangs: string[]): Promise<Page<AuthorBook>> {
+    const searchParams = getAllowedLangsSearchParams(allowedLangs);
+    searchParams.append('page', page.toString());
+    searchParams.append('size', PAGE_SIZE.toString());
+
+    return _makeRequest<Page<AuthorBook>>(`/api/v1/translators/${translatorId}/books`, searchParams);
 }
 
 
