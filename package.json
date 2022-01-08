@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "esbuild ./src/main.ts --bundle --platform=node --outfile=./build/main.cjs",
+    "build-minify": "npm run build -- --minify --sourcemap",
     "build-watch": "npm run build -- --watch",
     "run": "node ./build/main.cjs",
     "run-watch": "nodemon build/main.cjs"
@@ -13,6 +14,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@sentry/node": "^6.16.1",
     "docker-ip-get": "^1.1.5",
     "envalid": "^7.2.2",
     "express": "^4.17.1",

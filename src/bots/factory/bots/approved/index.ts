@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/node';
+
 import { Context, Telegraf, Markup, TelegramError } from 'telegraf';
 
 import { BotState, Cache } from '@/bots/manager';
@@ -16,6 +18,11 @@ import { createOrUpdateUserSettings, getUserSettings } from './services/user_set
 import { formatBook, formatAuthor, formatSequence, formatTranslator } from './format';
 import { getPaginatedMessage, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
 import { getRandomKeyboard, getUpdateLogKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
+
+
+Sentry.init({
+    dsn: env.SENTRY_DSN,
+});
 
 
 export async function createApprovedBot(token: string, state: BotState): Promise<Telegraf> {
@@ -202,7 +209,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         const userSettings = await getUserSettings(ctx.message.from.id);
         const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
 
-        const pMessage = await getPaginatedMessage(CallbackData.AUTHOR_BOOKS_PREFIX, authorId, 1, allowedLangs, BookLibrary.getAuthorBooks, formatBook);
+        const pMessage = await getPaginatedMessage(CallbackData.AUTHOR_BOOKS_PREFIX, parseInt(authorId), 1, allowedLangs, BookLibrary.getAuthorBooks, formatBook);
 
         await ctx.reply(pMessage.message, {
             reply_markup: pMessage.keyboard.reply_markup
@@ -219,7 +226,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         const userSettings = await getUserSettings(ctx.message.from.id);
         const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
 
-        const pMessage = await getPaginatedMessage(CallbackData.TRANSLATOR_BOOKS_PREFIX, translatorId, 1, allowedLangs, BookLibrary.getTranslatorBooks, formatBook);
+        const pMessage = await getPaginatedMessage(CallbackData.TRANSLATOR_BOOKS_PREFIX, parseInt(translatorId), 1, allowedLangs, BookLibrary.getTranslatorBooks, formatBook);
 
         await ctx.reply(pMessage.message, {
             reply_markup: pMessage.keyboard.reply_markup
@@ -236,7 +243,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         const userSettings = await getUserSettings(ctx.message.from.id);
         const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
 
-        const pMessage = await getPaginatedMessage(CallbackData.SEQUENCE_BOOKS_PREFIX, sequenceId, 1, allowedLangs, BookLibrary.getSequenceBooks, formatBook);
+        const pMessage = await getPaginatedMessage(CallbackData.SEQUENCE_BOOKS_PREFIX, parseInt(sequenceId), 1, allowedLangs, BookLibrary.getSequenceBooks, formatBook);
 
         await ctx.reply(pMessage.message, {
             reply_markup: pMessage.keyboard.reply_markup
@@ -269,7 +276,11 @@ export async function createApprovedBot(token: string, state: BotState): Promise
             reply_to_message_id: ctx.message.message_id,
             reply_markup: keyboard.reply_markup,
         });
-    }); 
+    });
+
+    bot.catch((err) => {
+        Sentry.captureException(err);
+    });
 
     return bot;
 }

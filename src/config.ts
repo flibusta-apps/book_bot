@@ -2,6 +2,7 @@ import { cleanEnv, str, num } from 'envalid';
 
 
 export default cleanEnv(process.env, {
+    SENTRY_DSN: str(),
     WEBHOOK_BASE_URL: str(),
     WEBHOOK_PORT: num(),
     TELEGRAM_BOT_API_ROOT: str({ default: "https://api.telegram.org" }),
