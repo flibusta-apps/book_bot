@@ -255,7 +255,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
             return;
         }
 
-        const query = ctx.message.text.substring(0, 64 - 7);
+        const query = ctx.message.text.replaceAll("_", " ").substring(0, 64 - 7).toLowerCase();
 
         let keyboard = Markup.inlineKeyboard([
             [
