@@ -116,6 +116,7 @@ export async function getBooks(query: string, page: number, allowedLangs: string
     searchParams.append('size', PAGE_SIZE.toString());
     searchParams.append('uploaded_gte', queryDates[0]);
     searchParams.append('uploaded_lte', queryDates[1]);
+    searchParams.append('is_deleted', 'false');
 
     return _makeRequest<Page<Book>>(`/api/v1/books/`, searchParams);
 }
