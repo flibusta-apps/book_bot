@@ -51,3 +51,21 @@ export async function getBookCache(bookId: number, fileType: string): Promise<Ca
 export async function clearBookCache(bookId: number, fileType: string): Promise<CachedMessage> {
     return (await _makeDeleteRequest<BookCache>(`/api/v1/${bookId}/${fileType}`)).data;
 }
+
+export interface DownloadedFile {
+    source: Buffer;
+    filename: string;
+}
+
+export async function downloadFromCache(bookId: number, fileType: string): Promise<DownloadedFile> {
+    const response = await got<string>(`${env.DOWNLOADER_URL}/api/v1/download/${bookId}/${fileType}`, {
+        headers: {
+            'Authorization': env.DOWNLOADER_API_KEY,
+        },
+    });
+
+    return {
+        source: response.rawBody,
+        filename: (response.headers['content-disposition'] || '').split('filename=')[1]
+    }
+}

@@ -1,7 +1,7 @@
 import { Context } from 'telegraf';
 
 import * as BookLibrary from "../services/book_library";
-import { clearBookCache, getBookCache } from '../services/book_cache';
+import { clearBookCache, getBookCache, downloadFromCache } from '../services/book_cache';
 import { getBookCacheBuffer } from '../services/book_cache_buffer';
 import { download } from '../services/downloader';
 import { BotState, Cache } from '@/bots/manager';
@@ -12,6 +12,11 @@ async function _sendFile(ctx: Context, state: BotState, chatId: number, id: numb
         const book = await BookLibrary.getBookById(id);
         const data = await download(book.source.id, book.remote_id, format);
         await ctx.telegram.sendDocument(chatId, data)
+    }
+
+    const sendWithDownloadFromChannel = async () => {
+        const data = await downloadFromCache(id, format);
+        await ctx.telegram.sendDocument(chatId, data);
     }
 
     const getCachedMessage = async () => {
@@ -30,7 +35,11 @@ async function _sendFile(ctx: Context, state: BotState, chatId: number, id: numb
     };
 
     if (state.cache === Cache.NO_CACHE) {
-        await sendWithoutCache();
+        try {
+            await sendWithDownloadFromChannel();
+        } catch (e) {
+            await sendWithoutCache();
+        }
         return;
     }
 
