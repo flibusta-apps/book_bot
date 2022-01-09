@@ -1,4 +1,5 @@
 import got from 'got';
+import { decode } from 'js-base64';
 
 import env from '@/config';
 
@@ -55,17 +56,23 @@ export async function clearBookCache(bookId: number, fileType: string): Promise<
 export interface DownloadedFile {
     source: Buffer;
     filename: string;
+    caption: string;
 }
 
 export async function downloadFromCache(bookId: number, fileType: string): Promise<DownloadedFile> {
-    const response = await got<string>(`${env.DOWNLOADER_URL}/api/v1/download/${bookId}/${fileType}`, {
+    const response = await got<string>(`${env.CACHE_SERVER_URL}/api/v1/download/${bookId}/${fileType}`, {
         headers: {
-            'Authorization': env.DOWNLOADER_API_KEY,
+            'Authorization': env.CACHE_SERVER_API_KEY,
         },
     });
 
+    const captionData = response.headers['x-caption-b64'];
+
+    if (captionData === undefined || Array.isArray(captionData)) throw Error('No caption?');
+
     return {
         source: response.rawBody,
-        filename: (response.headers['content-disposition'] || '').split('filename=')[1]
+        filename: (response.headers['content-disposition'] || '').replaceAll('"', "").split('filename=')[1],
+        caption: decode(captionData),
     }
 }

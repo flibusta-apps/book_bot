@@ -128,7 +128,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     registerLanguageSettingsCallback(bot, 'on', CallbackData.ENABLE_LANG_PREFIX);
     registerLanguageSettingsCallback(bot, 'off', CallbackData.DISABLE_LANG_PREFIX);
 
-    bot.hears(/^\/d_[a-zA-Z0-9]+_[\d]+$/gm, (ctx) => sendFile(ctx, state));
+    bot.hears(/^\/d_[a-zA-Z0-9]+_[\d]+$/gm, async (ctx) => sendFile(ctx, state));
 
     bot.hears(/^\/b_info_[\d]+$/gm, async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {

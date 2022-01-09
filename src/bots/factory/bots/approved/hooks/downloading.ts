@@ -1,22 +1,14 @@
 import { Context } from 'telegraf';
 
-import * as BookLibrary from "../services/book_library";
 import { clearBookCache, getBookCache, downloadFromCache } from '../services/book_cache';
 import { getBookCacheBuffer } from '../services/book_cache_buffer';
-import { download } from '../services/downloader';
 import { BotState, Cache } from '@/bots/manager';
 
 
 async function _sendFile(ctx: Context, state: BotState, chatId: number, id: number, format: string) {
-    const sendWithoutCache = async () => {
-        const book = await BookLibrary.getBookById(id);
-        const data = await download(book.source.id, book.remote_id, format);
-        await ctx.telegram.sendDocument(chatId, data)
-    }
-
     const sendWithDownloadFromChannel = async () => {
         const data = await downloadFromCache(id, format);
-        await ctx.telegram.sendDocument(chatId, data);
+        await ctx.telegram.sendDocument(chatId, { source: data.source, filename: data.filename }, { caption: data.caption });
     }
 
     const getCachedMessage = async () => {
@@ -35,19 +27,14 @@ async function _sendFile(ctx: Context, state: BotState, chatId: number, id: numb
     };
 
     if (state.cache === Cache.NO_CACHE) {
-        try {
-            await sendWithDownloadFromChannel();
-        } catch (e) {
-            await sendWithoutCache();
-        }
-        return;
+        return sendWithDownloadFromChannel();
     }
 
     try {
-        await sendCached();
+        return await sendCached();
     } catch (e) {
         await clearBookCache(id, format);
-        await sendCached();
+        return sendCached();
     }
 }
 
@@ -68,9 +55,11 @@ export async function sendFile(ctx: Context, state: BotState) {
     const action = setInterval(() => sendSendingAction(), 1000);
 
     try {
-        await _sendFile(ctx, state, chatId, parseInt(id), format);
+        return await _sendFile(ctx, state, chatId, parseInt(id), format);
     } catch (e) {
-        await ctx.reply("Ошибка! Попробуйте позже :(", {
+        console.log(e);
+
+        return await ctx.reply("Ошибка! Попробуйте позже :(", {
             reply_to_message_id: ctx.message.message_id,
         });
     } finally {
