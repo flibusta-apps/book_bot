@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node';
 
-import { Context, Telegraf, Markup, TelegramError } from 'telegraf';
+import { Context, Telegraf, Markup, TelegramError, Telegram } from 'telegraf';
 
 import { BotState, Cache } from '@/bots/manager';
 
@@ -151,17 +151,23 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const [_, format, id] = ctx.message.text.split('_');
         const chatId = ctx.message.chat.id;
-        
-        if (state.cache === Cache.NO_CACHE) {
-            const book = await BookLibrary.getBookById(parseInt(id));
-            const data = await download(book.source.id, book.remote_id, format);
-            ctx.telegram.sendDocument(ctx.message.chat.id, data, {
-                reply_to_message_id: ctx.message.message_id
-            })
-            return;
+
+        const sendSendingAction = async () => {
+            await ctx.telegram.sendChatAction(chatId, "upload_document");
         }
 
-        let cache: CachedMessage | null = null;
+        const sendWithoutCache = async () => {
+            const action = setInterval(() => sendSendingAction(), 1000);
+
+            try {
+                sendSendingAction();
+                const book = await BookLibrary.getBookById(parseInt(id));
+                const data = await download(book.source.id, book.remote_id, format);
+                await ctx.telegram.sendDocument(chatId, data)
+            } finally {
+                clearInterval(action);
+            }
+        }
 
         const getCachedMessage = async () => {
             if (state.cache === Cache.ORIGINAL) {
@@ -172,12 +178,23 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         };
 
         const sendCached = async () => {
-            cache = await getCachedMessage();
-            await ctx.telegram.copyMessage(chatId, cache.chat_id, cache.message_id, {
-                allow_sending_without_reply: true,
-            });
+            const action = setInterval(() => sendSendingAction(), 1000);
+
+            try {
+                sendSendingAction();
+                const cache = await getCachedMessage();
+                await ctx.telegram.copyMessage(chatId, cache.chat_id, cache.message_id, {
+                    allow_sending_without_reply: true,
+                });
+            } finally {
+                clearInterval(action);
+            }
         };
 
+        if (state.cache === Cache.NO_CACHE) {
+            await sendWithoutCache();
+            return;
+        }
 
         try {
             await sendCached();
