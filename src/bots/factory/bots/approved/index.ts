@@ -1,8 +1,8 @@
 import * as Sentry from '@sentry/node';
 
-import { Context, Telegraf, Markup, TelegramError, Telegram } from 'telegraf';
+import { Context, Telegraf, Markup } from 'telegraf';
 
-import { BotState, Cache } from '@/bots/manager';
+import { BotState } from '@/bots/manager';
 
 import env from '@/config';
 
@@ -11,13 +11,12 @@ import * as Messages from "./messages";
 import * as CallbackData from "./callback_data";
 
 import * as BookLibrary from "./services/book_library";
-import { CachedMessage, clearBookCache, getBookCache } from './services/book_cache';
-import { getBookCacheBuffer } from './services/book_cache_buffer';
-import { download } from './services/downloader';
 import { createOrUpdateUserSettings, getUserSettings } from './services/user_settings';
 import { formatBook, formatAuthor, formatSequence, formatTranslator } from './format';
 import { getPaginatedMessage, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
 import { getRandomKeyboard, getUpdateLogKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
+import { sendFile } from './hooks/downloading';
+import { setCommands } from './hooks/setCommands';
 
 
 Sentry.init({
@@ -32,22 +31,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         }
     });
 
-    async function setMyCommands() {
-        await bot.telegram.setMyCommands([
-            {command: "random", description: "Попытать удачу"},
-            {command: "update_log", description: "Обновления каталога"},
-            {command: "settings", description: "Настройки"},
-            {command: "help", description: "Помощь"},
-        ]);
-    }
-
-    try {
-        await setMyCommands();
-    } catch (e: unknown) {
-        if (e instanceof TelegramError && e.response.error_code === 429) {
-            setTimeout(() => setMyCommands(), 1000 * (e.response.parameters?.retry_after || 5));
-        }
-    }
+    setCommands(bot);
 
     bot.use(async (ctx: Context, next) => {
         if (ctx.from) {
@@ -144,65 +128,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     registerLanguageSettingsCallback(bot, 'on', CallbackData.ENABLE_LANG_PREFIX);
     registerLanguageSettingsCallback(bot, 'off', CallbackData.DISABLE_LANG_PREFIX);
 
-    bot.hears(/^\/d_[a-zA-Z0-9]+_[\d]+$/gm, async (ctx: Context) => {
-        if (!ctx.message || !('text' in ctx.message)) {
-            return;
-        }
-
-        const [_, format, id] = ctx.message.text.split('_');
-        const chatId = ctx.message.chat.id;
-
-        const sendSendingAction = async () => {
-            await ctx.telegram.sendChatAction(chatId, "upload_document");
-        }
-
-        const sendWithoutCache = async () => {
-            const action = setInterval(() => sendSendingAction(), 1000);
-
-            try {
-                sendSendingAction();
-                const book = await BookLibrary.getBookById(parseInt(id));
-                const data = await download(book.source.id, book.remote_id, format);
-                await ctx.telegram.sendDocument(chatId, data)
-            } finally {
-                clearInterval(action);
-            }
-        }
-
-        const getCachedMessage = async () => {
-            if (state.cache === Cache.ORIGINAL) {
-                return getBookCache(parseInt(id), format);
-            }
-
-            return getBookCacheBuffer(parseInt(id), format);
-        };
-
-        const sendCached = async () => {
-            const action = setInterval(() => sendSendingAction(), 1000);
-
-            try {
-                sendSendingAction();
-                const cache = await getCachedMessage();
-                await ctx.telegram.copyMessage(chatId, cache.chat_id, cache.message_id, {
-                    allow_sending_without_reply: true,
-                });
-            } finally {
-                clearInterval(action);
-            }
-        };
-
-        if (state.cache === Cache.NO_CACHE) {
-            await sendWithoutCache();
-            return;
-        }
-
-        try {
-            await sendCached();
-        } catch (e) {
-            await clearBookCache(parseInt(id), format);
-            await sendCached();
-        }
-    });
+    bot.hears(/^\/d_[a-zA-Z0-9]+_[\d]+$/gm, (ctx) => sendFile(ctx, state));
 
     bot.hears(/^\/b_info_[\d]+$/gm, async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {
