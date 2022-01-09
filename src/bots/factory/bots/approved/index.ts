@@ -11,7 +11,7 @@ import * as Messages from "./messages";
 import * as CallbackData from "./callback_data";
 
 import * as BookLibrary from "./services/book_library";
-import { CachedMessage, getBookCache } from './services/book_cache';
+import { CachedMessage, clearBookCache, getBookCache } from './services/book_cache';
 import { getBookCacheBuffer } from './services/book_cache_buffer';
 import { download } from './services/downloader';
 import { createOrUpdateUserSettings, getUserSettings } from './services/user_settings';
@@ -150,14 +150,9 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         }
 
         const [_, format, id] = ctx.message.text.split('_');
-
-        let cache: CachedMessage;
-
-        if (state.cache === Cache.ORIGINAL) {
-            cache = await getBookCache(parseInt(id), format);
-        } else if (state.cache === Cache.BUFFER) {
-            cache = await getBookCacheBuffer(parseInt(id), format);
-        } else {
+        const chatId = ctx.message.chat.id;
+        
+        if (state.cache === Cache.NO_CACHE) {
             const book = await BookLibrary.getBookById(parseInt(id));
             const data = await download(book.source.id, book.remote_id, format);
             ctx.telegram.sendDocument(ctx.message.chat.id, data, {
@@ -166,9 +161,30 @@ export async function createApprovedBot(token: string, state: BotState): Promise
             return;
         }
 
-        ctx.telegram.copyMessage(ctx.message.chat.id, cache.chat_id, cache.message_id, {
-            allow_sending_without_reply: true,
-        })
+        let cache: CachedMessage | null = null;
+
+        const getCachedMessage = async () => {
+            if (state.cache === Cache.ORIGINAL) {
+                return getBookCache(parseInt(id), format);
+            }
+
+            return getBookCacheBuffer(parseInt(id), format);
+        };
+
+        const sendCached = async () => {
+            cache = await getCachedMessage();
+            await ctx.telegram.copyMessage(chatId, cache.chat_id, cache.message_id, {
+                allow_sending_without_reply: true,
+            });
+        };
+
+
+        try {
+            await sendCached();
+        } catch (e) {
+            await clearBookCache(parseInt(id), format);
+            await sendCached();
+        }
     });
 
     bot.hears(/^\/b_info_[\d]+$/gm, async (ctx: Context) => {
@@ -279,6 +295,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     });
 
     bot.catch((err) => {
+        console.log(err);
         Sentry.captureException(err);
     });
 

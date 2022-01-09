@@ -31,7 +31,23 @@ async function _makeRequest<T>(url: string, searchParams?: string | Record<strin
     return response.body;
 }
 
+async function _makeDeleteRequest<T>(url: string, searchParams?: string | Record<string, string | number | boolean | null | undefined> | URLSearchParams | undefined): Promise<T> {
+    const response = await got.delete<T>(`${env.CACHE_SERVER_URL}${url}`, {
+        searchParams,
+        headers: {
+            'Authorization': env.CACHE_SERVER_API_KEY,
+        },
+        responseType: 'json',
+    });
+
+    return response.body;
+}
+
 
 export async function getBookCache(bookId: number, fileType: string): Promise<CachedMessage> {
     return (await _makeRequest<BookCache>(`/api/v1/${bookId}/${fileType}`)).data;
+}
+
+export async function clearBookCache(bookId: number, fileType: string): Promise<CachedMessage> {
+    return (await _makeDeleteRequest<BookCache>(`/api/v1/${bookId}/${fileType}`)).data;
 }
