@@ -43,7 +43,7 @@ async function _makeSyncRequest(): Promise<BotState[] | null> {
 
 export default class BotsManager {
     static bots: {[key: number]: Telegraf} = {};
-    static botsStates: {[key: number]: BotStatuses} = {};
+    static botsStates: {[key: number]: BotState} = {};
     static syncInterval: NodeJS.Timer | null = null;
     static server: Server | null = null;
 
@@ -69,22 +69,22 @@ export default class BotsManager {
     static async updateBotState(state: BotState) {
         const isExists = this.bots[state.id] !== undefined;
 
-        if (isExists && this.botsStates[state.id] === state.status) {
+        if (isExists &&
+            this.botsStates[state.id].status === state.status &&
+            this.botsStates[state.id].cache === state.cache
+        ) {
             return;
         }
 
-        const bot = await getBot(state.token, state);
-
-        this.bots[state.id] = bot;
-        this.botsStates[state.id] = state.status;
-
         try {
-            const oldBot = new Telegraf(bot.telegram.token);
+            const oldBot = new Telegraf(state.token);
             await oldBot.telegram.deleteWebhook();
             await oldBot.telegram.logOut();
         } catch (e) {
             console.log(e);
         }
+
+        const bot = await getBot(state.token, state);
 
         const dockerIp = await dockerIpTools.getContainerIp();
 
@@ -93,6 +93,9 @@ export default class BotsManager {
                 ip_address: dockerIp,
             }
         );
+
+        this.bots[state.id] = bot;
+        this.botsStates[state.id] = state;
     }
 
     static async handleUpdate(req: Request, res: Response, next: NextFunction) {
