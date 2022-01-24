@@ -15,7 +15,10 @@ export async function createPendingBot(token: string, state: BotState): Promise<
     await bot.telegram.deleteMyCommands();
 
     bot.on("message", async (ctx: Context) => {
-        await ctx.reply('Бот зарегистрирован, но не подтвержден администратором!');
+        await ctx.reply(
+            'Бот зарегистрирован, но не подтвержден администратором! \n' +
+            'Подтверждение занимает примерно 12 часов.'
+        );
     });
 
     return bot;
