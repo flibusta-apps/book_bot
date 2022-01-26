@@ -6,15 +6,24 @@ import { RANDOM_BOOK, RANDOM_AUTHOR, RANDOM_SEQUENCE, ENABLE_LANG_PREFIX, DISABL
 import { getUserSettings, getLanguages } from './services/user_settings';
 
 
+function getButtonLabel(delta: number, direction: 'left' | 'right'): string {
+    if (delta == 1) {
+        return direction === 'left' ? "<" : ">";
+    }
+
+    return direction === 'left' ? `< ${delta} <` : `> ${delta} >`;
+}
+
+
 export function getPaginationKeyboard(prefix: string, query: string | number, page: number, totalPages: number): Markup.Markup<InlineKeyboardMarkup> {
     function getRow(delta: number) {
         const row = [];
 
         if (page - delta > 0) {
-            row.push(Markup.button.callback(`-${delta}`, `${prefix}${query}_${page - delta}`));
+            row.push(Markup.button.callback(getButtonLabel(delta, 'left'), `${prefix}${query}_${page - delta}`));
         }
         if (page + delta <= totalPages) {
-            row.push(Markup.button.callback(`+${delta}`, `${prefix}${query}_${page + delta}`));
+            row.push(Markup.button.callback(getButtonLabel(delta, 'right'), `${prefix}${query}_${page + delta}`));
         }
 
         return row;
