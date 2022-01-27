@@ -14,7 +14,7 @@ import * as BookLibrary from "./services/book_library";
 import { createOrUpdateUserSettings, getUserSettings } from './services/user_settings';
 import { formatBook, formatAuthor, formatSequence, formatTranslator } from './format';
 import { getPaginatedMessage, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
-import { getRandomKeyboard, getUpdateLogKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
+import { getRandomKeyboard, getTextPaginationData, getUpdateLogKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
 import { sendFile } from './hooks/downloading';
 import { setCommands } from './hooks/setCommands';
 
@@ -139,9 +139,32 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const annotation = await BookLibrary.getBookAnnotation(parseInt(bookId));
 
-        ctx.reply(annotation.text, {
+        const data = getTextPaginationData(`${CallbackData.BOOK_ANNOTATION_PREFIX}${bookId}`, annotation.text, 0);
+
+        ctx.reply(data.current, {
             parse_mode: "HTML",
+            reply_markup: data.keyboard.reply_markup,
         });
+    });
+
+    bot.action(new RegExp(CallbackData.BOOK_ANNOTATION_PREFIX), async (ctx: Context) => {
+        if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
+
+        const queryData = ctx.callbackQuery.data.split("_");
+
+        const bookId = queryData[2];
+        const page = queryData[3];
+
+        const annotation = await BookLibrary.getBookAnnotation(parseInt(bookId));
+
+        const data = getTextPaginationData(`${CallbackData.BOOK_ANNOTATION_PREFIX}${bookId}`, annotation.text, parseInt(page));
+
+        ctx.editMessageText(
+            data.current, {
+                parse_mode: "HTML",
+                reply_markup: data.keyboard.reply_markup,
+            }
+        );
     });
 
     bot.hears(/^\/a_info_[\d]+$/gm, async (ctx: Context) => {
@@ -153,9 +176,32 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const annotation = await BookLibrary.getAuthorAnnotation(parseInt(authorId));
 
-        ctx.reply(annotation.text, {
+        const data = getTextPaginationData(`${CallbackData.AUTHOR_ANNOTATION_PREFIX}${authorId}`, annotation.text, 0);
+
+        ctx.reply(data.current, {
             parse_mode: "HTML",
+            reply_markup: data.keyboard.reply_markup,
         });
+    });
+
+    bot.action(new RegExp(CallbackData.AUTHOR_ANNOTATION_PREFIX), async (ctx: Context) => {
+        if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
+
+        const queryData = ctx.callbackQuery.data.split("_");
+
+        const authorId = queryData[2];
+        const page = queryData[3];
+
+        const annotation = await BookLibrary.getAuthorAnnotation(parseInt(authorId));
+
+        const data = getTextPaginationData(`${CallbackData.AUTHOR_ANNOTATION_PREFIX}${authorId}`, annotation.text, parseInt(page));
+
+        ctx.editMessageText(
+            data.current, {
+                parse_mode: "HTML",
+                reply_markup: data.keyboard.reply_markup,
+            }
+        );
     });
 
     bot.hears(/^\/a_[\d]+$/gm, async (ctx: Context) => {

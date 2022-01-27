@@ -1,6 +1,7 @@
 import { Markup } from 'telegraf';
 import { InlineKeyboardMarkup } from 'typegram';
 import moment from 'moment';
+import chunkText from 'chunk-text';
 
 import { RANDOM_BOOK, RANDOM_AUTHOR, RANDOM_SEQUENCE, ENABLE_LANG_PREFIX, DISABLE_LANG_PREFIX, UPDATE_LOG_PREFIX } from './callback_data';
 import { getUserSettings, getLanguages } from './services/user_settings';
@@ -42,6 +43,30 @@ export function getPaginationKeyboard(prefix: string, query: string | number, pa
     }
 
     return Markup.inlineKeyboard(rows);
+}
+
+
+export function getTextPaginationData(prefix: string, text: string, currentPage: number): {current: string, keyboard: Markup.Markup<InlineKeyboardMarkup>} {
+    const chunks = chunkText(text, 512);
+
+    const current = chunks[currentPage];
+
+    const row = [];
+
+    if (currentPage - 1 >= 0) {
+        row.push(Markup.button.callback("<", `${prefix}_${currentPage - 1}`));
+    }
+
+    if (currentPage + 1 < chunks.length) {
+        row.push(Markup.button.callback(">", `${prefix}_${currentPage + 1}`));
+    }
+
+    const keyboard = Markup.inlineKeyboard([row]);
+
+    return {
+        current,
+        keyboard,
+    }
 }
 
 
