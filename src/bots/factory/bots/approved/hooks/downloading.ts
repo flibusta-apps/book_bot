@@ -44,7 +44,7 @@ export async function sendFile(ctx: Context, state: BotState) {
         return;
     }
 
-    const [_, format, id] = ctx.message.text.split('_');
+    const [_, format, id] = ctx.message.text.split('@')[0].split('_');
     const chatId = ctx.message.chat.id;
 
     const sendSendingAction = async () => {

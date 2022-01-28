@@ -31,6 +31,8 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         }
     });
 
+    const me = await bot.telegram.getMe();
+
     setCommands(bot);
 
     bot.use(async (ctx: Context, next) => {
@@ -47,20 +49,20 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         await next();
     });
 
-    bot.help((ctx: Context) => ctx.reply(Messages.HELP_MESSAGE));
-
-    bot.start((ctx: Context) => {
+    bot.command(["start", `start@${me.username}`], async (ctx: Context) => {
         if (!ctx.message) {
             return;
         }
 
         const name = ctx.message.from.first_name || ctx.message.from.username || 'пользователь';
-        ctx.telegram.sendMessage(ctx.message.chat.id,
+        await ctx.telegram.sendMessage(ctx.message.chat.id,
             Messages.START_MESSAGE.replace('{name}', name), {
                 reply_to_message_id: ctx.message.message_id,
             }
         );
     });
+
+    bot.command(["help", `help@${me.username}`], async (ctx: Context) => ctx.reply(Messages.HELP_MESSAGE));
 
     registerPaginationCommand(bot, CallbackData.SEARCH_BOOK_PREFIX, BookLibrary.searchByBookName, formatBook);
     registerPaginationCommand(bot, CallbackData.SEARCH_TRANSLATORS_PREFIX, BookLibrary.searchTranslators, formatTranslator);
@@ -71,7 +73,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     registerPaginationCommand(bot, CallbackData.TRANSLATOR_BOOKS_PREFIX, BookLibrary.getTranslatorBooks, formatBook);
     registerPaginationCommand(bot, CallbackData.SEQUENCE_BOOKS_PREFIX, BookLibrary.getSequenceBooks, formatBook);
 
-    bot.command("random", async (ctx: Context) => {
+    bot.command(["random", `random@${me.username}`], async (ctx: Context) => {
         ctx.reply("Что хотим получить?", {
             reply_markup: getRandomKeyboard().reply_markup,
         })
@@ -81,7 +83,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     registerRandomItemCallback(bot, CallbackData.RANDOM_AUTHOR, BookLibrary.getRandomAuthor, formatAuthor);
     registerRandomItemCallback(bot, CallbackData.RANDOM_SEQUENCE, BookLibrary.getRandomSequence, formatSequence);
 
-    bot.command("update_log", async (ctx: Context) => {
+    bot.command(["update_log", `update_log@${me.username}`], async (ctx: Context) => {
         ctx.reply("Обновление каталога: ", {
             reply_markup: getUpdateLogKeyboard().reply_markup,
         });
@@ -105,7 +107,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         });
     });
 
-    bot.command("settings", async (ctx: Context) => {
+    bot.command(["settings", `settings@${me.username}`], async (ctx: Context) => {
         const keyboard = Markup.inlineKeyboard([
             [Markup.button.callback("Языки", CallbackData.LANG_SETTINGS)]
         ]);
@@ -128,14 +130,14 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     registerLanguageSettingsCallback(bot, 'on', CallbackData.ENABLE_LANG_PREFIX);
     registerLanguageSettingsCallback(bot, 'off', CallbackData.DISABLE_LANG_PREFIX);
 
-    bot.hears(/^\/d_[a-zA-Z0-9]+_[\d]+$/gm, async (ctx) => sendFile(ctx, state));
+    bot.hears(new RegExp(`^/d_[a-zA-Z0-9]+_[\\d]+(@${me.username})*$`), async (ctx) => sendFile(ctx, state));
 
-    bot.hears(/^\/b_info_[\d]+$/gm, async (ctx: Context) => {
+    bot.hears(new RegExp(`^/b_info_[\\d]+(@${me.username})*$`), async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {
             return;
         }
 
-        const bookId = ctx.message.text.split('_')[2];
+        const bookId = ctx.message.text.split("@")[0].split('_')[2];
 
         const annotation = await BookLibrary.getBookAnnotation(parseInt(bookId));
 
@@ -183,12 +185,12 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         }
     });
 
-    bot.hears(/^\/a_info_[\d]+$/gm, async (ctx: Context) => {
+    bot.hears(new RegExp(`^/a_info_[\\d]+(@${me.username})*$`), async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {
             return;
         }
 
-        const authorId = ctx.message.text.split('_')[2];
+        const authorId = ctx.message.text.split('@')[0].split('_')[2];
 
         const annotation = await BookLibrary.getAuthorAnnotation(parseInt(authorId));
 
@@ -236,12 +238,12 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         }
     });
 
-    bot.hears(/^\/a_[\d]+$/gm, async (ctx: Context) => {
+    bot.hears(new RegExp(`^/a_[\\d]+(@${me.username})*$`), async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {
             return;
         }
 
-        const authorId = ctx.message.text.split('_')[1];
+        const authorId = ctx.message.text.split('@')[0].split('_')[1];
 
         const userSettings = await getUserSettings(ctx.message.from.id);
         const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
@@ -253,12 +255,12 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         });
     });
 
-    bot.hears(/^\/t_[\d]+$/gm, async (ctx: Context) => {
+    bot.hears(new RegExp(`^/t_[\\d]+(@${me.username})*$`), async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {
             return;
         }
 
-        const translatorId = ctx.message.text.split('_')[1];
+        const translatorId = ctx.message.text.split("@")[0].split('_')[1];
 
         const userSettings = await getUserSettings(ctx.message.from.id);
         const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
@@ -270,7 +272,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         });
     });
 
-    bot.hears(/^\/s_[\d]+$/gm, async (ctx: Context) => {
+    bot.hears(new RegExp(`^/s_[\\d]+(@${me.username})*$`), async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {
             return;
         }
