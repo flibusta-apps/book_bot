@@ -141,10 +141,18 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const data = getTextPaginationData(`${CallbackData.BOOK_ANNOTATION_PREFIX}${bookId}`, annotation.text, 0);
 
-        ctx.reply(data.current, {
-            parse_mode: "HTML",
-            reply_markup: data.keyboard.reply_markup,
-        });
+        try {
+            await ctx.reply(data.current, {
+                parse_mode: "HTML",
+                reply_markup: data.keyboard.reply_markup,
+            });
+        } catch (e) {
+            Sentry.captureException(e, {
+                extra: {
+                    message: data.current,
+                }
+            })
+        }
     });
 
     bot.action(new RegExp(CallbackData.BOOK_ANNOTATION_PREFIX), async (ctx: Context) => {
@@ -159,12 +167,20 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const data = getTextPaginationData(`${CallbackData.BOOK_ANNOTATION_PREFIX}${bookId}`, annotation.text, parseInt(page));
 
-        ctx.editMessageText(
-            data.current, {
-                parse_mode: "HTML",
-                reply_markup: data.keyboard.reply_markup,
-            }
-        );
+        try {
+            await ctx.editMessageText(
+                data.current, {
+                    parse_mode: "HTML",
+                    reply_markup: data.keyboard.reply_markup,
+                }
+            );
+        } catch (e) {
+            Sentry.captureException(e, {
+                extra: {
+                    message: data.current,
+                }
+            })
+        }
     });
 
     bot.hears(/^\/a_info_[\d]+$/gm, async (ctx: Context) => {
@@ -178,10 +194,18 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const data = getTextPaginationData(`${CallbackData.AUTHOR_ANNOTATION_PREFIX}${authorId}`, annotation.text, 0);
 
-        ctx.reply(data.current, {
-            parse_mode: "HTML",
-            reply_markup: data.keyboard.reply_markup,
-        });
+        try {
+            await ctx.reply(data.current, {
+                parse_mode: "HTML",
+                reply_markup: data.keyboard.reply_markup,
+            });
+        } catch (e) {
+            Sentry.captureException(e, {
+                extra: {
+                    message: data.current,
+                }
+            })
+        }
     });
 
     bot.action(new RegExp(CallbackData.AUTHOR_ANNOTATION_PREFIX), async (ctx: Context) => {
@@ -196,12 +220,20 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const data = getTextPaginationData(`${CallbackData.AUTHOR_ANNOTATION_PREFIX}${authorId}`, annotation.text, parseInt(page));
 
-        ctx.editMessageText(
-            data.current, {
-                parse_mode: "HTML",
-                reply_markup: data.keyboard.reply_markup,
-            }
-        );
+        try {
+            await ctx.editMessageText(
+                data.current, {
+                    parse_mode: "HTML",
+                    reply_markup: data.keyboard.reply_markup,
+                }
+            );
+        } catch (e) {
+            Sentry.captureException(e, {
+                extra: {
+                    message: data.current,
+                }
+            })
+        }
     });
 
     bot.hears(/^\/a_[\d]+$/gm, async (ctx: Context) => {
