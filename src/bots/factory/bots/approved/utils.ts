@@ -35,21 +35,29 @@ export async function getPaginatedMessage<T, D extends string | number>(
 } 
 
 
-export function registerPaginationCommand<T>(
+export function registerPaginationCommand<T, Q extends string | number>(
     bot: Telegraf,
     prefix: string,
-    itemsGetter: (data: any, page: number, allowedLangs: string[]) => Promise<BookLibrary.Page<T>>,
+    argsGetter: (ctx: Context) => { query: Q, page: number } | null,
+    prefixCreator: ((query: Q) => string) | null,
+    itemsGetter: (data: Q, page: number, allowedLangs: string[]) => Promise<BookLibrary.Page<T>>,
     itemFormater: (item: T) => string,
 ) {
     bot.action(new RegExp(prefix), async (ctx: Context) => {
-        if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
+        if (!ctx.callbackQuery) return;
 
-        const [_, query, sPage] = ctx.callbackQuery.data.split('_');
+        const args = argsGetter(ctx);
+
+        if (args === null) return;
+
+        const { query, page } = args;
 
         const userSettings = await getUserSettings(ctx.callbackQuery.from.id);
         const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
 
-        const pMessage = await getPaginatedMessage(prefix, query, parseInt(sPage), allowedLangs, itemsGetter, itemFormater);
+        const tPrefix = prefixCreator ? prefixCreator(query) : prefix;
+
+        const pMessage = await getPaginatedMessage(tPrefix, query, page, allowedLangs, itemsGetter, itemFormater);
 
         try {
             await ctx.editMessageText(pMessage.message, {
@@ -136,4 +144,59 @@ export function getAllowedLangsSearchParams(allowedLangs: string[]): URLSearchPa
     const sp = new URLSearchParams();
     allowedLangs.forEach((lang) => sp.append('allowed_langs', lang));
     return sp;
+}
+
+
+const fail = (ctx: Context) => ctx.reply("Ошибка! Повторите поиск :(");
+
+
+export function getSearchArgs(ctx: Context): { query: string, page: number } | null {
+    if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) {
+        fail(ctx)
+        return null;
+    }
+    if (!ctx.callbackQuery.message || !('reply_to_message' in ctx.callbackQuery.message)) {
+        fail(ctx);
+        return null;
+    }
+
+    if (!ctx.callbackQuery.message.reply_to_message || !('text' in ctx.callbackQuery.message.reply_to_message)) {
+        fail(ctx)
+        return null;
+    }
+
+    const page = parseInt(ctx.callbackQuery.data.split('_')[1]);
+
+    if (isNaN(page)) {
+        fail(ctx)
+        return null;
+    }
+
+    const query = ctx.callbackQuery.message.reply_to_message.text;
+
+    return { query, page };
+}
+
+export function getCallbackArgs(ctx: Context): { query: string, page: number} | null {
+    if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) {
+        fail(ctx)
+        return null;
+    }
+
+    const [ _, query, sPage ] = ctx.callbackQuery.data.split('_');
+
+    console.log(_, query, sPage);
+
+    const page = parseInt(sPage);
+
+    if (isNaN(page)) {
+        fail(ctx)
+        return null;
+    }
+
+    return { query, page };
+}
+
+export function getPrefixWithQueryCreator(prefix: string) {
+    return (query: string) => `${prefix}${query}_`; 
 }

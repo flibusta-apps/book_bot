@@ -173,7 +173,7 @@ export async function getAuthorAnnotation(authorId: number): Promise<AuthorAnnno
 }
 
 
-export async function getAuthorBooks(authorId: number, page: number, allowedLangs: string[]): Promise<Page<AuthorBook>> {
+export async function getAuthorBooks(authorId: number | string, page: number, allowedLangs: string[]): Promise<Page<AuthorBook>> {
     const searchParams = getAllowedLangsSearchParams(allowedLangs);
     searchParams.append('page', page.toString());
     searchParams.append('size', PAGE_SIZE.toString());
@@ -182,7 +182,7 @@ export async function getAuthorBooks(authorId: number, page: number, allowedLang
 }
 
 
-export async function getTranslatorBooks(translatorId: number, page: number, allowedLangs: string[]): Promise<Page<AuthorBook>> {
+export async function getTranslatorBooks(translatorId: number | string, page: number, allowedLangs: string[]): Promise<Page<AuthorBook>> {
     const searchParams = getAllowedLangsSearchParams(allowedLangs);
     searchParams.append('page', page.toString());
     searchParams.append('size', PAGE_SIZE.toString());
@@ -191,7 +191,7 @@ export async function getTranslatorBooks(translatorId: number, page: number, all
 }
 
 
-export async function getSequenceBooks(sequenceId: number, page: number, allowedLangs: string[]): Promise<Page<Book>> {
+export async function getSequenceBooks(sequenceId: number | string, page: number, allowedLangs: string[]): Promise<Page<Book>> {
     const searchParams = getAllowedLangsSearchParams(allowedLangs);
     searchParams.append('page', page.toString());
     searchParams.append('size', PAGE_SIZE.toString());

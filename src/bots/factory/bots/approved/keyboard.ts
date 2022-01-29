@@ -21,10 +21,10 @@ export function getPaginationKeyboard(prefix: string, query: string | number, pa
         const row = [];
 
         if (page - delta > 0) {
-            row.push(Markup.button.callback(getButtonLabel(delta, 'left'), `${prefix}${query}_${page - delta}`));
+            row.push(Markup.button.callback(getButtonLabel(delta, 'left'), `${prefix}${page - delta}`));
         }
         if (page + delta <= totalPages) {
-            row.push(Markup.button.callback(getButtonLabel(delta, 'right'), `${prefix}${query}_${page + delta}`));
+            row.push(Markup.button.callback(getButtonLabel(delta, 'right'), `${prefix}${page + delta}`));
         }
 
         return row;
