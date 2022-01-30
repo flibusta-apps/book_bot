@@ -21,3 +21,14 @@ export async function download(source_id: number, remote_id: number, file_type: 
         filename: (response.headers['content-disposition'] || '').split('filename=')[1]
     }
 }
+
+
+export async function downloadImage(path: string) {
+    const response  = await got(path);
+
+    if (response.statusCode === 200) {
+        return response.rawBody;
+    } else {
+        return null;
+    }
+}

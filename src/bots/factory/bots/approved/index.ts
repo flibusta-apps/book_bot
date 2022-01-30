@@ -17,6 +17,7 @@ import { getCallbackArgs, getPaginatedMessage, getPrefixWithQueryCreator, getSea
 import { getRandomKeyboard, getTextPaginationData, getUpdateLogKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
 import { sendFile } from './hooks/downloading';
 import { setCommands } from './hooks/setCommands';
+import { downloadImage } from './services/downloader';
 
 
 Sentry.init({
@@ -143,6 +144,12 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const data = getTextPaginationData(`${CallbackData.BOOK_ANNOTATION_PREFIX}${bookId}`, annotation.text, 0);
 
+        if (annotation.file) {
+            const imageData = await downloadImage(annotation.file);
+
+            if (imageData) await ctx.telegram.sendPhoto(ctx.message.chat.id, {source: imageData});
+        }
+
         try {
             await ctx.reply(data.current, {
                 parse_mode: "HTML",
@@ -196,6 +203,12 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const data = getTextPaginationData(`${CallbackData.AUTHOR_ANNOTATION_PREFIX}${authorId}`, annotation.text, 0);
 
+        if (annotation.file) {
+            const imageData = await downloadImage(annotation.file);
+
+            if (imageData) await ctx.telegram.sendPhoto(ctx.message.chat.id, {source: imageData});
+        }
+    
         try {
             await ctx.reply(data.current, {
                 parse_mode: "HTML",
