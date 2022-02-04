@@ -142,13 +142,15 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const annotation = await BookLibrary.getBookAnnotation(parseInt(bookId));
 
-        const data = getTextPaginationData(`${CallbackData.BOOK_ANNOTATION_PREFIX}${bookId}`, annotation.text, 0);
-
         if (annotation.file) {
             const imageData = await downloadImage(annotation.file);
 
             if (imageData) await ctx.telegram.sendPhoto(ctx.message.chat.id, {source: imageData});
         }
+
+        if (!annotation.text) return;
+
+        const data = getTextPaginationData(`${CallbackData.BOOK_ANNOTATION_PREFIX}${bookId}`, annotation.text, 0);
 
         try {
             await ctx.reply(data.current, {
@@ -201,14 +203,16 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const annotation = await BookLibrary.getAuthorAnnotation(parseInt(authorId));
 
-        const data = getTextPaginationData(`${CallbackData.AUTHOR_ANNOTATION_PREFIX}${authorId}`, annotation.text, 0);
-
         if (annotation.file) {
             const imageData = await downloadImage(annotation.file);
-
+            
             if (imageData) await ctx.telegram.sendPhoto(ctx.message.chat.id, {source: imageData});
         }
-    
+
+        if (!annotation.text) return;
+
+        const data = getTextPaginationData(`${CallbackData.AUTHOR_ANNOTATION_PREFIX}${authorId}`, annotation.text, 0);
+        
         try {
             await ctx.reply(data.current, {
                 parse_mode: "HTML",
