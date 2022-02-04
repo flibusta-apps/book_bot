@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/node';
+
 import express, { Response, Request, NextFunction } from 'express';
 import { Server } from 'http';
 
@@ -10,11 +12,17 @@ import { Telegraf } from 'telegraf';
 import env from '@/config';
 import getBot, { BotStatuses } from './factory/index';
 
+Sentry.init({
+    dsn: env.SENTRY_DSN,
+});
+
+
 export enum Cache {
     ORIGINAL = "original",
     BUFFER = "buffer",
     NO_CACHE = "no_cache"
 }
+
 
 export interface BotState {
     id: number;
@@ -81,10 +89,17 @@ export default class BotsManager {
             await oldBot.telegram.deleteWebhook();
             await oldBot.telegram.logOut();
         } catch (e) {
-            console.log(e);
+            Sentry.captureException(e);
         }
 
-        const bot = await getBot(state.token, state);
+        let bot: Telegraf;
+
+        try {
+            bot = await getBot(state.token, state);
+        } catch (e) {
+            Sentry.captureException(e);
+            return;
+        }
 
         const dockerIp = await dockerIpTools.getContainerIp();
 
