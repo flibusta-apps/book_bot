@@ -24,11 +24,15 @@ export async function download(source_id: number, remote_id: number, file_type: 
 
 
 export async function downloadImage(path: string) {
-    const response  = await got(path);
+    try {
+        const response = await got(path);
 
-    if (response.statusCode === 200) {
-        return response.rawBody;
-    } else {
+        if (response.statusCode === 200) {
+            return response.rawBody;
+        } else {
+            return null;
+        }
+    } catch {
         return null;
     }
 }

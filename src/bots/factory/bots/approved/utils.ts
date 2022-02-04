@@ -185,8 +185,6 @@ export function getCallbackArgs(ctx: Context): { query: string, page: number} | 
 
     const [ _, query, sPage ] = ctx.callbackQuery.data.split('_');
 
-    console.log(_, query, sPage);
-
     const page = parseInt(sPage);
 
     if (isNaN(page)) {
