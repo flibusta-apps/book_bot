@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node';
 
 import { Context, Telegraf, Markup } from 'telegraf';
+import moment from 'moment';
 
 import { BotState } from '@/bots/manager';
 
@@ -101,9 +102,11 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const arg = `${data[2]}_${data[3]}`;
 
-        const pMessage = await getPaginatedMessage(CallbackData.UPDATE_LOG_PREFIX, arg, page, allowedLangs, BookLibrary.getBooks, formatBook);
+        const header = `Обновление каталога (${moment(data[2]).format("DD.MM.YYYY")} - ${moment(data[3]).format("DD.MM.YYYY")}):\n\n`
 
-        await ctx.reply(pMessage.message, {
+        const pMessage = await getPaginatedMessage(`${CallbackData.UPDATE_LOG_PREFIX}${arg}_`, arg, page, allowedLangs, BookLibrary.getBooks, formatBook, header);
+
+        await ctx.editMessageText(pMessage.message, {
             reply_markup: pMessage.keyboard.reply_markup
         });
     });

@@ -1,4 +1,4 @@
-import { Context, Markup, Telegraf, TelegramError } from  'telegraf';
+import { Context, Markup, Telegraf } from  'telegraf';
 import { InlineKeyboardMarkup } from 'typegram';
 import { URLSearchParams } from 'url';
 
@@ -20,11 +20,12 @@ export async function getPaginatedMessage<T, D extends string | number>(
     allowedLangs: string[],
     itemsGetter: (data: D, page: number, allowedLangs: string[]) => Promise<BookLibrary.Page<T>>,
     itemFormater: (item: T) => string,
+    header: string = ""
 ): Promise<PreparedMessage> {
     const itemsPage = await itemsGetter(data, page, allowedLangs);
 
     const formatedItems = itemsPage.items.map(itemFormater).join('\n\n\n');
-    const message = formatedItems + `\n\nСтраница ${page}/${itemsPage.total_pages}`;
+    const message = header + formatedItems + `\n\nСтраница ${page}/${itemsPage.total_pages}`;
 
     const keyboard = getPaginationKeyboard(prefix, data, page, itemsPage.total_pages);
 
