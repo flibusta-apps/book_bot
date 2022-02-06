@@ -66,14 +66,32 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
     bot.command(["help", `help@${me.username}`], async (ctx: Context) => ctx.reply(Messages.HELP_MESSAGE));
 
-    registerPaginationCommand(bot, CallbackData.SEARCH_BOOK_PREFIX, getSearchArgs, null, BookLibrary.searchByBookName, formatBook);
-    registerPaginationCommand(bot, CallbackData.SEARCH_TRANSLATORS_PREFIX, getSearchArgs, null, BookLibrary.searchTranslators, formatTranslator);
-    registerPaginationCommand(bot, CallbackData.SEARCH_AUTHORS_PREFIX, getSearchArgs, null, BookLibrary.searchAuthors, formatAuthor);
-    registerPaginationCommand(bot, CallbackData.SEARCH_SERIES_PREFIX, getSearchArgs, null, BookLibrary.searchSequences, formatSequence);
+    registerPaginationCommand(
+        bot, CallbackData.SEARCH_BOOK_PREFIX, getSearchArgs, null, BookLibrary.searchByBookName, formatBook, undefined, Messages.BOOKS_NOT_FOUND
+    );
+    registerPaginationCommand(
+        bot, CallbackData.SEARCH_TRANSLATORS_PREFIX, getSearchArgs, null, BookLibrary.searchTranslators, formatTranslator,
+        undefined, Messages.TRANSLATORS_NOT_FOUND
+    );
+    registerPaginationCommand(
+        bot, CallbackData.SEARCH_AUTHORS_PREFIX, getSearchArgs, null, BookLibrary.searchAuthors, formatAuthor, undefined, Messages.AUTHORS_NOT_FOUND
+    );
+    registerPaginationCommand(
+        bot, CallbackData.SEARCH_SERIES_PREFIX, getSearchArgs, null, BookLibrary.searchSequences, formatSequence, undefined, Messages.SEQUENCES_NOT_FOUND
+    );
 
-    registerPaginationCommand(bot, CallbackData.AUTHOR_BOOKS_PREFIX, getCallbackArgs, getPrefixWithQueryCreator(CallbackData.AUTHOR_BOOKS_PREFIX), BookLibrary.getAuthorBooks, formatBook);
-    registerPaginationCommand(bot, CallbackData.TRANSLATOR_BOOKS_PREFIX, getCallbackArgs, getPrefixWithQueryCreator(CallbackData.TRANSLATOR_BOOKS_PREFIX), BookLibrary.getTranslatorBooks, formatBook);
-    registerPaginationCommand(bot, CallbackData.SEQUENCE_BOOKS_PREFIX, getCallbackArgs, getPrefixWithQueryCreator(CallbackData.SEQUENCE_BOOKS_PREFIX), BookLibrary.getSequenceBooks, formatBook);
+    registerPaginationCommand(
+        bot, CallbackData.AUTHOR_BOOKS_PREFIX, getCallbackArgs, getPrefixWithQueryCreator(CallbackData.AUTHOR_BOOKS_PREFIX),
+        BookLibrary.getAuthorBooks, formatBook, undefined, Messages.BOOKS_NOT_FOUND,
+    );
+    registerPaginationCommand(
+        bot, CallbackData.TRANSLATOR_BOOKS_PREFIX, getCallbackArgs, getPrefixWithQueryCreator(CallbackData.TRANSLATOR_BOOKS_PREFIX),
+        BookLibrary.getTranslatorBooks, formatBook, undefined, Messages.BOOKS_NOT_FOUND,
+    );
+    registerPaginationCommand(
+        bot, CallbackData.SEQUENCE_BOOKS_PREFIX, getCallbackArgs, getPrefixWithQueryCreator(CallbackData.SEQUENCE_BOOKS_PREFIX),
+        BookLibrary.getSequenceBooks, formatBook, undefined, Messages.BOOKS_NOT_FOUND,
+    );
 
     bot.command(["random", `random@${me.username}`], async (ctx: Context) => {
         ctx.reply("Что хотим получить?", {
@@ -102,12 +120,15 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const arg = `${data[2]}_${data[3]}`;
 
-        const header = `Обновление каталога (${moment(data[2]).format("DD.MM.YYYY")} - ${moment(data[3]).format("DD.MM.YYYY")}):\n\n`
+        const header = `Обновление каталога (${moment(data[2]).format("DD.MM.YYYY")} - ${moment(data[3]).format("DD.MM.YYYY")}):\n\n`;
+        const noItemsMessage = 'Нет новых книг за этот период.';
 
-        const pMessage = await getPaginatedMessage(`${CallbackData.UPDATE_LOG_PREFIX}${arg}_`, arg, page, allowedLangs, BookLibrary.getBooks, formatBook, header);
+        const pMessage = await getPaginatedMessage(
+            `${CallbackData.UPDATE_LOG_PREFIX}${arg}_`, arg, page, allowedLangs, BookLibrary.getBooks, formatBook, header, noItemsMessage,
+        );
 
         await ctx.editMessageText(pMessage.message, {
-            reply_markup: pMessage.keyboard.reply_markup
+            reply_markup: pMessage.keyboard?.reply_markup
         });
     });
 
@@ -268,10 +289,13 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         const userSettings = await getUserSettings(ctx.message.from.id);
         const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
 
-        const pMessage = await getPaginatedMessage(`${CallbackData.AUTHOR_BOOKS_PREFIX}${authorId}_`, parseInt(authorId), 1, allowedLangs, BookLibrary.getAuthorBooks, formatBook);
+        const pMessage = await getPaginatedMessage(
+            `${CallbackData.AUTHOR_BOOKS_PREFIX}${authorId}_`, parseInt(authorId), 1, 
+            allowedLangs, BookLibrary.getAuthorBooks, formatBook, undefined, Messages.BOOKS_NOT_FOUND
+        );
 
         await ctx.reply(pMessage.message, {
-            reply_markup: pMessage.keyboard.reply_markup
+            reply_markup: pMessage.keyboard?.reply_markup
         });
     });
 
@@ -285,10 +309,13 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         const userSettings = await getUserSettings(ctx.message.from.id);
         const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
 
-        const pMessage = await getPaginatedMessage(`${CallbackData.TRANSLATOR_BOOKS_PREFIX}${translatorId}_`, parseInt(translatorId), 1, allowedLangs, BookLibrary.getTranslatorBooks, formatBook);
+        const pMessage = await getPaginatedMessage(
+            `${CallbackData.TRANSLATOR_BOOKS_PREFIX}${translatorId}_`, parseInt(translatorId), 1,
+            allowedLangs, BookLibrary.getTranslatorBooks, formatBook, undefined, Messages.BOOKS_NOT_FOUND
+        );
 
         await ctx.reply(pMessage.message, {
-            reply_markup: pMessage.keyboard.reply_markup
+            reply_markup: pMessage.keyboard?.reply_markup
         });
     });
 
@@ -302,10 +329,13 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         const userSettings = await getUserSettings(ctx.message.from.id);
         const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
 
-        const pMessage = await getPaginatedMessage(`${CallbackData.SEQUENCE_BOOKS_PREFIX}${sequenceId}_`, parseInt(sequenceId), 1, allowedLangs, BookLibrary.getSequenceBooks, formatBook);
+        const pMessage = await getPaginatedMessage(
+            `${CallbackData.SEQUENCE_BOOKS_PREFIX}${sequenceId}_`, parseInt(sequenceId), 1, allowedLangs,
+            BookLibrary.getSequenceBooks, formatBook, undefined, Messages.BOOKS_NOT_FOUND,
+        );
 
         await ctx.reply(pMessage.message, {
-            reply_markup: pMessage.keyboard.reply_markup
+            reply_markup: pMessage.keyboard?.reply_markup
         });
     });
 

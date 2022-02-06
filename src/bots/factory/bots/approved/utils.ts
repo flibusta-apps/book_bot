@@ -9,7 +9,7 @@ import { createOrUpdateUserSettings, getUserSettings } from './services/user_set
 
 interface PreparedMessage {
     message: string;
-    keyboard: Markup.Markup<InlineKeyboardMarkup>;
+    keyboard?: Markup.Markup<InlineKeyboardMarkup>;
 }
 
 
@@ -20,9 +20,20 @@ export async function getPaginatedMessage<T, D extends string | number>(
     allowedLangs: string[],
     itemsGetter: (data: D, page: number, allowedLangs: string[]) => Promise<BookLibrary.Page<T>>,
     itemFormater: (item: T) => string,
-    header: string = ""
+    header: string = "",
+    noItemsMessage: string = "",
 ): Promise<PreparedMessage> {
     const itemsPage = await itemsGetter(data, page, allowedLangs);
+
+    if (itemsPage.total_pages === 0) {
+        return {
+            message: noItemsMessage,
+        }
+    }
+
+    if (page > itemsPage.total_pages) {
+        return getPaginatedMessage(prefix, data, page, allowedLangs, itemsGetter, itemFormater, header, noItemsMessage);
+    }
 
     const formatedItems = itemsPage.items.map(itemFormater).join('\n\n\n');
     const message = header + formatedItems + `\n\nСтраница ${page}/${itemsPage.total_pages}`;
@@ -43,6 +54,8 @@ export function registerPaginationCommand<T, Q extends string | number>(
     prefixCreator: ((query: Q) => string) | null,
     itemsGetter: (data: Q, page: number, allowedLangs: string[]) => Promise<BookLibrary.Page<T>>,
     itemFormater: (item: T) => string,
+    headers?: string,
+    noItemsMessage?: string,
 ) {
     bot.action(new RegExp(prefix), async (ctx: Context) => {
         if (!ctx.callbackQuery) return;
@@ -58,11 +71,13 @@ export function registerPaginationCommand<T, Q extends string | number>(
 
         const tPrefix = prefixCreator ? prefixCreator(query) : prefix;
 
-        const pMessage = await getPaginatedMessage(tPrefix, query, page, allowedLangs, itemsGetter, itemFormater);
+        const pMessage = await getPaginatedMessage(
+            tPrefix, query, page, allowedLangs, itemsGetter, itemFormater, headers, noItemsMessage,
+        );
 
         try {
             await ctx.editMessageText(pMessage.message, {
-                reply_markup: pMessage.keyboard.reply_markup
+                reply_markup: pMessage.keyboard?.reply_markup
             });
         } catch (err) {
             console.log(err);
