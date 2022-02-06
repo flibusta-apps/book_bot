@@ -54,25 +54,29 @@ export async function clearBookCache(bookId: number, fileType: string): Promise<
 }
 
 export interface DownloadedFile {
-    source: Buffer;
+    source: NodeJS.ReadableStream;
     filename: string;
     caption: string;
 }
 
 export async function downloadFromCache(bookId: number, fileType: string): Promise<DownloadedFile> {
-    const response = await got<string>(`${env.CACHE_SERVER_URL}/api/v1/download/${bookId}/${fileType}`, {
+    const readStream = got.stream.get(`${env.CACHE_SERVER_URL}/api/v1/download/${bookId}/${fileType}`, {
         headers: {
             'Authorization': env.CACHE_SERVER_API_KEY,
         },
     });
 
-    const captionData = response.headers['x-caption-b64'];
+    return new Promise<DownloadedFile>((resolve, reject) => {
+        readStream.on("response", async response => {
+            const captionData = response.headers['x-caption-b64'];
 
-    if (captionData === undefined || Array.isArray(captionData)) throw Error('No caption?');
-
-    return {
-        source: response.rawBody,
-        filename: (response.headers['content-disposition'] || '').replaceAll('"', "").split('filename=')[1],
-        caption: decode(captionData),
-    }
+            if (captionData === undefined || Array.isArray(captionData)) throw Error('No caption?');
+        
+            return resolve({
+                source: readStream,
+                filename: (response.headers['content-disposition'] || '').replaceAll('"', "").split('filename=')[1],
+                caption: decode(captionData),
+            })
+        });
+    });
 }

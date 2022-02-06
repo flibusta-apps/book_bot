@@ -9,7 +9,7 @@ export const SETTINGS_MESSAGE = 'Настройки:';
 
 export const SEARCH_MESSAGE = 'Что ищем?';
 
-export const BOOKS_NOT_FOUND = "Книги для не найдены.";
+export const BOOKS_NOT_FOUND = "Книги не найдены.";
 
 export const AUTHORS_NOT_FOUND = "Авторы не найдены.";
 
