@@ -8,6 +8,12 @@ import { BotState, Cache } from '@/bots/manager';
 async function _sendFile(ctx: Context, state: BotState, chatId: number, id: number, format: string) {
     const sendWithDownloadFromChannel = async () => {
         const data = await downloadFromCache(id, format);
+
+        if (data === null) {
+            await ctx.reply("Ошибка скачивания книги. Попробуйте позже");
+            return
+        }
+
         await ctx.telegram.sendDocument(chatId, { source: data.source, filename: data.filename }, { caption: data.caption });
     }
 

@@ -1,4 +1,4 @@
-import got from 'got';
+import got, { Response } from 'got';
 import { decode } from 'js-base64';
 
 import env from '@/config';
@@ -59,15 +59,20 @@ export interface DownloadedFile {
     caption: string;
 }
 
-export async function downloadFromCache(bookId: number, fileType: string): Promise<DownloadedFile> {
+export async function downloadFromCache(bookId: number, fileType: string): Promise<DownloadedFile | null> {
     const readStream = got.stream.get(`${env.CACHE_SERVER_URL}/api/v1/download/${bookId}/${fileType}`, {
         headers: {
             'Authorization': env.CACHE_SERVER_API_KEY,
         },
     });
 
-    return new Promise<DownloadedFile>((resolve, reject) => {
-        readStream.on("response", async response => {
+    return new Promise<DownloadedFile | null>((resolve, reject) => {
+        readStream.on("response", async (response: Response) => {
+            if (response.statusCode !== 200) {
+                resolve(null);
+                return
+            }
+
             const captionData = response.headers['x-caption-b64'];
 
             if (captionData === undefined || Array.isArray(captionData)) throw Error('No caption?');
