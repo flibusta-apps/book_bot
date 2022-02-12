@@ -105,6 +105,8 @@ export default class BotsManager {
 
         const dockerIp = await dockerIpTools.getContainerIp();
 
+        console.log("Docker ip: ", dockerIp);
+
         await bot.telegram.setWebhook(
             `${env.WEBHOOK_BASE_URL}:${env.WEBHOOK_PORT}/${state.id}/${bot.telegram.token}`, {
                 ip_address: dockerIp,
