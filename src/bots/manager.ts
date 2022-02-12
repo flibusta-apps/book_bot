@@ -103,15 +103,23 @@ export default class BotsManager {
             return;
         }
 
-        const dockerIp = await dockerIpTools.getContainerIp();
+        let success = false;
+        const dockerIps = (await dockerIpTools.getContainerIp()).split(" ");
 
-        console.log("Docker ip: ", dockerIp);
+        for (let i = 0; i < dockerIps.length; i++) {
+            const dockerIp = dockerIps[i];
 
-        await bot.telegram.setWebhook(
-            `${env.WEBHOOK_BASE_URL}:${env.WEBHOOK_PORT}/${state.id}/${bot.telegram.token}`, {
-                ip_address: dockerIp,
-            }
-        );
+            try {
+                await bot.telegram.setWebhook(
+                    `${env.WEBHOOK_BASE_URL}:${env.WEBHOOK_PORT}/${state.id}/${bot.telegram.token}`, {
+                        ip_address: dockerIp,
+                    }
+                );
+                success = true;
+            } catch (e) {}
+        }
+
+        if (!success) return;
 
         this.bots[state.id] = bot;
         this.botsStates[state.id] = state;
