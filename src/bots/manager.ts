@@ -11,6 +11,8 @@ import { Telegraf } from 'telegraf';
 
 import env from '@/config';
 import getBot, { BotStatuses } from './factory/index';
+import UsersCounter from '@/analytics/users_counter';
+
 
 Sentry.init({
     dsn: env.SENTRY_DSN,
@@ -124,6 +126,10 @@ export default class BotsManager {
 
         application.get("/healthcheck", (req, res) => {
             res.send("Ok!");
+        });
+
+        application.get("/metrics", (req, res) => {
+            res.send(UsersCounter.getMetrics());
         });
 
         application.use((req: Request, res: Response, next: NextFunction) => this.handleUpdate(req, res, next));

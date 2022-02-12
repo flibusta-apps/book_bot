@@ -12,6 +12,7 @@ import * as Messages from "./messages";
 import * as CallbackData from "./callback_data";
 
 import * as BookLibrary from "./services/book_library";
+import UsersCounter from '@/analytics/users_counter';
 import { createOrUpdateUserSettings, getUserSettings } from './services/user_settings';
 import { formatBook, formatAuthor, formatSequence, formatTranslator } from './format';
 import { getCallbackArgs, getPaginatedMessage, getPrefixWithQueryCreator, getSearchArgs, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
@@ -45,8 +46,9 @@ export async function createApprovedBot(token: string, state: BotState): Promise
                 last_name: user.last_name || '',
                 first_name: user.first_name,
                 username: user.username || '',
-                source: ctx.botInfo.username,
+                source: me.username,
             });
+            UsersCounter.take(user.id, me.username);
         }
         await next();
     });
