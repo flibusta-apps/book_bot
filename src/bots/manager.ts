@@ -62,7 +62,6 @@ export default class BotsManager {
 
         this.launch();
 
-        await this.sync();
         if (this.syncInterval === null) {
             this.syncInterval = setInterval(() => this.sync(), 30_000);
         }
