@@ -1,6 +1,7 @@
 export default class UsersCounter {
     static bots: {[key: string]: Set<number>} = {};
     static allUsers: Set<number> = new Set();
+    static requests = 0;
 
     static take(userId: number, bot: string) {
         const isExists = this.bots[bot];
@@ -11,6 +12,7 @@ export default class UsersCounter {
 
         this.bots[bot].add(userId);
         this.allUsers.add(userId);
+        this.requests++;
     }
 
     static getAllUsersCount(): number {
@@ -29,6 +31,7 @@ export default class UsersCounter {
         const lines = [];
 
         lines.push(`all_users_count ${this.getAllUsersCount()}`);
+        lines.push(`requests_count ${this.requests}`);
 
         const usersByBots = this.getUsersByBots();
 
