@@ -20,6 +20,7 @@ import { getRandomKeyboard, getTextPaginationData, getUpdateLogKeyboard, getUser
 import { sendFile } from './hooks/downloading';
 import { setCommands } from './hooks/setCommands';
 import { downloadImage } from './services/downloader';
+import { isNotModifiedMessage } from './errors_utils';
 
 
 Sentry.init({
@@ -129,9 +130,15 @@ export async function createApprovedBot(token: string, state: BotState): Promise
             `${CallbackData.UPDATE_LOG_PREFIX}${arg}_`, arg, page, allowedLangs, BookLibrary.getBooks, formatBook, header, noItemsMessage,
         );
 
-        await ctx.editMessageText(pMessage.message, {
-            reply_markup: pMessage.keyboard?.reply_markup
-        });
+        try {
+            await ctx.editMessageText(pMessage.message, {
+                reply_markup: pMessage.keyboard?.reply_markup
+            });
+        } catch (e) {
+            if (!isNotModifiedMessage(e)) {
+                Sentry.captureException(e);
+            }
+        }
     });
 
     bot.command(["settings", `settings@${me.username}`], async (ctx: Context) => {
@@ -149,9 +156,15 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const keyboard = await getUserAllowedLangsKeyboard(ctx.callbackQuery.from.id);
 
-        ctx.editMessageText("Настройки языков:", {
-            reply_markup: keyboard.reply_markup,
-        });
+        try {
+            await ctx.editMessageText("Настройки языков:", {
+                reply_markup: keyboard.reply_markup,
+            });
+        } catch (e) {
+            if (!isNotModifiedMessage(e)) {
+                Sentry.captureException(e);
+            }
+        }
     });
 
     registerLanguageSettingsCallback(bot, 'on', CallbackData.ENABLE_LANG_PREFIX);
@@ -212,11 +225,13 @@ export async function createApprovedBot(token: string, state: BotState): Promise
                 }
             );
         } catch (e) {
-            Sentry.captureException(e, {
-                extra: {
-                    message: data.current,
-                }
-            })
+            if (!isNotModifiedMessage(e)) {
+                Sentry.captureException(e, {
+                    extra: {
+                        message: data.current,
+                    }
+                });
+            }
         }
     });
 
@@ -273,11 +288,13 @@ export async function createApprovedBot(token: string, state: BotState): Promise
                 }
             );
         } catch (e) {
-            Sentry.captureException(e, {
-                extra: {
-                    message: data.current,
-                }
-            })
+            if (!isNotModifiedMessage(e)) {
+                Sentry.captureException(e, {
+                    extra: {
+                        message: data.current,
+                    }
+                });
+            }
         }
     });
 
