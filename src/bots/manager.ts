@@ -12,6 +12,7 @@ import { Telegraf } from 'telegraf';
 import env from '@/config';
 import getBot, { BotStatuses } from './factory/index';
 import UsersCounter from '@/analytics/users_counter';
+import { WebhookInfo } from 'telegraf/typings/core/types/typegram';
 
 
 Sentry.init({
@@ -55,16 +56,40 @@ export default class BotsManager {
     static bots: {[key: number]: Telegraf} = {};
     static botsStates: {[key: number]: BotState} = {};
     static syncInterval: NodeJS.Timer | null = null;
+    static checkStateInterval: NodeJS.Timer | null = null;
     static server: Server | null = null;
 
     static async start() {
-        await this.sync();
-
         this.launch();
+        
+        await this.sync();
 
         if (this.syncInterval === null) {
             this.syncInterval = setInterval(() => this.sync(), 30_000);
         }
+        if (this.checkStateInterval === null) {
+            this.checkStateInterval = setInterval(() => this.checkBotStatus(), 60_000);
+        }
+    }
+
+    static async checkBotStatus() {
+        Object.values(this.bots).forEach((bot) => this._checkBotState(bot));
+    }
+
+    static async _checkBotState(bot: Telegraf) {
+        let webhookInfo: WebhookInfo | null = null;
+
+        try {
+            webhookInfo = await bot.telegram.getWebhookInfo();
+        } catch (e) {}
+
+        if (webhookInfo === null) return;
+
+        if (webhookInfo.pending_update_count <= 5 || webhookInfo.url === undefined) return;
+
+        try {
+            await bot.telegram.setWebhook(webhookInfo.url);
+        } catch (e) {}
     }
 
     static async sync() {
@@ -73,6 +98,22 @@ export default class BotsManager {
         if (botsData !== null) {
             await Promise.all(botsData.map((state) => this.updateBotState(state)));
         }
+    }
+
+    static async setWebhook(bot: Telegraf, state: BotState): Promise<boolean> {
+        const dockerIps = (await dockerIpTools.getContainerIp()).split(" ");
+
+        for (const dockerIp of dockerIps) {
+            try {
+                await bot.telegram.setWebhook(
+                    `${env.WEBHOOK_BASE_URL}:${env.WEBHOOK_PORT}/${state.id}/${bot.telegram.token}`, {
+                        ip_address: dockerIp,
+                    }
+                );
+                return true;
+            } catch (e) {}
+        }
+        return false;
     }
 
     static async updateBotState(state: BotState) {
@@ -102,23 +143,7 @@ export default class BotsManager {
             return;
         }
 
-        let success = false;
-        const dockerIps = (await dockerIpTools.getContainerIp()).split(" ");
-
-        for (let i = 0; i < dockerIps.length; i++) {
-            const dockerIp = dockerIps[i];
-
-            try {
-                await bot.telegram.setWebhook(
-                    `${env.WEBHOOK_BASE_URL}:${env.WEBHOOK_PORT}/${state.id}/${bot.telegram.token}`, {
-                        ip_address: dockerIp,
-                    }
-                );
-                success = true;
-            } catch (e) {}
-        }
-
-        if (!success) return;
+        if (!(await this.setWebhook(bot, state))) return;
 
         this.bots[state.id] = bot;
         this.botsStates[state.id] = state;
