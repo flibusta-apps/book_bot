@@ -116,7 +116,7 @@ export function registerRandomItemCallback<T>(
             [Markup.button.callback("Повторить?", callback_data)]
         ]);
 
-        ctx.editMessageReplyMarkup(undefined);
+        ctx.editMessageReplyMarkup(Markup.inlineKeyboard([]).reply_markup);
 
         ctx.reply(itemFormatter(item), {
             reply_markup: keyboard.reply_markup,
@@ -164,7 +164,9 @@ export function registerLanguageSettingsCallback(
 
         const keyboard = await getUserAllowedLangsKeyboard(user.id);
 
-        ctx.editMessageReplyMarkup(keyboard.reply_markup);
+        try {
+            ctx.editMessageReplyMarkup(keyboard.reply_markup);
+        } catch {}
     });
 }
 
