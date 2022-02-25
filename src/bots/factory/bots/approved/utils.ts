@@ -200,7 +200,8 @@ export function getSearchArgs(ctx: Context): { query: string, page: number } | n
         return null;
     }
 
-    const query = ctx.callbackQuery.message.reply_to_message.text;
+    const query = ctx.callbackQuery.message.reply_to_message.text
+        .replaceAll("/", "");
 
     return { query, page };
 }
