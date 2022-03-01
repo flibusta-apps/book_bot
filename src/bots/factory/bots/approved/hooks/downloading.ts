@@ -2,7 +2,7 @@ import { Context } from 'telegraf';
 
 import { clearBookCache, getBookCache, downloadFromCache } from '../services/book_cache';
 import { getBookCacheBuffer } from '../services/book_cache_buffer';
-import { BotState, Cache } from '@/bots/manager';
+import { BotState, Cache } from '@/bots/manager/types';
 
 
 async function _sendFile(ctx: Context, state: BotState, chatId: number, id: number, format: string) {
