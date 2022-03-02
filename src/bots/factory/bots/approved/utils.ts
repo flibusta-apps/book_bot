@@ -116,7 +116,9 @@ export function registerRandomItemCallback<T>(
             [Markup.button.callback("Повторить?", callback_data)]
         ]);
 
-        ctx.editMessageReplyMarkup(Markup.inlineKeyboard([]).reply_markup);
+        try {
+            ctx.editMessageReplyMarkup(Markup.inlineKeyboard([]).reply_markup);
+        } catch (e) {}
 
         ctx.reply(itemFormatter(item), {
             reply_markup: keyboard.reply_markup,
