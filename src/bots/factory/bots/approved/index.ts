@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/node';
 import { Context, Telegraf, Markup } from 'telegraf';
 import moment from 'moment';
 
-import { BotState } from '@/bots/manager';
+import { BotState } from '@/bots/manager/types';
 
 import env from '@/config';
 
@@ -14,7 +14,7 @@ import * as CallbackData from "./callback_data";
 import * as BookLibrary from "./services/book_library";
 import UsersCounter from '@/analytics/users_counter';
 import { createOrUpdateUserSettings, getUserSettings } from './services/user_settings';
-import { formatBook, formatAuthor, formatSequence, formatTranslator } from './format';
+import { formatBook, formatBookShort, formatAuthor, formatSequence, formatTranslator } from './format';
 import { getCallbackArgs, getPaginatedMessage, getPrefixWithQueryCreator, getSearchArgs, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
 import { getRandomKeyboard, getTextPaginationData, getUpdateLogKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
 import { sendFile } from './hooks/downloading';
@@ -70,7 +70,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     bot.command(["help", `help@${me.username}`], async (ctx: Context) => ctx.reply(Messages.HELP_MESSAGE));
 
     registerPaginationCommand(
-        bot, CallbackData.SEARCH_BOOK_PREFIX, getSearchArgs, null, BookLibrary.searchByBookName, formatBook, undefined, Messages.BOOKS_NOT_FOUND
+        bot, CallbackData.SEARCH_BOOK_PREFIX, getSearchArgs, null, BookLibrary.searchByBookName, formatBookShort, undefined, Messages.BOOKS_NOT_FOUND
     );
     registerPaginationCommand(
         bot, CallbackData.SEARCH_TRANSLATORS_PREFIX, getSearchArgs, null, BookLibrary.searchTranslators, formatTranslator,
@@ -85,15 +85,15 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
     registerPaginationCommand(
         bot, CallbackData.AUTHOR_BOOKS_PREFIX, getCallbackArgs, getPrefixWithQueryCreator(CallbackData.AUTHOR_BOOKS_PREFIX),
-        BookLibrary.getAuthorBooks, formatBook, undefined, Messages.BOOKS_NOT_FOUND,
+        BookLibrary.getAuthorBooks, formatBookShort, undefined, Messages.BOOKS_NOT_FOUND,
     );
     registerPaginationCommand(
         bot, CallbackData.TRANSLATOR_BOOKS_PREFIX, getCallbackArgs, getPrefixWithQueryCreator(CallbackData.TRANSLATOR_BOOKS_PREFIX),
-        BookLibrary.getTranslatorBooks, formatBook, undefined, Messages.BOOKS_NOT_FOUND,
+        BookLibrary.getTranslatorBooks, formatBookShort, undefined, Messages.BOOKS_NOT_FOUND,
     );
     registerPaginationCommand(
         bot, CallbackData.SEQUENCE_BOOKS_PREFIX, getCallbackArgs, getPrefixWithQueryCreator(CallbackData.SEQUENCE_BOOKS_PREFIX),
-        BookLibrary.getSequenceBooks, formatBook, undefined, Messages.BOOKS_NOT_FOUND,
+        BookLibrary.getSequenceBooks, formatBookShort, undefined, Messages.BOOKS_NOT_FOUND,
     );
 
     bot.command(["random", `random@${me.username}`], async (ctx: Context) => {

@@ -16,7 +16,7 @@ export interface Page<T> {
 }
 
 
-interface BookAuthor {
+export interface BookAuthor {
     id: number;
     first_name: string;
     last_name: string;
