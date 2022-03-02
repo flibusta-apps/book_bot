@@ -70,16 +70,13 @@ export default class BotsManager {
             const oldBot = new Telegraf(state.token);
             await oldBot.telegram.deleteWebhook();
             await oldBot.telegram.logOut();
-        } catch (e) {
-            // Sentry.captureException(e);
-        }
+        } catch (e) {}
 
         let bot: Telegraf;
 
         try {
             bot = await getBot(state.token, state);
         } catch (e) {
-            // Sentry.captureException(e);
             return;
         }
 

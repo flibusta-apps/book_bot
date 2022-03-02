@@ -1,6 +1,6 @@
 import { Telegraf, Context } from 'telegraf';
 
-import { BotState } from '@/bots/manager';
+import { BotState } from '@/bots/manager/types';
 
 import env from '@/config';
 

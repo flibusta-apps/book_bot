@@ -167,7 +167,7 @@ export function registerLanguageSettingsCallback(
         const keyboard = await getUserAllowedLangsKeyboard(user.id);
 
         try {
-            ctx.editMessageReplyMarkup(keyboard.reply_markup);
+            await ctx.editMessageReplyMarkup(keyboard.reply_markup);
         } catch {}
     });
 }
