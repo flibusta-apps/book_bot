@@ -1,4 +1,4 @@
-import { AuthorBook, TranslatorBook, Book, Author, Sequence, BookAuthor } from './services/book_library';
+import { AuthorBook, TranslatorBook, Book, Author, Sequence, BookAuthor, DetailBook } from './services/book_library';
 
 
 type AllBookTypes = Book | AuthorBook | TranslatorBook;
@@ -19,33 +19,31 @@ export function formatBook(book: AllBookTypes, short: boolean = false): string {
 
     response.push(`📖 ${book.title} | ${book.lang}`);
 
-    // if (book.annotation_exists) {
-    //     response.push(`📝 Аннотация: /b_an_${book.id}`)
-    // }
+    response.push(`Информация: /b_i_${book.id}`);
+    
+    const pushAuthorOrTranslator = (author: BookAuthor) => response.push(
+        `͏👤 ${author.last_name} ${author.first_name} ${author.middle_name}`
+    );
 
     if (isTranslatorBook(book) && book.authors.length > 0) {
         response.push('Авторы:')
 
-        const pushAuthor = (author: BookAuthor) => response.push(`͏👤 ${author.last_name} ${author.first_name} ${author.middle_name}`);
-
         if (short && book.authors.length >= 5) {
-            book.authors.slice(0, 5).forEach(pushAuthor);
+            book.authors.slice(0, 5).forEach(pushAuthorOrTranslator);
             response.push("  и другие.");
         } else {
-            book.authors.forEach(pushAuthor);
+            book.authors.forEach(pushAuthorOrTranslator);
         }
     }
 
     if (isAuthorBook(book) && book.translators.length > 0) {
         response.push('Переводчики:');
 
-        const pushTranslator = (author: BookAuthor) => response.push(`͏👤 ${author.last_name} ${author.first_name} ${author.middle_name}`);
-
         if (short && book.translators.length >= 5) {
-            book.translators.slice(0, 5).forEach(pushTranslator);
+            book.translators.slice(0, 5).forEach(pushAuthorOrTranslator);
             response.push("  и другие.")
         } else {
-            book.translators.forEach(pushTranslator);
+            book.translators.forEach(pushAuthorOrTranslator);
         }
     }
 
@@ -53,6 +51,56 @@ export function formatBook(book: AllBookTypes, short: boolean = false): string {
 
     return response.join('\n');
 }
+
+export function formatDetailBook(book: DetailBook): string {
+    let response: string[] = [];
+
+    const addEmptyLine = () => response.push("");
+
+    response.push(`📖 ${book.title} | ${book.lang}`);
+    addEmptyLine();
+
+    if (book.annotation_exists) {
+        response.push(`📝 Аннотация: /b_an_${book.id}`)
+        addEmptyLine();
+    }
+
+    if (book.authors.length > 0) {
+        response.push('Авторы:')
+
+        const pushAuthor = (author: BookAuthor) => response.push(
+            `͏👤 ${author.last_name} ${author.first_name} ${author.middle_name} /a_${author.id}`
+        );
+        book.authors.forEach(pushAuthor);
+        addEmptyLine();
+    }
+
+    if (book.translators.length > 0) {
+        response.push('Переводчики:');
+
+        const pushTranslator = (author: BookAuthor) => response.push(
+            `͏👤 ${author.last_name} ${author.first_name} ${author.middle_name} /t_${author.id}`
+        );
+        book.translators.forEach(pushTranslator);
+        addEmptyLine();
+    }
+
+    if (book.sequences.length > 0) {
+        response.push('Серии:');
+
+        const pushSequence = (sequence: Sequence) => response.push(
+            `📚 ${sequence.name} /s_${sequence.id}`
+        );
+        book.sequences.forEach(pushSequence);
+        addEmptyLine();
+    }
+
+    response.push("Скачать: ")
+    book.available_types.forEach(a_type => response.push(`📥 ${a_type}: /d_${a_type}_${book.id}`));
+
+    return response.join('\n');
+}
+
 
 export function formatBookShort(book: AllBookTypes): string {
     return formatBook(book, true);
@@ -65,9 +113,9 @@ export function formatAuthor(author: Author): string {
     response.push(`👤 ${author.last_name} ${author.first_name} ${author.middle_name}`);
     response.push(`/a_${author.id}`);
 
-    // if (author.annotation_exists) {
-    //     response.push(`📝 Аннотация: /a_an_${author.id}`);
-    // }
+    if (author.annotation_exists) {
+        response.push(`📝 Аннотация: /a_an_${author.id}`);
+    }
 
     return response.join('\n');
 }
@@ -79,9 +127,9 @@ export function formatTranslator(author: Author): string {
     response.push(`👤 ${author.last_name} ${author.first_name} ${author.middle_name}`);
     response.push(`/t_${author.id}`);
 
-    // if (author.annotation_exists) {
-    //     response.push(`📝 Аннотация: /a_an_${author.id}`);
-    // }
+    if (author.annotation_exists) {
+        response.push(`📝 Аннотация: /a_an_${author.id}`);
+    }
 
     return response.join('\n');
 }

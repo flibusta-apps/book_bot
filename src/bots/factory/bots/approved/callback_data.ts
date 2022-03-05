@@ -12,6 +12,8 @@ export const SEQUENCE_BOOKS_PREFIX = 'bs_';
 export const BOOK_ANNOTATION_PREFIX = 'a_an_';
 export const AUTHOR_ANNOTATION_PREFIX = 'b_an_';
 
+export const BOOK_INFO_PREFIX = 'b_i_';
+
 export const RANDOM_BOOK = 'random_book';
 export const RANDOM_AUTHOR = 'random_author';
 export const RANDOM_SEQUENCE = 'random_sequence';

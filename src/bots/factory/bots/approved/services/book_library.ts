@@ -58,6 +58,7 @@ export interface Source {
 
 
 export interface DetailBook extends Book {
+    sequences: Sequence[];
     source: Source;
     remote_id: number;
     is_deleted: boolean;
@@ -199,8 +200,8 @@ export async function getSequenceBooks(sequenceId: number | string, page: number
     return _makeRequest<Page<Book>>(`/api/v1/sequences/${sequenceId}/books`, searchParams);
 }
 
-export async function getRandomBook(allowedLangs: string[]): Promise<Book> {
-    return _makeRequest<Book>('/api/v1/books/random', getAllowedLangsSearchParams(allowedLangs));
+export async function getRandomBook(allowedLangs: string[]): Promise<DetailBook> {
+    return _makeRequest<DetailBook>('/api/v1/books/random', getAllowedLangsSearchParams(allowedLangs));
 }
 
 export async function getRandomAuthor(allowedLangs: string[]): Promise<Author> {
