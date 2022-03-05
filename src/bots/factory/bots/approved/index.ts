@@ -172,7 +172,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
     bot.hears(new RegExp(`^/d_[a-zA-Z0-9]+_[\\d]+(@${me.username})*$`), async (ctx) => sendFile(ctx, state));
 
-    bot.hears(new RegExp(`^/b_info_[\\d]+(@${me.username})*$`), async (ctx: Context) => {
+    bot.hears(new RegExp(`^/b_an_[\\d]+(@${me.username})*$`), async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {
             return;
         }
@@ -235,7 +235,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         }
     });
 
-    bot.hears(new RegExp(`^/a_info_[\\d]+(@${me.username})*$`), async (ctx: Context) => {
+    bot.hears(new RegExp(`^/a_an_[\\d]+(@${me.username})*$`), async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {
             return;
         }

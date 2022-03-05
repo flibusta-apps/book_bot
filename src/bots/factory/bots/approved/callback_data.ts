@@ -9,8 +9,8 @@ export const AUTHOR_BOOKS_PREFIX = 'ba_';
 export const TRANSLATOR_BOOKS_PREFIX = 'bt_';
 export const SEQUENCE_BOOKS_PREFIX = 'bs_';
 
-export const BOOK_ANNOTATION_PREFIX = 'a_info_';
-export const AUTHOR_ANNOTATION_PREFIX = 'b_info_';
+export const BOOK_ANNOTATION_PREFIX = 'a_an_';
+export const AUTHOR_ANNOTATION_PREFIX = 'b_an_';
 
 export const RANDOM_BOOK = 'random_book';
 export const RANDOM_AUTHOR = 'random_author';

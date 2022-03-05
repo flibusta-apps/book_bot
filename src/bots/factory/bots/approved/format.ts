@@ -20,7 +20,7 @@ export function formatBook(book: AllBookTypes, short: boolean = false): string {
     response.push(`📖 ${book.title} | ${book.lang}`);
 
     if (book.annotation_exists) {
-        response.push(`📝 Аннотация: /b_info_${book.id}`)
+        response.push(`📝 Аннотация: /b_an_${book.id}`)
     }
 
     if (isTranslatorBook(book) && book.authors.length > 0) {
@@ -58,7 +58,7 @@ export function formatAuthor(author: Author): string {
     response.push(`/a_${author.id}`);
 
     if (author.annotation_exists) {
-        response.push(`📝 Аннотация: /a_info_${author.id}`);
+        response.push(`📝 Аннотация: /a_an_${author.id}`);
     }
 
     return response.join('\n');
@@ -72,7 +72,7 @@ export function formatTranslator(author: Author): string {
     response.push(`/t_${author.id}`);
 
     if (author.annotation_exists) {
-        response.push(`📝 Аннотация: /a_info_${author.id}`);
+        response.push(`📝 Аннотация: /a_an_${author.id}`);
     }
 
     return response.join('\n');
