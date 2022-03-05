@@ -19,9 +19,9 @@ export function formatBook(book: AllBookTypes, short: boolean = false): string {
 
     response.push(`📖 ${book.title} | ${book.lang}`);
 
-    if (book.annotation_exists) {
-        response.push(`📝 Аннотация: /b_an_${book.id}`)
-    }
+    // if (book.annotation_exists) {
+    //     response.push(`📝 Аннотация: /b_an_${book.id}`)
+    // }
 
     if (isTranslatorBook(book) && book.authors.length > 0) {
         response.push('Авторы:')
@@ -38,7 +38,15 @@ export function formatBook(book: AllBookTypes, short: boolean = false): string {
 
     if (isAuthorBook(book) && book.translators.length > 0) {
         response.push('Переводчики:');
-        book.translators.forEach(author => response.push(`͏👤 ${author.last_name} ${author.first_name} ${author.middle_name}`));
+
+        const pushTranslator = (author: BookAuthor) => response.push(`͏👤 ${author.last_name} ${author.first_name} ${author.middle_name}`);
+
+        if (short && book.translators.length >= 5) {
+            book.translators.slice(0, 5).forEach(pushTranslator);
+            response.push("  и другие.")
+        } else {
+            book.translators.forEach(pushTranslator);
+        }
     }
 
     book.available_types.forEach(a_type => response.push(`📥 ${a_type}: /d_${a_type}_${book.id}`));
@@ -57,9 +65,9 @@ export function formatAuthor(author: Author): string {
     response.push(`👤 ${author.last_name} ${author.first_name} ${author.middle_name}`);
     response.push(`/a_${author.id}`);
 
-    if (author.annotation_exists) {
-        response.push(`📝 Аннотация: /a_an_${author.id}`);
-    }
+    // if (author.annotation_exists) {
+    //     response.push(`📝 Аннотация: /a_an_${author.id}`);
+    // }
 
     return response.join('\n');
 }
@@ -71,9 +79,9 @@ export function formatTranslator(author: Author): string {
     response.push(`👤 ${author.last_name} ${author.first_name} ${author.middle_name}`);
     response.push(`/t_${author.id}`);
 
-    if (author.annotation_exists) {
-        response.push(`📝 Аннотация: /a_an_${author.id}`);
-    }
+    // if (author.annotation_exists) {
+    //     response.push(`📝 Аннотация: /a_an_${author.id}`);
+    // }
 
     return response.join('\n');
 }
