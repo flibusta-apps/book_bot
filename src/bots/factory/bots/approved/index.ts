@@ -20,7 +20,7 @@ import { getRandomKeyboard, getTextPaginationData, getUpdateLogKeyboard, getUser
 import { sendFile } from './hooks/downloading';
 import { setCommands } from './hooks/setCommands';
 import { downloadImage } from './services/downloader';
-import { isNotModifiedMessage } from './errors_utils';
+import { isNotModifiedMessage, isReplyMessageNotFound } from './errors_utils';
 
 
 Sentry.init({
@@ -378,10 +378,16 @@ export async function createApprovedBot(token: string, state: BotState): Promise
             ]
         ]);
 
-        await ctx.telegram.sendMessage(ctx.message.chat.id, Messages.SEARCH_MESSAGE, {
-            reply_to_message_id: ctx.message.message_id,
-            reply_markup: keyboard.reply_markup,
-        });
+        try {
+            await ctx.telegram.sendMessage(ctx.message.chat.id, Messages.SEARCH_MESSAGE, {
+                reply_to_message_id: ctx.message.message_id,
+                reply_markup: keyboard.reply_markup,
+            });
+        } catch (e) {
+            if (!isReplyMessageNotFound(e)) {
+                Sentry.captureException(e);
+            }
+        }
     });
 
     bot.catch((err) => {
