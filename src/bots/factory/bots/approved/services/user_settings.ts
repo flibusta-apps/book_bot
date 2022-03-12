@@ -51,6 +51,16 @@ export async function getUserSettings(userId: number): Promise<UserSettings> {
     return _makeGetRequest<UserSettings>(`/users/${userId}`);
 }
 
+
+export async function getUserOrDefaultLangCodes(userId: number): Promise<string[]> {
+    try {
+        return (await getUserSettings(userId)).allowed_langs.map((lang) => lang.code);
+    } catch {
+        return ["ru", "be", "uk"];
+    }
+}
+
+
 export async function createOrUpdateUserSettings(data: UserSettingsUpdateData): Promise<UserSettings> {
     const response = await got.post<UserSettings>(`${env.USER_SETTINGS_URL}/users/`, {
         json: data,

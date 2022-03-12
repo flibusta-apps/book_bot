@@ -9,7 +9,7 @@ import env from '@/config';
 import { isNotModifiedMessage } from './errors_utils';
 import { getPaginationKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
 import * as BookLibrary from "./services/book_library";
-import { createOrUpdateUserSettings, getUserSettings } from './services/user_settings';
+import { createOrUpdateUserSettings, getUserOrDefaultLangCodes } from './services/user_settings';
 
 
 Sentry.init({
@@ -76,8 +76,7 @@ export function registerPaginationCommand<T, Q extends string | number>(
 
         const { query, page } = args;
 
-        const userSettings = await getUserSettings(ctx.callbackQuery.from.id);
-        const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
+        const allowedLangs = await getUserOrDefaultLangCodes(ctx.callbackQuery.from.id);
 
         const tPrefix = prefixCreator ? prefixCreator(query) : prefix;
 
@@ -106,10 +105,8 @@ export function registerRandomItemCallback<T>(
     bot.action(callback_data, async (ctx: Context) => {
         if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
 
-        const userSettings = await getUserSettings(ctx.callbackQuery.from.id);
-
         const item = await itemGetter(
-            userSettings.allowed_langs.map((lang) => lang.code)
+            await getUserOrDefaultLangCodes(ctx.callbackQuery.from.id),
         );
 
         const keyboard = Markup.inlineKeyboard([
@@ -135,9 +132,7 @@ export function registerLanguageSettingsCallback(
     bot.action(new RegExp(prefix), async (ctx: Context) => {
         if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
 
-        const userSettings = await getUserSettings(ctx.callbackQuery.from.id);
-
-        let allowedLangsCodes = userSettings.allowed_langs.map((item) => item.code);
+        let allowedLangsCodes = await getUserOrDefaultLangCodes(ctx.callbackQuery.from.id);
 
         const tLang = ctx.callbackQuery.data.split("_")[2];
 

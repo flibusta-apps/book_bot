@@ -13,7 +13,7 @@ import * as CallbackData from "./callback_data";
 
 import * as BookLibrary from "./services/book_library";
 import UsersCounter from '@/analytics/users_counter';
-import { createOrUpdateUserSettings, getUserSettings } from './services/user_settings';
+import { createOrUpdateUserSettings, getUserOrDefaultLangCodes } from './services/user_settings';
 import { formatBook, formatBookShort, formatAuthor, formatSequence, formatTranslator, formatDetailBook } from './format';
 import { getCallbackArgs, getPaginatedMessage, getPrefixWithQueryCreator, getSearchArgs, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
 import { getRandomKeyboard, getTextPaginationData, getUpdateLogKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
@@ -115,8 +115,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     bot.action(new RegExp(CallbackData.UPDATE_LOG_PREFIX), async (ctx: Context) => {
         if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
 
-        const userSettings = await getUserSettings(ctx.callbackQuery.from.id);
-        const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
+        const allowedLangs = await getUserOrDefaultLangCodes(ctx.callbackQuery.from.id);
 
         const data = ctx.callbackQuery.data.split("_");
         const page = parseInt(data[4]);
@@ -305,8 +304,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const authorId = ctx.message.text.split('@')[0].split('_')[1];
 
-        const userSettings = await getUserSettings(ctx.message.from.id);
-        const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
+        const allowedLangs = await getUserOrDefaultLangCodes(ctx.message.from.id);
 
         const pMessage = await getPaginatedMessage(
             `${CallbackData.AUTHOR_BOOKS_PREFIX}${authorId}_`, parseInt(authorId), 1, 
@@ -325,8 +323,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const translatorId = ctx.message.text.split("@")[0].split('_')[1];
 
-        const userSettings = await getUserSettings(ctx.message.from.id);
-        const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
+        const allowedLangs = await getUserOrDefaultLangCodes(ctx.message.from.id);
 
         const pMessage = await getPaginatedMessage(
             `${CallbackData.TRANSLATOR_BOOKS_PREFIX}${translatorId}_`, parseInt(translatorId), 1,
@@ -345,8 +342,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
         const sequenceId = ctx.message.text.split("@")[0].split('_')[1];
 
-        const userSettings = await getUserSettings(ctx.message.from.id);
-        const allowedLangs = userSettings.allowed_langs.map((lang) => lang.code);
+        const allowedLangs = await getUserOrDefaultLangCodes(ctx.message.from.id);
 
         const pMessage = await getPaginatedMessage(
             `${CallbackData.SEQUENCE_BOOKS_PREFIX}${sequenceId}_`, parseInt(sequenceId), 1, allowedLangs,

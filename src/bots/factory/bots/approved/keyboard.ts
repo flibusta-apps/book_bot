@@ -4,7 +4,7 @@ import moment from 'moment';
 import chunkText from 'chunk-text';
 
 import { RANDOM_BOOK, RANDOM_AUTHOR, RANDOM_SEQUENCE, ENABLE_LANG_PREFIX, DISABLE_LANG_PREFIX, UPDATE_LOG_PREFIX } from './callback_data';
-import { getUserSettings, getLanguages } from './services/user_settings';
+import { getLanguages, getUserOrDefaultLangCodes } from './services/user_settings';
 
 
 function getButtonLabel(delta: number, direction: 'left' | 'right'): string {
@@ -94,16 +94,9 @@ export function getUpdateLogKeyboard(): Markup.Markup<InlineKeyboardMarkup> {
     ]);
 }
 
-
-const DEFAULT_ALLOWED_LANGS_CODES = ['ru', 'be', 'uk'];
-
 export async function getUserAllowedLangsKeyboard(userId: number): Promise<Markup.Markup<InlineKeyboardMarkup>> {
     const allLangs = await getLanguages();
-    const userSettings = await getUserSettings(userId);
-
-    const userAllowedLangsCodes = userSettings !== null 
-        ? userSettings.allowed_langs.map((lang) => lang.code)
-        : DEFAULT_ALLOWED_LANGS_CODES;
+    const userAllowedLangsCodes = await getUserOrDefaultLangCodes(userId);
 
     const onEmoji = '🟢';
     const offEmoji = '🔴';
