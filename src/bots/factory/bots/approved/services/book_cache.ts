@@ -67,21 +67,33 @@ export async function downloadFromCache(bookId: number, fileType: string): Promi
     });
 
     return new Promise<DownloadedFile | null>((resolve, reject) => {
-        readStream.on("response", async (response: Response) => {
+        let timeout: NodeJS.Timeout | null = null;
+
+        const resolver = async (response: Response) => {
             if (response.statusCode !== 200) {
                 resolve(null);
+                if (timeout) clearTimeout(timeout);
                 return
             }
 
             const captionData = response.headers['x-caption-b64'];
 
             if (captionData === undefined || Array.isArray(captionData)) throw Error('No caption?');
-        
+
+            if (timeout) clearTimeout(timeout);
+
             return resolve({
                 source: readStream,
                 filename: (response.headers['content-disposition'] || '').replaceAll('"', "").split('filename=')[1],
                 caption: decode(captionData),
             })
-        });
+        }
+
+        timeout = setTimeout(() => {
+            readStream.off("response", resolver);
+            resolve(null);
+        }, 60_000);
+        
+        readStream.on("response", resolver);
     });
 }
