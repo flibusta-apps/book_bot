@@ -199,6 +199,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
             Sentry.captureException(e, {
                 extra: {
                     message: data.current,
+                    bookId,
                 }
             })
         }
@@ -228,6 +229,8 @@ export async function createApprovedBot(token: string, state: BotState): Promise
                 Sentry.captureException(e, {
                     extra: {
                         message: data.current,
+                        bookId,
+                        page,
                     }
                 });
             }
@@ -262,6 +265,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
             Sentry.captureException(e, {
                 extra: {
                     message: data.current,
+                    authorId,
                 }
             })
         }
@@ -291,6 +295,8 @@ export async function createApprovedBot(token: string, state: BotState): Promise
                 Sentry.captureException(e, {
                     extra: {
                         message: data.current,
+                        authorId,
+                        page,
                     }
                 });
             }
