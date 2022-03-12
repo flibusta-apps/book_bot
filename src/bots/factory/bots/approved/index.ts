@@ -186,7 +186,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
             if (imageData) await ctx.telegram.sendPhoto(ctx.message.chat.id, {source: imageData});
         }
 
-        if (!annotation.text) return;
+        if (annotation.text.length === 0) return;
 
         const data = getTextPaginationData(`${CallbackData.BOOK_ANNOTATION_PREFIX}${bookId}`, annotation.text, 0);
 
@@ -249,7 +249,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
             if (imageData) await ctx.telegram.sendPhoto(ctx.message.chat.id, {source: imageData});
         }
 
-        if (!annotation.text) return;
+        if (annotation.text.length === 0) return;
 
         const data = getTextPaginationData(`${CallbackData.AUTHOR_ANNOTATION_PREFIX}${authorId}`, annotation.text, 0);
         

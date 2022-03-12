@@ -47,7 +47,7 @@ export function getPaginationKeyboard(prefix: string, query: string | number, pa
 
 
 export function getTextPaginationData(prefix: string, text: string, currentPage: number): {current: string, keyboard: Markup.Markup<InlineKeyboardMarkup>} {
-    const chunks = chunkText(text, 512);
+    const chunks = chunkText(text, 512).filter((chunk) => chunk.length !== 0);
 
     const current = chunks[currentPage];
 
