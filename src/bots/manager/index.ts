@@ -110,12 +110,15 @@ export default class BotsManager {
 
     static async _setWebhook(bot: Telegraf, state: BotState): Promise<boolean> {
         const dockerIps = (await dockerIpTools.getContainerIp()).split(" ");
+        const filteredIp = dockerIps.filter((ip) => ip.startsWith(env.NETWORK_IP_PREFIX));
 
-        for (const dockerIp of dockerIps) {
+        const ips = filteredIp.length !== 0 ? filteredIp : dockerIps;
+
+        for (const ip of ips) {
             try {
                 await bot.telegram.setWebhook(
                     `${env.WEBHOOK_BASE_URL}:${env.WEBHOOK_PORT}/${state.id}/${bot.telegram.token}`, {
-                        ip_address: dockerIp,
+                        ip_address: ip,
                     }
                 );
                 return true;

@@ -18,4 +18,5 @@ export default cleanEnv(process.env, {
     DOWNLOADER_API_KEY: str(),
     USER_SETTINGS_URL: str(),
     USER_SETTINGS_API_KEY: str(),
+    NETWORK_IP_PREFIX: str(),
 });
