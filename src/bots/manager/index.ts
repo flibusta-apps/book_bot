@@ -122,9 +122,7 @@ export default class BotsManager {
                     }
                 );
                 return true;
-            } catch (e) {
-                console.log(e);
-            }
+            } catch (e) {}
         }
         return false;
     }
