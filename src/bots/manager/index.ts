@@ -91,12 +91,21 @@ export default class BotsManager {
             const webhookInfo = await bot.telegram.getWebhookInfo();
             const previousPendingUpdateCount = this.botsPeddingUpdateCount[state.id] || 0;
 
+            console.log("Check pending updates:", {state, webhookInfo});
+
             if (previousPendingUpdateCount !== 0 && webhookInfo.pending_update_count !== 0) {
                 this._setWebhook(bot, state);
             }
 
             this.botsPeddingUpdateCount[state.id] = webhookInfo.pending_update_count;
-        } catch (e) {}
+        } catch (e) {
+            Sentry.captureException(e, {
+                extra: {
+                    method: "_checkPendingUpdate",
+                    state_id: state.id,
+                }
+            });
+        }
     }
 
     static async _setWebhook(bot: Telegraf, state: BotState): Promise<boolean> {
