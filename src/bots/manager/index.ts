@@ -25,7 +25,7 @@ export default class BotsManager {
     // Bots
     static bots: {[key: number]: Telegraf} = {};
     static botsStates: {[key: number]: BotState} = {};
-    static botsPeddingUpdateCount: {[key: number]: number} = {};
+    static botsPendingUpdatesCount: {[key: number]: number} = {};
 
     // Intervals
     static syncInterval: NodeJS.Timer | null = null;
@@ -53,6 +53,8 @@ export default class BotsManager {
                     (value: BotState) => this._checkPendingUpdates(this.bots[value.id], value)
                 )
             );
+
+            console.log("Bots pending updates count:", this.botsPendingUpdatesCount);
         }
     }
     
@@ -89,15 +91,13 @@ export default class BotsManager {
     static async _checkPendingUpdates(bot: Telegraf, state: BotState) {
         try {
             const webhookInfo = await bot.telegram.getWebhookInfo();
-            const previousPendingUpdateCount = this.botsPeddingUpdateCount[state.id] || 0;
-
-            console.log("Check pending updates:", {state, webhookInfo});
+            const previousPendingUpdateCount = this.botsPendingUpdatesCount[state.id] || 0;
 
             if (previousPendingUpdateCount !== 0 && webhookInfo.pending_update_count !== 0) {
                 this._setWebhook(bot, state);
             }
 
-            this.botsPeddingUpdateCount[state.id] = webhookInfo.pending_update_count;
+            this.botsPendingUpdatesCount[state.id] = webhookInfo.pending_update_count;
         } catch (e) {
             Sentry.captureException(e, {
                 extra: {
