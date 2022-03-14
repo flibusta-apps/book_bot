@@ -6,7 +6,7 @@ COPY ./package.json ./
 COPY ./tsconfig.json ./
 COPY ./src ./src
 
-RUN npm i && npm run build
+RUN yarn install --production && yarn build
 
 
 FROM node:lts-alpine as runtime-image
@@ -16,8 +16,6 @@ WORKDIR /root/app
 COPY ./package.json ./
 COPY ./scripts/healthcheck.js ./
 
-RUN npm i --only=production
-
 COPY --from=build-image /root/app/build ./build
 
-CMD npm run run
+CMD yarn run run
