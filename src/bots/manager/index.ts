@@ -93,8 +93,6 @@ export default class BotsManager {
             const webhookInfo = await bot.telegram.getWebhookInfo();
             const previousPendingUpdateCount = this.botsPendingUpdatesCount[state.id] || 0;
 
-            console.log(state.id, previousPendingUpdateCount, webhookInfo.pending_update_count);
-
             if (previousPendingUpdateCount !== 0 && webhookInfo.pending_update_count !== 0) {
                 this._setWebhook(bot, state);
             }
@@ -121,7 +119,9 @@ export default class BotsManager {
                     }
                 );
                 return true;
-            } catch (e) {}
+            } catch (e) {
+                console.log(e);
+            }
         }
         return false;
     }
