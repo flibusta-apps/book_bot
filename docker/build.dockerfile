@@ -3,6 +3,7 @@ FROM node:lts-alpine as build-image
 WORKDIR /root/app
 
 COPY ./package.json ./
+COPY ./yarn.lock ./
 COPY ./tsconfig.json ./
 COPY ./src ./src
 
