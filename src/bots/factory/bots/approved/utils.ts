@@ -114,7 +114,7 @@ export function registerRandomItemCallback<T>(
         ]);
 
         try {
-            ctx.editMessageReplyMarkup(Markup.inlineKeyboard([]).reply_markup);
+            await ctx.editMessageReplyMarkup(Markup.inlineKeyboard([]).reply_markup);
         } catch (e) {}
 
         ctx.reply(itemFormatter(item), {
