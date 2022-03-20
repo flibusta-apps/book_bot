@@ -169,7 +169,18 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     registerLanguageSettingsCallback(bot, 'on', CallbackData.ENABLE_LANG_PREFIX);
     registerLanguageSettingsCallback(bot, 'off', CallbackData.DISABLE_LANG_PREFIX);
 
-    bot.hears(new RegExp(`^/d_[a-zA-Z0-9]+_[\\d]+(@${me.username})*$`), async (ctx) => sendFile(ctx, state));
+    bot.hears(new RegExp(`^/d_[a-zA-Z0-9]+_[\\d]+(@${me.username})*$`), async (ctx) => {
+        try {
+            await sendFile(ctx, state)
+        } catch (e) {
+            Sentry.captureException(e, {
+                extra: {
+                    action: "sendFile",
+                    message: ctx.message.text,
+                }
+            })
+        }
+    });
 
     bot.hears(new RegExp(`^/b_an_[\\d]+(@${me.username})*$`), async (ctx: Context) => {
         if (!ctx.message || !('text' in ctx.message)) {
