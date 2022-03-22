@@ -43,19 +43,15 @@ export default class BotsManager {
     static async sync() {
         const botsData = await makeSyncRequest();
 
-        if (botsData !== null) {
-            await Promise.all(botsData.map((state) => this._updateBotState(state)));
-        }
+        if (botsData === null) return;
 
-        if (botsData !== null) {
-            await Promise.all(
-                Object.values(this.botsStates).map(
-                    (value: BotState) => this._checkPendingUpdates(this.bots[value.id], value)
-                )
-            );
+        await Promise.all(botsData.map((state) => this._updateBotState(state)));
 
-            console.log("Bots pending updates count:", this.botsPendingUpdatesCount);
-        }
+        await Promise.all(
+        Object.values(this.botsStates).map(
+            (value: BotState) => this._checkPendingUpdates(this.bots[value.id], value)
+            )
+        );
     }
     
     static async _updateBotState(state: BotState) {
