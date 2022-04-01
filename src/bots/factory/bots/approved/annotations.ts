@@ -4,6 +4,7 @@ import { AuthorAnnnotation, BookAnnotation } from "./services/book_library";
 import { isNormalText } from "./utils";
 import { getTextPaginationData } from './keyboard';
 import Sentry from '@/sentry';
+import { downloadImage } from "./services/downloader";
 
 
 export function getAnnotationHandler<T extends BookAnnotation | AuthorAnnnotation>(
@@ -25,11 +26,15 @@ export function getAnnotationHandler<T extends BookAnnotation | AuthorAnnnotatio
         }
 
         if (annotation.file) {
-            try {
-                await ctx.telegram.sendPhoto(ctx.message.chat.id, annotation.file);
-            } catch (e) {
-                console.log(e);
-                Sentry.captureException(e);
+            const imageData = await downloadImage(annotation.file);
+
+            if (imageData !== null) {
+                try {
+                    await ctx.telegram.sendPhoto(ctx.message.chat.id, { source: imageData });
+                } catch (e) {
+                    console.log(e);
+                    Sentry.captureException(e);
+                }
             }
         }
 
