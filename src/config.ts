@@ -19,4 +19,7 @@ export default cleanEnv(process.env, {
     USER_SETTINGS_URL: str(),
     USER_SETTINGS_API_KEY: str(),
     NETWORK_IP_PREFIX: str(),
+    REDIS_HOST: str(),
+    REDIS_PORT: num(),
+    REDIS_DB: num(),
 });

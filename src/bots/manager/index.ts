@@ -140,7 +140,9 @@ export default class BotsManager {
         });
 
         application.get("/metrics", (req, res) => {
-            res.send(UsersCounter.getMetrics());
+            UsersCounter.getMetrics().then((response) => {
+                res.send(response);
+            });
         });
 
         application.use((req: Request, res: Response, next: NextFunction) => this.handleUpdate(req, res, next));

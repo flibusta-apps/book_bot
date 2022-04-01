@@ -1,39 +1,121 @@
+import * as Sentry from '@sentry/node';
+import { createClient, RedisClientType } from 'redis';
+import moment from 'moment';
+import BotsManager from '@/bots/manager';
+
+import env from '@/config';
+
+
+Sentry.init({
+    dsn: env.SENTRY_DSN,
+});
+
+
+enum RedisKeys {
+    UsersActivity = "users_activity",
+    RequestsCount = "requests_count",
+}
+
+
 export default class UsersCounter {
-    static bots: {[key: string]: Set<number>} = {};
-    static allUsers: Set<number> = new Set();
-    static requests = 0;
+    static _redisClient: RedisClientType | null = null;
+ 
+    static async _getClient() {
+        if (this._redisClient === null) {
+            this._redisClient = createClient({
+                url: `redis://${env.REDIS_HOST}:${env.REDIS_PORT}/${env.REDIS_DB}`
+            });
 
-    static take(userId: number, bot: string) {
-        const isExists = this.bots[bot];
+            this._redisClient.on('error', (err) => {
+                console.log(err);
+                Sentry.captureException(err);
+            });
 
-        if (!isExists) {
-            this.bots[bot] = new Set();
+            await this._redisClient.connect();
         }
 
-        this.bots[bot].add(userId);
-        this.allUsers.add(userId);
-        this.requests++;
+        return this._redisClient;
     }
 
-    static getAllUsersCount(): number {
-        return this.allUsers.size;
+    static async _getBotsUsernames(): Promise<string[]> {        
+        const promises = Object.values(BotsManager.bots).map(async (bot) => {
+            const botInfo = await bot.telegram.getMe();
+            return botInfo.username;
+        });
+
+        return Promise.all(promises); 
     }
 
-    static getUsersByBots(): {[bot: string]: number} {
+    static async _getUsersByBot(bot: string): Promise<number[]> {
+        const client = await this._getClient();
+
+        return (await client.hKeys(`${RedisKeys.UsersActivity}_${bot}`)).map((userId) => parseInt(userId));
+    }
+
+    static async _getAllUsersCount(): Promise<number> {
+        const botsUsernames = await this._getBotsUsernames();
+
+        const users = new Set<number>();
+
+        await Promise.all(
+            botsUsernames.map(async (bot) => {
+                (await this._getUsersByBot(bot)).forEach((user) => users.add(user));
+            })
+        );
+
+        return users.size;
+    }
+
+    static async _getUsersByBots(): Promise<{[bot: string]: number}> {
+        const botsUsernames = await this._getBotsUsernames();
+
         const result: {[bot: string]: number} = {};
 
-        Object.keys(this.bots).forEach((bot: string) => result[bot] = this.bots[bot].size);
+        await Promise.all(
+            botsUsernames.map(async (bot) => {
+                result[bot] = (await this._getUsersByBot(bot)).length;
+            })
+        );
 
         return result;
     }
 
-    static getMetrics(): string {
+    static async _incrementRequests() {
+        const client = await this._getClient();
+
+        const exists = await client.exists(RedisKeys.RequestsCount);
+
+        if (!exists) {
+            await client.set(RedisKeys.RequestsCount, 0);
+        }
+
+        await client.incr(RedisKeys.RequestsCount);
+    }
+
+    static async _getRequestsCount(): Promise<number> {
+        const client = await this._getClient();
+
+        const result = await client.get(RedisKeys.RequestsCount);
+
+        if (result === null) return 0;
+
+        return parseInt(result);
+    }
+
+    static async take(userId: number, bot: string) {
+        const client = await this._getClient();
+
+        await client.hSet(`${RedisKeys.UsersActivity}_${bot}`, userId, moment().format());
+        await this._incrementRequests();
+    }
+
+    static async getMetrics(): Promise<string> {
         const lines = [];
 
-        lines.push(`all_users_count ${this.getAllUsersCount()}`);
-        lines.push(`requests_count ${this.requests}`);
+        lines.push(`all_users_count ${await this._getAllUsersCount()}`);
+        lines.push(`requests_count ${await this._getRequestsCount()}`);
 
-        const usersByBots = this.getUsersByBots();
+        const usersByBots = await this._getUsersByBots();
 
         Object.keys(usersByBots).forEach((bot: string) => {
             lines.push(`users_count{bot="${bot}"} ${usersByBots[bot]}`)
