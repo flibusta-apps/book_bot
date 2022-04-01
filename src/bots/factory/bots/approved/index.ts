@@ -15,12 +15,12 @@ import * as BookLibrary from "./services/book_library";
 import UsersCounter from '@/analytics/users_counter';
 import { createOrUpdateUserSettings, getUserOrDefaultLangCodes } from './services/user_settings';
 import { formatBook, formatBookShort, formatAuthor, formatSequence, formatTranslator, formatDetailBook } from './format';
-import { getCallbackArgs, getPaginatedMessage, getPrefixWithQueryCreator, getSearchArgs, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
+import { getCallbackArgs, getPaginatedMessage, getPrefixWithQueryCreator, getSearchArgs, isNormalText, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
 import { getRandomKeyboard, getTextPaginationData, getUpdateLogKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
 import { sendFile } from './hooks/downloading';
 import { setCommands } from './hooks/setCommands';
-import { downloadImage } from './services/downloader';
 import { isNotModifiedMessage, isReplyMessageNotFound } from './errors_utils';
+import { getAnnotationHandler } from './annotations';
 
 
 Sentry.init({
@@ -186,39 +186,10 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         }
     });
 
-    bot.hears(new RegExp(`^/b_an_[\\d]+(@${me.username})*$`), async (ctx: Context) => {
-        if (!ctx.message || !('text' in ctx.message)) {
-            return;
-        }
-
-        const bookId = ctx.message.text.split("@")[0].split('_')[2];
-
-        const annotation = await BookLibrary.getBookAnnotation(parseInt(bookId));
-
-        if (annotation.file) {
-            const imageData = await downloadImage(annotation.file);
-
-            if (imageData) await ctx.telegram.sendPhoto(ctx.message.chat.id, {source: imageData});
-        }
-
-        if (annotation.text.length === 0) return;
-
-        const data = getTextPaginationData(`${CallbackData.BOOK_ANNOTATION_PREFIX}${bookId}`, annotation.text, 0);
-
-        try {
-            await ctx.reply(data.current, {
-                parse_mode: "HTML",
-                reply_markup: data.keyboard.reply_markup,
-            });
-        } catch (e) {
-            Sentry.captureException(e, {
-                extra: {
-                    message: data.current,
-                    bookId,
-                }
-            })
-        }
-    });
+    bot.hears(
+        new RegExp(`^/b_an_[\\d]+(@${me.username})*$`),
+        getAnnotationHandler(BookLibrary.getBookAnnotation, CallbackData.BOOK_ANNOTATION_PREFIX)
+    );
 
     bot.action(new RegExp(CallbackData.BOOK_ANNOTATION_PREFIX), async (ctx: Context) => {
         if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
@@ -252,39 +223,10 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         }
     });
 
-    bot.hears(new RegExp(`^/a_an_[\\d]+(@${me.username})*$`), async (ctx: Context) => {
-        if (!ctx.message || !('text' in ctx.message)) {
-            return;
-        }
-
-        const authorId = ctx.message.text.split('@')[0].split('_')[2];
-
-        const annotation = await BookLibrary.getAuthorAnnotation(parseInt(authorId));
-
-        if (annotation.file) {
-            const imageData = await downloadImage(annotation.file);
-            
-            if (imageData) await ctx.telegram.sendPhoto(ctx.message.chat.id, {source: imageData});
-        }
-
-        if (annotation.text.length === 0) return;
-
-        const data = getTextPaginationData(`${CallbackData.AUTHOR_ANNOTATION_PREFIX}${authorId}`, annotation.text, 0);
-        
-        try {
-            await ctx.reply(data.current, {
-                parse_mode: "HTML",
-                reply_markup: data.keyboard.reply_markup,
-            });
-        } catch (e) {
-            Sentry.captureException(e, {
-                extra: {
-                    message: data.current,
-                    authorId,
-                }
-            })
-        }
-    });
+    bot.hears(
+        new RegExp(`^/a_an_[\\d]+(@${me.username})*$`),
+        getAnnotationHandler(BookLibrary.getAuthorAnnotation, CallbackData.AUTHOR_ANNOTATION_PREFIX)
+    );
 
     bot.action(new RegExp(CallbackData.AUTHOR_ANNOTATION_PREFIX), async (ctx: Context) => {
         if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;

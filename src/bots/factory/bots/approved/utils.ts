@@ -226,3 +226,11 @@ export function getCallbackArgs(ctx: Context): { query: string, page: number} | 
 export function getPrefixWithQueryCreator(prefix: string) {
     return (query: string) => `${prefix}${query}_`; 
 }
+
+export function isNormalText(value: string | null): boolean {
+    if (value === null) return false;
+    if (value.length === 0) return false;
+    if (value.replaceAll("\n", "").replaceAll(" ", "").length === 0) return false;
+
+    return true;
+}
