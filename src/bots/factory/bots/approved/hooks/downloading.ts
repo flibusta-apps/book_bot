@@ -62,9 +62,10 @@ export async function sendFile(ctx: Context, state: BotState) {
         sendSendingAction();
         return await _sendFile(ctx, state, chatId, parseInt(id), format);
     } catch (e) {
-        return await ctx.reply("Ошибка! Попробуйте позже :(", {
+        await ctx.reply("Ошибка! Попробуйте позже :(", {
             reply_to_message_id: ctx.message.message_id,
         });
+        throw e;
     } finally {
         clearInterval(action);
     }
