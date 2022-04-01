@@ -126,6 +126,9 @@ export default class BotsManager {
     static async handleUpdate(req: Request, res: Response, next: NextFunction) {
         const botIdStr = req.url.split("/")[1];
         const bot = this.bots[parseInt(botIdStr)];
+
+        if (bot === undefined) return;
+
         await bot.webhookCallback(`/${botIdStr}/${bot.telegram.token}`)(req, res);
     }
 
