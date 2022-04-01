@@ -1,20 +1,12 @@
 import { Context, Markup, Telegraf } from  'telegraf';
 import { InlineKeyboardMarkup } from 'typegram';
 import { URLSearchParams } from 'url';
-import * as Sentry from '@sentry/node';
-
-import env from '@/config';
-
 
 import { isNotModifiedMessage } from './errors_utils';
 import { getPaginationKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
 import * as BookLibrary from "./services/book_library";
 import { createOrUpdateUserSettings, getUserOrDefaultLangCodes } from './services/user_settings';
-
-
-Sentry.init({
-    dsn: env.SENTRY_DSN,
-});
+import Sentry from '@/sentry';
 
 
 interface PreparedMessage {

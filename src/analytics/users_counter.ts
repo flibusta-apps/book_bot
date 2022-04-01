@@ -1,14 +1,10 @@
-import * as Sentry from '@sentry/node';
 import { createClient, RedisClientType } from 'redis';
 import moment from 'moment';
-import BotsManager from '@/bots/manager';
 
 import env from '@/config';
+import BotsManager from '@/bots/manager';
 
-
-Sentry.init({
-    dsn: env.SENTRY_DSN,
-});
+import Sentry from '@/sentry';
 
 
 enum RedisKeys {

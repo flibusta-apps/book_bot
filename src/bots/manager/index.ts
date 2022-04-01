@@ -1,5 +1,3 @@
-import * as Sentry from '@sentry/node';
-
 import express, { Response, Request, NextFunction } from 'express';
 import { Server } from 'http';
 
@@ -12,11 +10,7 @@ import getBot from '../factory/index';
 import UsersCounter from '@/analytics/users_counter';
 import { makeSyncRequest } from "./utils";
 import { BotState } from "./types";
-
-
-Sentry.init({
-    dsn: env.SENTRY_DSN,
-});
+import Sentry from '@/sentry';
 
 
 export default class BotsManager {

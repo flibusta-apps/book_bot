@@ -1,15 +1,9 @@
-import * as Sentry from '@sentry/node';
 import { Context } from "telegraf";
 import { AuthorAnnnotation, BookAnnotation } from "./services/book_library";
 
-import env from '@/config';
 import { isNormalText } from "./utils";
 import { getTextPaginationData } from './keyboard';
-
-
-Sentry.init({
-    dsn: env.SENTRY_DSN,
-});
+import Sentry from '@/sentry';
 
 
 export function getAnnotationHandler<T extends BookAnnotation | AuthorAnnnotation>(

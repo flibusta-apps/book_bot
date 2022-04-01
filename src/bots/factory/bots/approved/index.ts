@@ -1,5 +1,3 @@
-import * as Sentry from '@sentry/node';
-
 import { Context, Telegraf, Markup } from 'telegraf';
 import moment from 'moment';
 
@@ -15,17 +13,13 @@ import * as BookLibrary from "./services/book_library";
 import UsersCounter from '@/analytics/users_counter';
 import { createOrUpdateUserSettings, getUserOrDefaultLangCodes } from './services/user_settings';
 import { formatBook, formatBookShort, formatAuthor, formatSequence, formatTranslator, formatDetailBook } from './format';
-import { getCallbackArgs, getPaginatedMessage, getPrefixWithQueryCreator, getSearchArgs, isNormalText, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
+import { getCallbackArgs, getPaginatedMessage, getPrefixWithQueryCreator, getSearchArgs, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
 import { getRandomKeyboard, getTextPaginationData, getUpdateLogKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
 import { sendFile } from './hooks/downloading';
 import { setCommands } from './hooks/setCommands';
 import { isNotModifiedMessage, isReplyMessageNotFound } from './errors_utils';
 import { getAnnotationHandler } from './annotations';
-
-
-Sentry.init({
-    dsn: env.SENTRY_DSN,
-});
+import Sentry from '@/sentry';
 
 
 export async function createApprovedBot(token: string, state: BotState): Promise<Telegraf> {
