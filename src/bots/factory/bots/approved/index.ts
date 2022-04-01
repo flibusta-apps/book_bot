@@ -42,13 +42,17 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     bot.use(async (ctx: Context, next) => {
         if (ctx.from) {
             const user = ctx.from;
+
             createOrUpdateUserSettings({
                 user_id: user.id,
                 last_name: user.last_name || '',
                 first_name: user.first_name,
                 username: user.username || '',
                 source: me.username,
+            }).catch((e) => {
+                Sentry.captureException(e);
             });
+
             UsersCounter.take(user.id, me.username);
         }
         await next();
