@@ -48,9 +48,7 @@ export default class UsersCounter {
         return (await client.hKeys(`${RedisKeys.UsersActivity}_${bot}`)).map((userId) => parseInt(userId));
     }
 
-    static async _getAllUsersCount(): Promise<number> {
-        const botsUsernames = await this._getBotsUsernames();
-
+    static async _getAllUsersCount(botsUsernames: string[]): Promise<number> {
         const users = new Set<number>();
 
         await Promise.all(
@@ -62,9 +60,7 @@ export default class UsersCounter {
         return users.size;
     }
 
-    static async _getUsersByBots(): Promise<{[bot: string]: number}> {
-        const botsUsernames = await this._getBotsUsernames();
-
+    static async _getUsersByBots(botsUsernames: string[]): Promise<{[bot: string]: number}> {
         const result: {[bot: string]: number} = {};
 
         await Promise.all(
@@ -76,43 +72,55 @@ export default class UsersCounter {
         return result;
     }
 
-    static async _incrementRequests() {
+    static async _incrementRequests(bot: string) {
         const client = await this._getClient();
 
-        const exists = await client.exists(RedisKeys.RequestsCount);
+        const key = `${RedisKeys.RequestsCount}_${bot}`;
+
+        const exists = await client.exists(key);
 
         if (!exists) {
-            await client.set(RedisKeys.RequestsCount, 0);
+            await client.set(key, 0);
         }
 
-        await client.incr(RedisKeys.RequestsCount);
+        await client.incr(key);
     }
 
-    static async _getRequestsCount(): Promise<number> {
+    static async _getRequestsByBotCount(botsUsernames: string[]): Promise<{[bot: string]: number}> {
         const client = await this._getClient();
 
-        const result = await client.get(RedisKeys.RequestsCount);
+        const result: {[bot: string]: number} = {};
 
-        if (result === null) return 0;
+        await Promise.all(
+            botsUsernames.map(async (bot) => {
+                const count = await client.get(`${RedisKeys.RequestsCount}_${bot}`);
+                result[bot] = count !== null ? parseInt(count) : 0;
+            })
+        );
 
-        return parseInt(result);
+        return result;
     }
 
     static async take(userId: number, bot: string) {
         const client = await this._getClient();
 
         await client.hSet(`${RedisKeys.UsersActivity}_${bot}`, userId, moment().format());
-        await this._incrementRequests();
+        await this._incrementRequests(bot);
     }
 
     static async getMetrics(): Promise<string> {
+        const botUsernames = await this._getBotsUsernames();
+        
         const lines = [];
 
-        lines.push(`all_users_count ${await this._getAllUsersCount()}`);
-        lines.push(`requests_count ${await this._getRequestsCount()}`);
+        lines.push(`all_users_count ${await this._getAllUsersCount(botUsernames)}`);
 
-        const usersByBots = await this._getUsersByBots();
+        const requestsByBotCount = await this._getRequestsByBotCount(botUsernames);
+        Object.keys(requestsByBotCount).forEach((bot: string) => {
+            lines.push(`requests_count{bot="${bot}"} ${requestsByBotCount[bot]}`);
+        });
 
+        const usersByBots = await this._getUsersByBots(botUsernames);
         Object.keys(usersByBots).forEach((bot: string) => {
             lines.push(`users_count{bot="${bot}"} ${usersByBots[bot]}`)
         });
