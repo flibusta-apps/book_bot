@@ -34,7 +34,7 @@ export async function getPaginatedMessage<T, D extends string | number>(
     }
 
     if (page > itemsPage.total_pages) {
-        return getPaginatedMessage(prefix, data, page, allowedLangs, itemsGetter, itemFormater, header, noItemsMessage);
+        return getPaginatedMessage(prefix, data, itemsPage.total_pages, allowedLangs, itemsGetter, itemFormater, header, noItemsMessage);
     }
 
     const formatedItems = itemsPage.items.map(itemFormater).join('\n\n\n');
