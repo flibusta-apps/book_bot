@@ -1,4 +1,4 @@
-import { AuthorBook, TranslatorBook, Book, Author, Sequence, BookAuthor, DetailBook } from './services/book_library';
+import { AuthorBook, TranslatorBook, Book, Author, Sequence, BookAuthor, DetailBook, Genre } from './services/book_library';
 
 
 type AllBookTypes = Book | AuthorBook | TranslatorBook;
@@ -92,6 +92,16 @@ export function formatDetailBook(book: DetailBook): string {
             `📚 ${sequence.name} /s_${sequence.id}`
         );
         book.sequences.forEach(pushSequence);
+        addEmptyLine();
+    }
+
+    if (book.genres.length > 0) {
+        response.push('Жанры:');
+
+        const pushGenre = (genre: Genre) => response.push(
+            `🗂 ${genre.description}`
+        );
+        book.genres.forEach(pushGenre);
         addEmptyLine();
     }
 

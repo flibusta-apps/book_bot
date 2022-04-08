@@ -45,9 +45,15 @@ export interface TranslatorBook extends BaseBook {
 }
 
 
-export interface Book extends AuthorBook {
+export interface Book extends BaseBook {
     authors: BookAuthor[];
     translators: BookAuthor[];
+}
+
+
+export interface Genre {
+    id: number;
+    description: string;
 }
 
 
@@ -59,6 +65,7 @@ export interface Source {
 
 export interface DetailBook extends Book {
     sequences: Sequence[];
+    genres: Genre[];
     source: Source;
     remote_id: number;
     is_deleted: boolean;
