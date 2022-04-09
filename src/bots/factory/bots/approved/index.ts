@@ -10,11 +10,12 @@ import * as Messages from "./messages";
 import * as CallbackData from "./callback_data";
 
 import * as BookLibrary from "./services/book_library";
+import * as Rating from "./services/book_ratings";
 import UsersCounter from '@/analytics/users_counter';
 import { createOrUpdateUserSettings, getUserOrDefaultLangCodes } from './services/user_settings';
-import { formatBook, formatBookShort, formatAuthor, formatSequence, formatTranslator, formatDetailBook } from './format';
+import { formatBook, formatBookShort, formatAuthor, formatSequence, formatTranslator, formatDetailBook, formatDetailBookWithRating } from './format';
 import { getCallbackArgs, getPaginatedMessage, getPrefixWithQueryCreator, getSearchArgs, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
-import { getRandomKeyboard, getTextPaginationData, getUpdateLogKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
+import { getRandomKeyboard, getRatingKeyboard, getTextPaginationData, getUpdateLogKeyboard, getUserAllowedLangsKeyboard } from './keyboard';
 import { sendFile } from './hooks/downloading';
 import { setCommands } from './hooks/setCommands';
 import { isNotModifiedMessage, isReplyMessageNotFound } from './errors_utils';
@@ -316,13 +317,36 @@ export async function createApprovedBot(token: string, state: BotState): Promise
             return;
         }
 
-        const bookId = ctx.message.text.split("@")[0].split('_')[2];
+        const bookIdString = ctx.message.text.split("@")[0].split('_')[2];
+        const bookId = parseInt(bookIdString);
 
-        const book = await BookLibrary.getBookById(parseInt(bookId));
+        const book = await BookLibrary.getBookById(bookId);
+        const keyboard = await getRatingKeyboard(ctx.message.from.id, bookId, null);
 
-        await ctx.reply(formatDetailBook(book), {
+        await ctx.reply(formatDetailBookWithRating(book), {
             reply_to_message_id: ctx.message.message_id,
+            reply_markup: keyboard.reply_markup,
         });
+    });
+
+    bot.action(new RegExp(CallbackData.RATE_PREFIX), async (ctx: Context) => {
+        if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
+
+        const queryData = ctx.callbackQuery.data.split("_");
+
+        const userId = parseInt(queryData[1]);
+        const bookId = parseInt(queryData[2]);
+        const rate = parseInt(queryData[3]);
+
+        const rating = await Rating.set(userId, bookId, rate);
+
+        const keyboard = await getRatingKeyboard(userId, bookId, rating);
+
+        try {
+            await ctx.editMessageReplyMarkup(
+                keyboard.reply_markup
+            );
+        } catch (e) {}
     });
 
     bot.on("message", async (ctx: Context) => {

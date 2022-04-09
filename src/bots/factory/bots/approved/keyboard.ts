@@ -3,8 +3,9 @@ import { InlineKeyboardMarkup } from 'typegram';
 import moment from 'moment';
 import chunkText from 'chunk-text';
 
-import { RANDOM_BOOK, RANDOM_AUTHOR, RANDOM_SEQUENCE, ENABLE_LANG_PREFIX, DISABLE_LANG_PREFIX, UPDATE_LOG_PREFIX } from './callback_data';
+import { RANDOM_BOOK, RANDOM_AUTHOR, RANDOM_SEQUENCE, ENABLE_LANG_PREFIX, DISABLE_LANG_PREFIX, UPDATE_LOG_PREFIX, RATE_PREFIX } from './callback_data';
 import { getLanguages, getUserOrDefaultLangCodes } from './services/user_settings';
+import * as BookRating from "./services/book_ratings";
 
 
 function getButtonLabel(delta: number, direction: 'left' | 'right'): string {
@@ -114,6 +115,20 @@ export async function getUserAllowedLangsKeyboard(userId: number): Promise<Marku
             }
             const title = `${titlePrefix} ${lang.label}`;
             return [Markup.button.callback(title, `${callbackDataPrefix}${lang.code}`)];
+        })
+    ]);
+}
+
+export async function getRatingKeyboard(userId: number, bookId: number, rating: BookRating.Rating | null): Promise<Markup.Markup<InlineKeyboardMarkup>> {
+    const bookRating = rating ? rating : await BookRating.get(userId, bookId);
+
+    const rate = bookRating ? bookRating.rate : null;
+
+    return Markup.inlineKeyboard([
+        [1, 2, 3, 4, 5].map((bRate) => {
+            const title = bRate === rate ? `⭐️ ${bRate}` : bRate.toString();
+
+            return Markup.button.callback(title, `${RATE_PREFIX}${userId}_${bookId}_${bRate}`);
         })
     ]);
 }

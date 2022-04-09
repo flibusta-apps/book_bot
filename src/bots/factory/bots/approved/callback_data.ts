@@ -23,3 +23,5 @@ export const ENABLE_LANG_PREFIX = 'lang_on_';
 export const DISABLE_LANG_PREFIX = 'lang_off_';
 
 export const UPDATE_LOG_PREFIX = 'update_log_';
+
+export const RATE_PREFIX = 'r_';

@@ -112,6 +112,11 @@ export function formatDetailBook(book: DetailBook): string {
 }
 
 
+export function formatDetailBookWithRating(book: DetailBook): string {
+    return formatDetailBook(book) + '\n\n\nОценка:';
+}
+
+
 export function formatBookShort(book: AllBookTypes): string {
     return formatBook(book, true);
 }
