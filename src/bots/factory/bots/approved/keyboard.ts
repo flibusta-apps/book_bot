@@ -3,7 +3,7 @@ import { InlineKeyboardMarkup } from 'typegram';
 import moment from 'moment';
 import chunkText from 'chunk-text';
 
-import { RANDOM_BOOK, RANDOM_AUTHOR, RANDOM_SEQUENCE, ENABLE_LANG_PREFIX, DISABLE_LANG_PREFIX, UPDATE_LOG_PREFIX, RATE_PREFIX } from './callback_data';
+import { RANDOM_BOOK, RANDOM_AUTHOR, RANDOM_SEQUENCE, ENABLE_LANG_PREFIX, DISABLE_LANG_PREFIX, UPDATE_LOG_PREFIX, RATE_PREFIX, RANDOM_BOOK_BY_GENRE, RANDOM_BOOK_BY_GENRE_REQUEST } from './callback_data';
 import { getLanguages, getUserOrDefaultLangCodes } from './services/user_settings';
 import * as BookRating from "./services/book_ratings";
 
@@ -74,6 +74,7 @@ export function getTextPaginationData(prefix: string, text: string, currentPage:
 export function getRandomKeyboard(): Markup.Markup<InlineKeyboardMarkup> {
     return Markup.inlineKeyboard([
         [Markup.button.callback('Книгу', RANDOM_BOOK)],
+        [Markup.button.callback('Книгу по жанру', RANDOM_BOOK_BY_GENRE_REQUEST)],
         [Markup.button.callback('Автора', RANDOM_AUTHOR)],
         [Markup.button.callback('Серию', RANDOM_SEQUENCE)],
     ]);

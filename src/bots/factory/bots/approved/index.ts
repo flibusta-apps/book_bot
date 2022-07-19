@@ -105,6 +105,65 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     registerRandomItemCallback(bot, CallbackData.RANDOM_AUTHOR, BookLibrary.getRandomAuthor, formatAuthor);
     registerRandomItemCallback(bot, CallbackData.RANDOM_SEQUENCE, BookLibrary.getRandomSequence, formatSequence);
 
+    bot.action(CallbackData.RANDOM_BOOK_BY_GENRE_REQUEST, async (ctx: Context) => {
+        if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
+
+        const metaGenres = await BookLibrary.getGenreMetas();
+
+        const keyboard = Markup.inlineKeyboard(
+            metaGenres.map((meta, index) => {
+                return [Markup.button.callback(meta, `${CallbackData.GENRES_PREFIX}${index}`)];
+            })
+        );
+
+        await ctx.editMessageReplyMarkup(keyboard.reply_markup);
+    });
+
+    bot.action(new RegExp(CallbackData.GENRES_PREFIX), async (ctx: Context) => {
+        if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
+
+        const queryData = ctx.callbackQuery.data.split("_");
+        const metaIndex = parseInt(queryData[1]);
+
+        const metaGenres = await BookLibrary.getGenreMetas();
+        const meta = metaGenres[metaIndex];
+
+        const genres = await BookLibrary.getGenres(meta);
+
+        const buttons = genres.items.map((genre) => {
+            return [Markup.button.callback(genre.description, `${CallbackData.RANDOM_BOOK_BY_GENRE}${genre.id}`)]
+        });
+        buttons.push(
+            [Markup.button.callback("< Назад >", CallbackData.RANDOM_BOOK_BY_GENRE_REQUEST)]
+        );
+
+        const keyboard = Markup.inlineKeyboard(buttons);
+
+        await ctx.editMessageReplyMarkup(keyboard.reply_markup);
+    });
+
+    bot.action(new RegExp(CallbackData.RANDOM_BOOK_BY_GENRE), async (ctx: Context) => {
+        if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
+
+        const allowedLangs = await getUserOrDefaultLangCodes(ctx.callbackQuery.from.id);
+        
+        const queryData = ctx.callbackQuery.data.split("_");
+        const genreId = parseInt(queryData[4]);
+
+        const item = await BookLibrary.getRandomBook(allowedLangs, genreId);
+        const keyboard = Markup.inlineKeyboard([
+            [Markup.button.callback("Повторить?", ctx.callbackQuery.data)]
+        ]);
+
+        try {
+            await ctx.editMessageReplyMarkup(Markup.inlineKeyboard([]).reply_markup);
+        } catch (e) {}
+
+        ctx.reply(formatDetailBook(item), {
+            reply_markup: keyboard.reply_markup,
+        });
+    });
+
     bot.command(["update_log", `update_log@${me.username}`], async (ctx: Context) => {
         ctx.reply("Обновление каталога: ", {
             reply_markup: getUpdateLogKeyboard().reply_markup,

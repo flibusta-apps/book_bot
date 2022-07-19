@@ -207,8 +207,14 @@ export async function getSequenceBooks(sequenceId: number | string, page: number
     return _makeRequest<Page<Book>>(`/api/v1/sequences/${sequenceId}/books`, searchParams);
 }
 
-export async function getRandomBook(allowedLangs: string[]): Promise<DetailBook> {
-    return _makeRequest<DetailBook>('/api/v1/books/random', getAllowedLangsSearchParams(allowedLangs));
+export async function getRandomBook(allowedLangs: string[], genre: number | null = null): Promise<DetailBook> {
+    const params = getAllowedLangsSearchParams(allowedLangs);
+    if (genre) params.append("genre", genre.toString());
+
+    return _makeRequest<DetailBook>(
+        '/api/v1/books/random',
+        params,
+    );
 }
 
 export async function getRandomAuthor(allowedLangs: string[]): Promise<Author> {
@@ -217,4 +223,12 @@ export async function getRandomAuthor(allowedLangs: string[]): Promise<Author> {
 
 export async function getRandomSequence(allowedLangs: string[]): Promise<Sequence> {
     return _makeRequest<Sequence>('/api/v1/sequences/random', getAllowedLangsSearchParams(allowedLangs));
+}
+
+export async function getGenreMetas(): Promise<string[]> {
+    return _makeRequest<string[]>('/api/v1/genres/metas');
+}
+
+export async function getGenres(meta: string): Promise<Page<Genre>> {
+    return _makeRequest<Page<Genre>>('/api/v1/genres', {meta});
 }
