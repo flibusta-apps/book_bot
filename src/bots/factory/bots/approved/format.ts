@@ -58,6 +58,10 @@ export function formatDetailBook(book: DetailBook): string {
     const addEmptyLine = () => response.push("");
 
     response.push(`📖 ${book.title} | ${book.lang}`);
+
+    if (book.pages !== null)
+        response.push(`[ ${book.pages} с. ]`);
+
     addEmptyLine();
 
     if (book.annotation_exists) {

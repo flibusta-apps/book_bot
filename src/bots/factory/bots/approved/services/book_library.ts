@@ -69,6 +69,7 @@ export interface DetailBook extends Book {
     source: Source;
     remote_id: number;
     is_deleted: boolean;
+    pages: number | null;
 }
 
 
