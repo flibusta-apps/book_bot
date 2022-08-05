@@ -27,7 +27,8 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     const bot = new Telegraf(token, {
         telegram: {
             apiRoot: env.TELEGRAM_BOT_API_ROOT,
-        }
+        },
+        handlerTimeout: 300_000,
     });
 
     const me = await bot.telegram.getMe();
