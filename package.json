@@ -16,6 +16,7 @@
   "dependencies": {
     "@sentry/node": "^7.8.1",
     "chunk-text": "^2.0.1",
+    "debug": "^4.3.4",
     "docker-ip-get": "^1.1.5",
     "envalid": "^7.3.1",
     "esbuild": "^0.14.53",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@types/chunk-text": "^1.0.0",
+    "@types/debug": "^4.1.7",
     "@types/express": "^4.17.13",
     "@types/node": "^16.11.9",
     "@types/safe-compare": "^1.1.0",

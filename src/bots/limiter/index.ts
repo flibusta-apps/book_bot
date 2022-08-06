@@ -2,10 +2,12 @@ import { createClient, RedisClientType } from 'redis';
 
 import env from '@/config';
 
+import debug from 'debug';
 import Sentry from '@/sentry';
 
 
 export default class Limiter {
+    static debugger = debug("limiter");
     static MAX_PROCESSING_COUNT: number = 3;
     static _redisClient: RedisClientType | null = null;
 
@@ -41,6 +43,9 @@ export default class Limiter {
 
     static async isLimited(updateId: number): Promise<boolean> {
         const count = await this._getCount(updateId);
+
+        this.debugger(`${updateId}: ${count}`)
+
         return count <= this.MAX_PROCESSING_COUNT;
     }
 }
