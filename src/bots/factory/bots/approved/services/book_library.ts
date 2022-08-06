@@ -88,7 +88,7 @@ export interface Sequence {
 }
 
 
-export interface AuthorAnnnotation {
+export interface AuthorAnnotation {
     id: number;
     title: string;
     text: string;

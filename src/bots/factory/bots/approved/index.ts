@@ -12,6 +12,7 @@ import * as CallbackData from "./callback_data";
 import * as BookLibrary from "./services/book_library";
 import * as Rating from "./services/book_ratings";
 import UsersCounter from '@/analytics/users_counter';
+import Limiter from '@/bots/limiter';
 import { createOrUpdateUserSettings, getUserOrDefaultLangCodes } from './services/user_settings';
 import { formatBook, formatBookShort, formatAuthor, formatSequence, formatTranslator, formatDetailBook, formatDetailBookWithRating } from './format';
 import { getCallbackArgs, getPaginatedMessage, getPrefixWithQueryCreator, getSearchArgs, registerLanguageSettingsCallback, registerPaginationCommand, registerRandomItemCallback } from './utils';
@@ -51,6 +52,12 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
             UsersCounter.take(user.id, me.username);
         }
+        await next();
+    });
+
+    bot.use(async (ctx: Context, next) => {
+        if (await Limiter.isLimited(ctx.update.update_id)) return;
+
         await next();
     });
 
@@ -449,7 +456,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     });
 
     bot.catch((err, ctx: Context) => {
-        console.log(err, ctx);
+        console.log({err, ctx});
         Sentry.captureException(err);
     });
 
