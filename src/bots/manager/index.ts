@@ -30,7 +30,7 @@ export default class BotsManager {
         await this.sync();
 
         if (this.syncInterval === null) {
-            this.syncInterval = setInterval(() => this.sync(), 30_000);
+            this.syncInterval = setInterval(() => this.sync(), 300_000);
         }
 
         process.once('SIGINT', () => this.stop());
