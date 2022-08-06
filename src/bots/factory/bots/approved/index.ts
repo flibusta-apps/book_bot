@@ -1,4 +1,4 @@
-import { Context, Telegraf, Markup } from 'telegraf';
+import { Context, Telegraf, Markup, TelegramError } from 'telegraf';
 import moment from 'moment';
 
 import { BotState } from '@/bots/manager/types';
@@ -60,11 +60,18 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         }
 
         const name = ctx.message.from.first_name || ctx.message.from.username || 'пользователь';
-        await ctx.telegram.sendMessage(ctx.message.chat.id,
-            Messages.START_MESSAGE.replace('{name}', name), {
-                reply_to_message_id: ctx.message.message_id,
+        
+        try {
+            await ctx.telegram.sendMessage(ctx.message.chat.id,
+                Messages.START_MESSAGE.replace('{name}', name), {
+                    reply_to_message_id: ctx.message.message_id,
+                }
+            );
+        } catch (e) {
+            if (e instanceof TelegramError) {
+                if (e.code !== 403) throw e;
             }
-        );
+        }
     });
 
     bot.command(["help", `help@${me.username}`], async (ctx: Context) => ctx.reply(Messages.HELP_MESSAGE));
