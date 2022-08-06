@@ -46,6 +46,6 @@ export default class Limiter {
 
         this.debugger(`${updateId}: ${count}`)
 
-        return count <= this.MAX_PROCESSING_COUNT;
+        return count > this.MAX_PROCESSING_COUNT;
     }
 }
