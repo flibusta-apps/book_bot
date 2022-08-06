@@ -1,5 +1,6 @@
 import { Context, Telegraf, Markup, TelegramError } from 'telegraf';
 import moment from 'moment';
+import debug from 'debug';
 
 import { BotState } from '@/bots/manager/types';
 
@@ -22,6 +23,9 @@ import { setCommands } from './hooks/setCommands';
 import { isNotModifiedMessage, isReplyMessageNotFound } from './errors_utils';
 import { getAnnotationHandler } from './annotations';
 import Sentry from '@/sentry';
+
+
+const botDebugger = debug("approvedBot");
 
 
 export async function createApprovedBot(token: string, state: BotState): Promise<Telegraf> {
@@ -456,7 +460,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     });
 
     bot.catch((err, ctx: Context) => {
-        console.log({err, ctx});
+        botDebugger.log({err, ctx});
         Sentry.captureException(err);
     });
 
