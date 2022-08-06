@@ -441,8 +441,8 @@ export async function createApprovedBot(token: string, state: BotState): Promise
         }
     });
 
-    bot.catch((err) => {
-        console.log(err);
+    bot.catch((err, ctx: Context) => {
+        console.log(err, ctx);
         Sentry.captureException(err);
     });
 
