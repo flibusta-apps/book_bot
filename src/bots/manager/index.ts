@@ -32,6 +32,9 @@ export default class BotsManager {
         if (this.syncInterval === null) {
             this.syncInterval = setInterval(() => this.sync(), 30_000);
         }
+
+        process.once('SIGINT', () => this.stop());
+        process.once('SIGTERM', () => this.stop());
     }
 
     static async sync() {
@@ -76,6 +79,8 @@ export default class BotsManager {
 
         this.bots[state.id] = bot;
         this.botsStates[state.id] = state;
+
+        this.restartApplication();
     }
 
     static async _checkPendingUpdates(bot: Telegraf, state: BotState) {
@@ -117,13 +122,11 @@ export default class BotsManager {
         return false;
     }
 
-    static async handleUpdate(req: Request, res: Response, next: NextFunction) {
-        const botIdStr = req.url.split("/")[1];
-        const bot = this.bots[parseInt(botIdStr)];
-
-        if (bot === undefined) return;
-
-        await bot.webhookCallback(`/${botIdStr}/${bot.telegram.token}`)(req, res);
+    static getBotHandlers() {
+        return Object.keys(this.bots).map((index) => {
+            const bot = this.bots[parseInt(index)];
+            return bot.webhookCallback(`/${index}/${bot.telegram.token}`);
+        });
     }
 
     private static async launch() {
@@ -139,13 +142,12 @@ export default class BotsManager {
             });
         });
 
-        application.use((req: Request, res: Response, next: NextFunction) => this.handleUpdate(req, res, next));
+        const handlers = this.getBotHandlers();
+        if (handlers.length !== 0) application.use(handlers);
 
         this.server = application.listen(env.WEBHOOK_PORT);
-        console.log("Server started!");
 
-        process.once('SIGINT', () => this.stop());
-        process.once('SIGTERM', () => this.stop());
+        console.log("Server started!");
     }
 
     static stop() {
@@ -158,5 +160,16 @@ export default class BotsManager {
 
         this.server?.close();
         this.server = null;
+
+        console.log("Server stopped!")
+    }
+
+    static restartApplication() {
+        this.server?.close();
+        this.server = null;
+
+        this.launch();
+
+        console.log("Server restarted!");
     }
 }
