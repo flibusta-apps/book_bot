@@ -25,7 +25,7 @@ import { getAnnotationHandler } from './annotations';
 import Sentry from '@/sentry';
 
 
-const botDebugger = debug("approvedBot");
+const log = debug("approvedBot");
 
 
 export async function createApprovedBot(token: string, state: BotState): Promise<Telegraf> {
@@ -460,7 +460,7 @@ export async function createApprovedBot(token: string, state: BotState): Promise
     });
 
     bot.catch((err, ctx: Context) => {
-        botDebugger.log({err, ctx});
+        log({err, ctx});
         Sentry.captureException(err);
     });
 

@@ -44,7 +44,7 @@ export default class Limiter {
     static async isLimited(updateId: number): Promise<boolean> {
         const count = await this._getCount(updateId);
 
-        this.debugger(`${updateId}: ${count}`)
+        this.debugger(`${updateId}: ${count}`);
 
         return count > this.MAX_PROCESSING_COUNT;
     }
