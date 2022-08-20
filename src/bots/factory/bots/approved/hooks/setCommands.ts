@@ -7,7 +7,8 @@ export async function setCommands(bot: Telegraf) {
             {command: "random", description: "Попытать удачу"},
             {command: "update_log", description: "Обновления каталога"},
             {command: "settings", description: "Настройки"},
-            {command: "help", description: "Помощь"},
+            {command: "support", description: "Поддержать разработчика"},
+            // {command: "help", description: "Помощь"},
         ]);
     }
 

@@ -87,6 +87,14 @@ export async function createApprovedBot(token: string, state: BotState): Promise
 
     bot.command(["help", `help@${me.username}`], async (ctx: Context) => ctx.reply(Messages.HELP_MESSAGE));
 
+    bot.command(["support", `support@{me.username}`], async (ctx: Context) => {
+        const keyboard = Markup.inlineKeyboard([
+            Markup.button.url("☕️ Поддержать разработчика", "https://kurbezz.github.io/Kurbezz/")
+        ]);
+
+        ctx.reply(Messages.SUPPORT_MESSAGE, {parse_mode: 'Markdown', reply_markup: keyboard.reply_markup});
+    });
+
     registerPaginationCommand(
         bot, CallbackData.SEARCH_BOOK_PREFIX, getSearchArgs, null, BookLibrary.searchByBookName, formatBookShort, undefined, Messages.BOOKS_NOT_FOUND
     );
