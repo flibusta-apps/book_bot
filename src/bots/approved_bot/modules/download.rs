@@ -53,13 +53,13 @@ async fn _send_cached(
     match bot
         .copy_message(
             message.chat.id,
-            Recipient::Id(ChatId(cached_message.chat_id)),
-            cached_message.message_id,
+            Recipient::Id(ChatId(cached_message.data.chat_id)),
+            cached_message.data.message_id,
         )
         .send()
         .await
     {
-        Ok(_) => todo!(),
+        Ok(_) => Ok(()),
         Err(err) => Err(Box::new(err)),
     }
 }
