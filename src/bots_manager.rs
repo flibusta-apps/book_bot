@@ -44,7 +44,7 @@ struct BotData {
 async fn get_bots() -> Result<Vec<BotData>, reqwest::Error> {
     let client = reqwest::Client::new();
     let response = client
-        .get(format!("{}/api", &config::CONFIG.manager_url))
+        .get(&config::CONFIG.manager_url)
         .header("Authorization", &config::CONFIG.manager_api_key)
         .send()
         .await;
