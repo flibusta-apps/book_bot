@@ -190,7 +190,7 @@ async fn update_log_pagination_handler(
 
     let message_text = format!("{header}{formated_items}{footer}");
 
-    let keyboard = generic_get_pagination_keyboard(1, total_pages, update_callback_data, true);
+    let keyboard = generic_get_pagination_keyboard(page, total_pages, update_callback_data, true);
     match bot
         .edit_message_text(message.chat.id, message.id, message_text)
         .reply_markup(keyboard)
