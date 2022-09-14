@@ -1,14 +1,20 @@
-FROM rust:slim-bullseye as builder
+FROM lukemathwalker/cargo-chef:latest-rust-slim-buster AS chef
+WORKDIR /app
+
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder
 
 RUN apt-get update \
     && apt-get install -y pkg-config libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /usr/src/myapp
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
-
-RUN cargo install --path .
-
+RUN cargo build --release --bin book_bot
 
 FROM debian:bullseye-slim
 
@@ -18,6 +24,7 @@ RUN apt-get update \
 
 RUN update-ca-certificates
 
-COPY --from=builder /usr/local/cargo/bin/book_bot /usr/local/bin/book_bot
+WORKDIR /app
 
-CMD book_bot
+COPY --from=builder /app/target/release/book_bot /usr/local/bin
+ENTRYPOINT ["/usr/local/bin/book_bot"]
