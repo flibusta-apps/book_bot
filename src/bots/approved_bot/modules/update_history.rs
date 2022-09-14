@@ -172,8 +172,8 @@ async fn update_log_pagination_handler(
     if update_callback_data.page > items_page.total_pages {
         items_page = match get_uploaded_books(
             items_page.total_pages,
-            update_callback_data.from.format("YYYY-MM-DD").to_string(),
-            update_callback_data.to.format("YYYY-MM-DD").to_string(),
+            update_callback_data.from.format("%Y-%m-%d").to_string(),
+            update_callback_data.to.format("%Y-%m-%d").to_string(),
         )
         .await
         {
