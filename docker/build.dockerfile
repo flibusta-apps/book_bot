@@ -1,22 +1,23 @@
-FROM node:lts-alpine as build-image
+FROM rust:slim-bullseye as builder
 
-WORKDIR /root/app
+RUN apt-get update \
+    && apt-get install -y pkg-config libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY ./package.json ./
-COPY ./yarn.lock ./
-COPY ./tsconfig.json ./
-COPY ./src ./src
+WORKDIR /usr/src/myapp
+COPY . .
 
-RUN yarn install --production && yarn build
+RUN cargo install --path .
 
 
-FROM node:lts-alpine as runtime-image
+FROM debian:bullseye-slim
 
-WORKDIR /root/app
+RUN apt-get update \
+    && apt-get install -y openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY ./package.json ./
-COPY ./scripts/healthcheck.js ./
+RUN update-ca-certificates
 
-COPY --from=build-image /root/app/build ./build
+COPY --from=builder /usr/local/cargo/bin/book_bot /usr/local/bin/book_bot
 
-CMD yarn run run
+CMD book_bot

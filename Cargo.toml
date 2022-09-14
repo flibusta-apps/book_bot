@@ -1,0 +1,28 @@
+[package]
+name = "book_bot"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.20.1", features = ["rt-multi-thread", "macros"] }
+reqwest = { version = "0.11.11", features = ["json"] }
+serde = { version = "1.0.144", features = ["derive"] }
+serde_json = "1.0.85"
+log = "0.4"
+env_logger = "0.9.0"
+teloxide = { version = "0.10.1", features = ["macros", "auto-send", "webhooks-axum"] }
+url = "2.2.2"
+ctrlc = { version = "3.2.3", features = ["termination"] }
+strum = "0.24"
+strum_macros = "0.24"
+futures = "0.3.24"
+base64 = "0.13.0"
+tokio-util = { version = "0.7.3", features = ["compat"] }
+textwrap = "0.15.0"
+regex = "1.6.0"
+chrono = "0.4.22"
+dateparser = "0.1.7"
+sentry = "0.27.0"
+lazy_static = "1.4.0"
