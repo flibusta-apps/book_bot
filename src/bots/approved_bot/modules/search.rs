@@ -57,6 +57,9 @@ impl FromStr for SearchCallbackData {
         let search_type = &caps["search_type"];
         let page: u32 = caps["page"].parse::<u32>().unwrap();
 
+        // Fix for migrate from old bot implementation
+        let page: u32 = if page > 0 { page } else { 1 };
+
         match search_type {
             "sb" => Ok(SearchCallbackData::SearchBook { page }),
             "sa" => Ok(SearchCallbackData::SearchAuthors { page }),
