@@ -129,7 +129,7 @@ where
     };
 
     let chat_id = message.chat.id;
-    let user_id = message.reply_to_message().map(|message| message.from().map(|from| from.id)).unwrap_or(None);
+    let user_id = message.from().map(|from| from.id);
 
     let user_id = match user_id {
         Some(v) => v,
