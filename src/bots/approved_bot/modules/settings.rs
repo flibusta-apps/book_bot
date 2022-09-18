@@ -126,10 +126,7 @@ async fn settings_callback_handler(
         None => return Ok(()), // TODO: alert
     };
 
-    let user = match message.from() {
-        Some(v) => v,
-        None => return Ok(()), // TODO: alert
-    };
+    let user = cq.from;
 
     let allowed_langs = get_user_or_default_lang_codes(user.id).await;
 

@@ -129,7 +129,7 @@ where
     };
 
     let chat_id = message.chat.id;
-    let user_id = message.from().map(|from| from.id);
+    let user_id = message.reply_to_message().map(|message| message.from().map(|from| from.id)).unwrap_or(None);
 
     let user_id = match user_id {
         Some(v) => v,
@@ -211,15 +211,11 @@ where
     };
 
     let chat_id = cq.message.as_ref().map(|message| message.chat.id);
-    let user_id = cq
-        .message
-        .as_ref()
-        .map(|message| message.from().map(|from| from.id))
-        .unwrap_or(None);
+    let user_id = cq.from.id;
     let message_id = cq.message.as_ref().map(|message| message.id);
 
-    let (chat_id, user_id, message_id) = match (chat_id, user_id, message_id) {
-        (Some(chat_id), Some(user_id), Some(message_id)) => (chat_id, user_id, message_id),
+    let (chat_id, message_id) = match (chat_id, message_id) {
+        (Some(chat_id), Some(message_id)) => (chat_id, message_id),
         _ => {
             return match chat_id {
                 Some(v) => match bot.send_message(v, "Повторите поиск сначала").send().await

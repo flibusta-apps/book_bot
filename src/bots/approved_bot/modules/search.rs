@@ -4,7 +4,7 @@ use regex::Regex;
 use strum_macros::EnumIter;
 use teloxide::{
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardMarkup},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup}, dispatching::dialogue::GetChatId,
 };
 
 use crate::bots::{
@@ -115,18 +115,14 @@ where
     T: Format + Clone,
     Fut: std::future::Future<Output = Result<Page<T>, Box<dyn std::error::Error + Send + Sync>>>,
 {
-    let chat_id = cq.message.as_ref().map(|message| message.chat.id);
-    let user_id = cq
-        .message
-        .as_ref()
-        .map(|message| message.from().map(|from| from.id))
-        .unwrap_or(None);
+    let chat_id = cq.chat_id();
+    let user_id = cq.from.id;
     let message_id = cq.message.as_ref().map(|message| message.id);
     let query = get_query(cq);
 
-    let (chat_id, user_id, query, message_id) = match (chat_id, user_id, query, message_id) {
-        (Some(chat_id), Some(user_id), Some(query), Some(message_id)) => {
-            (chat_id, user_id, query, message_id)
+    let (chat_id, query, message_id) = match (chat_id, query, message_id) {
+        (Some(chat_id), Some(query), Some(message_id)) => {
+            (chat_id, query, message_id)
         }
         _ => {
             return match chat_id {
