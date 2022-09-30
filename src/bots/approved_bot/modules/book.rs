@@ -163,9 +163,9 @@ where
     };
 
     if items_page.total_pages == 0 {
-        match bot.send_message(chat_id, "Книги не найдены!").send().await {
-            Ok(_) => (),
-            Err(err) => return Err(Box::new(err)),
+        return match bot.send_message(chat_id, "Книги не найдены!").send().await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(Box::new(err)),
         };
     };
 
@@ -246,9 +246,9 @@ where
     };
 
     if items_page.total_pages == 0 {
-        match bot.send_message(chat_id, "Книги не найдены!").send().await {
-            Ok(_) => (),
-            Err(err) => return Err(Box::new(err)),
+        return match bot.send_message(chat_id, "Книги не найдены!").send().await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(Box::new(err)),
         };
     };
 

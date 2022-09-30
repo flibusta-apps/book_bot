@@ -58,7 +58,7 @@ impl FromStr for SearchCallbackData {
         let page: u32 = caps["page"].parse::<u32>().unwrap();
 
         // Fix for migrate from old bot implementation
-        let page: u32 = if page > 0 { page } else { 1 };
+        let page: u32 = std::cmp::max(1, page);
 
         match search_type {
             "sb" => Ok(SearchCallbackData::SearchBook { page }),
@@ -168,9 +168,9 @@ where
             SearchCallbackData::SearchTranslators { .. } => "Переводчики не найдены!",
         };
 
-        match bot.send_message(chat_id, message_text).send().await {
-            Ok(_) => (),
-            Err(err) => return Err(Box::new(err)),
+        return match bot.send_message(chat_id, message_text).send().await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(Box::new(err)),
         };
     };
 
