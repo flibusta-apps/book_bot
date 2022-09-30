@@ -11,11 +11,12 @@ use self::modules::{
     update_history::get_update_log_handler,
 };
 
-use super::{BotCommands, BotHandler};
+use super::{BotCommands, BotHandler, ignore_channel_messages};
 
 pub fn get_approved_handler() -> (BotHandler, BotCommands) {
     (
         dptree::entry()
+            .branch(ignore_channel_messages())
             .branch(get_help_handler())
             .branch(get_settings_handler())
             .branch(get_support_handler())
