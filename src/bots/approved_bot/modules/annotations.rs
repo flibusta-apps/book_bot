@@ -27,7 +27,8 @@ pub enum AnnotationCommand {
 
 impl CommandParse<Self> for AnnotationCommand {
     fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
-        let re = Regex::new(r"^/(?P<an_type>a|b)_an_(?P<id>\d+)$").unwrap();
+        let re = Regex::new(r"^/(?P<an_type>a|b)_an_(?P<id>\d+)$")
+            .unwrap_or_else(|_| panic!("Can't create AnnotationCommand regexp!"));
 
         let full_bot_name = format!("@{bot_name}");
         let after_replace = s.replace(&full_bot_name, "");
@@ -39,7 +40,9 @@ impl CommandParse<Self> for AnnotationCommand {
         };
 
         let annotation_type = &caps["an_type"];
-        let id: u32 = caps["id"].parse().unwrap();
+        let id: u32 = caps["id"]
+            .parse()
+            .unwrap_or_else(|_| panic!("Can't get id from AnnotationCommand!"));
 
         match annotation_type {
             "a" => Ok(AnnotationCommand::Author { id }),

@@ -78,12 +78,15 @@ impl BotsManager {
             .auto_send();
 
         let token = bot.inner().token();
-        let port = self.bot_port_map.get(&bot_data.id).unwrap();
+        let port = self.bot_port_map
+            .get(&bot_data.id)
+            .unwrap_or_else(|| panic!("Can't get bot port!"));
 
         let addr = ([0, 0, 0, 0], *port).into();
 
         let host = format!("{}:{}", &config::CONFIG.webhook_base_url, port);
-        let url = Url::parse(&format!("{host}/{token}")).unwrap();
+        let url = Url::parse(&format!("{host}/{token}"))
+            .unwrap_or_else(|_| panic!("Can't parse webhook url!"));
 
         log::info!(
             "Start bot(id={}) with {:?} handler, port {}",
