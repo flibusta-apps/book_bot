@@ -25,8 +25,8 @@ enum UpdateLogCommand {
 
 #[derive(Clone, Copy)]
 struct UpdateLogCallbackData {
-    from: Date<Utc>,
-    to: Date<Utc>,
+    from: NaiveDate,
+    to: NaiveDate,
     page: u32,
 }
 
@@ -45,8 +45,8 @@ impl FromStr for UpdateLogCallbackData {
             None => return Err(strum::ParseError::VariantNotFound),
         };
 
-        let from: Date<Utc> = parse(&caps["from"]).unwrap().date();
-        let to: Date<Utc> = parse(&caps["to"]).unwrap().date();
+        let from: NaiveDate = parse(&caps["from"]).unwrap().date_naive();
+        let to: NaiveDate = parse(&caps["to"]).unwrap().date_naive();
         let page: u32 = caps["page"].parse().unwrap();
 
         Ok(UpdateLogCallbackData { from, to, page })
@@ -78,7 +78,7 @@ impl GetPaginationCallbackData for UpdateLogCallbackData {
 }
 
 async fn update_log_command(message: Message, bot: AutoSend<Bot>) -> BotHandlerInternal {
-    let now = Utc::today();
+    let now = Utc::now().date_naive();
     let d3 = now - Duration::days(3);
     let d7 = now - Duration::days(7);
     let d30 = now - Duration::days(30);
