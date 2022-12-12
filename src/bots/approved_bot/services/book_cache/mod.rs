@@ -1,8 +1,24 @@
+use std::fmt;
+use reqwest::StatusCode;
+
 use crate::{bots::approved_bot::modules::download::DownloadData, config};
 
 use self::types::{CachedMessage, DownloadFile};
 
 pub mod types;
+
+#[derive(Debug, Clone)]
+struct DownloadError {
+    status_code: StatusCode
+}
+
+impl fmt::Display for DownloadError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Status code is {0}", self.status_code)
+    }
+}
+
+impl std::error::Error for DownloadError {}
 
 pub async fn get_cached_message(
     download_data: &DownloadData,
@@ -83,6 +99,12 @@ pub async fn download_file(
 
     match response.error_for_status() {
         Ok(response) => {
+            if response.status() != StatusCode::OK {
+                return Err(Box::new(DownloadError {
+                    status_code: response.status()
+                }));
+            }
+
             let headers = response.headers();
             let filename = headers
                 .get("content-disposition")
