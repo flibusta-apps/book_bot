@@ -72,9 +72,9 @@ async fn send_cached_message(
     match get_cached_message(&download_data).await {
         Ok(v) => match _send_cached(&message, &bot, v).await {
             Ok(_) => return Ok(()),
-            Err(err) => log::warn!("{:?}", err),
+            Err(err) => return Err(err),
         },
-        Err(err) => return Err(err),
+        Err(err) => log::warn!("{:?}", err),
     };
 
     match get_cached_message(&download_data).await {
@@ -124,9 +124,9 @@ async fn send_with_download_from_channel(
     match download_file(&download_data).await {
         Ok(v) => match _send_downloaded_file(&message, &bot, v).await {
             Ok(_) => return Ok(()),
-            Err(err) => log::warn!("{:?}", err),
+            Err(err) => return Err(err),
         },
-        Err(err) => return Err(err),
+        Err(err) => log::warn!("{:?}", err),
     };
 
     match download_file(&download_data).await {
