@@ -6,7 +6,7 @@ use tokio_util::compat::FuturesAsyncReadCompatExt;
 use crate::{
     bots::{
         approved_bot::services::book_cache::{
-            clear_book_cache, download_file, get_cached_message,
+            download_file, get_cached_message,
             types::{CachedMessage, DownloadFile},
         },
         BotHandlerInternal,
@@ -46,8 +46,8 @@ impl CommandParse<Self> for DownloadData {
 }
 
 async fn _send_cached(
-    message: Message,
-    bot: AutoSend<Bot>,
+    message: &Message,
+    bot: &AutoSend<Bot>,
     cached_message: CachedMessage,
 ) -> BotHandlerInternal {
     match bot
@@ -69,42 +69,33 @@ async fn send_cached_message(
     bot: AutoSend<Bot>,
     download_data: DownloadData,
 ) -> BotHandlerInternal {
-    let cached_message = get_cached_message(&download_data).await;
-    match cached_message {
-        Ok(v) => match _send_cached(message.clone(), bot.clone(), v).await {
+    match get_cached_message(&download_data).await {
+        Ok(v) => match _send_cached(&message, &bot, v).await {
             Ok(_) => return Ok(()),
-            Err(err) => log::info!("{:?}", err),
+            Err(err) => log::warn!("{:?}", err),
         },
         Err(err) => return Err(err),
     };
 
-    match clear_book_cache(&download_data).await {
-        Ok(_) => (),
-        Err(err) => log::error!("{:?}", err),
-    };
-
-    let cached_message = get_cached_message(&download_data).await;
-    match cached_message {
-        Ok(v) => _send_cached(message, bot, v).await,
-        Err(err) => return Err(err),
+    match get_cached_message(&download_data).await {
+        Ok(v) => match _send_cached(&message, &bot, v).await {
+            Ok(v_2) => Ok(v_2),
+            Err(err) => Err(err),
+        },
+        Err(err) => Err(err),
     }
 }
 
-async fn send_with_download_from_channel(
-    message: Message,
-    bot: AutoSend<Bot>,
-    download_data: DownloadData,
+async fn _send_downloaded_file(
+    message: &Message,
+    bot: &AutoSend<Bot>,
+    downloaded_data: DownloadFile
 ) -> BotHandlerInternal {
-    let downloaded_file = match download_file(&download_data).await {
-        Ok(v) => v,
-        Err(err) => return Err(err),
-    };
-
     let DownloadFile {
         response,
         filename,
         caption,
-    } = downloaded_file;
+    } = downloaded_data;
 
     let data = response
         .bytes_stream()
@@ -122,6 +113,28 @@ async fn send_with_download_from_channel(
     {
         Ok(_) => Ok(()),
         Err(err) => Err(Box::new(err)),
+    }
+}
+
+async fn send_with_download_from_channel(
+    message: Message,
+    bot: AutoSend<Bot>,
+    download_data: DownloadData,
+) -> BotHandlerInternal {
+    match download_file(&download_data).await {
+        Ok(v) => match _send_downloaded_file(&message, &bot, v).await {
+            Ok(_) => return Ok(()),
+            Err(err) => log::warn!("{:?}", err),
+        },
+        Err(err) => return Err(err),
+    };
+
+    match download_file(&download_data).await {
+        Ok(v) => match _send_downloaded_file(&message, &bot, v).await {
+            Ok(v_2) => Ok(v_2),
+            Err(err) => Err(err),
+        },
+        Err(err) => Err(err)
     }
 }
 
