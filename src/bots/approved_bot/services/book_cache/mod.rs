@@ -84,7 +84,7 @@ pub async fn download_file(
 
     let headers = response.headers();
 
-    log::debug!("Download headers: {:?}", headers);
+    log::info!("Download headers: {:?}", headers);
 
     let filename = headers
         .get("content-disposition")
