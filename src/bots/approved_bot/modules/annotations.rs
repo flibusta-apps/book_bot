@@ -239,7 +239,6 @@ where
 
     match bot
         .send_message(message.chat.id, current_text)
-        .parse_mode(ParseMode::Html)
         .reply_markup(keyboard)
         .send()
         .await
@@ -291,7 +290,6 @@ where
 
     match bot
         .edit_message_text(message.chat.id, message.id, current_text)
-        .parse_mode(ParseMode::Html)
         .reply_markup(keyboard)
         .send()
         .await
