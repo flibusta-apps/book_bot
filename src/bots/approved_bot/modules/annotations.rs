@@ -202,8 +202,6 @@ where
                 .into_async_read()
                 .compat();
 
-            log::info!("{}", file);
-
             match bot
                 .send_photo(message.chat.id, InputFile::read(data))
                 .send()

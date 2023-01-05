@@ -124,3 +124,39 @@ pub async fn get_langs() -> Result<Vec<Lang>, Box<dyn std::error::Error + Send +
         Err(err) => Err(Box::new(err)),
     }
 }
+
+pub async fn update_user_activity(
+    user_id: UserId,
+    last_name: String,
+    first_name: String,
+    username: String,
+    source: String,
+    allowed_langs: Vec<String>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let body = json!({
+        "user_id": user_id,
+        "last_name": last_name,
+        "first_name": first_name,
+        "username": username,
+        "source": source,
+        "allowed_langs": allowed_langs
+    });
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(format!("{}/users/{user_id}/update_activity", &config::CONFIG.user_settings_url))
+        .header("Authorization", &config::CONFIG.user_settings_api_key)
+        .body(body.to_string())
+        .send()
+        .await;
+
+    let response = match response {
+        Ok(v) => v,
+        Err(err) => return Err(Box::new(err)),
+    };
+
+    match response.error_for_status() {
+        Ok(_) => Ok(()),
+        Err(err) => Err(Box::new(err)),
+    }
+}

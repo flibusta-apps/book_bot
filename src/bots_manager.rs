@@ -72,7 +72,7 @@ impl BotsManager {
         }
     }
 
-    async fn start_bot(&mut self, bot_data: &BotData) {
+    async fn start_bot(&mut self, bot_data: &BotData) -> bool {
         let bot = Bot::new(bot_data.token.clone())
             .set_api_url(config::CONFIG.telegram_bot_api.clone())
             .auto_send();
@@ -95,9 +95,16 @@ impl BotsManager {
             port
         );
 
-        let listener = webhooks::axum(bot.clone(), webhooks::Options::new(addr, url))
-            .await
-            .expect("Couldn't setup webhook");
+        let listener_result = webhooks::axum(bot.clone(), webhooks::Options::new(addr, url)).await;
+
+        let listener = match listener_result {
+            Ok(v) => v,
+            Err(err) => {
+                log::warn!("{}", err);
+
+                return false;
+            },
+        };
 
         let (handler, commands) = crate::bots::get_bot_handler(bot_data.status);
 
@@ -126,6 +133,8 @@ impl BotsManager {
                 )
                 .await;
         });
+
+        true
     }
 
     async fn stop_bot(&mut self, bot_id: u32) {
@@ -151,20 +160,31 @@ impl BotsManager {
                 self.next_port += 1;
             }
 
-            match self.bot_status_and_cache_map.get(&bot_data.id) {
+            let result = match self.bot_status_and_cache_map.get(&bot_data.id) {
                 Some(v) => {
+                    let mut update_result = true;
+
                     if *v != (bot_data.status, bot_data.cache) {
                         self.bot_status_and_cache_map
                             .insert(bot_data.id, (bot_data.status, bot_data.cache));
                         self.stop_bot(bot_data.id).await;
-                        self.start_bot(bot_data).await;
+
+                        update_result = self.start_bot(bot_data).await;
                     }
+
+                    update_result
                 }
                 None => {
                     self.bot_status_and_cache_map
                         .insert(bot_data.id, (bot_data.status, bot_data.cache));
-                    self.start_bot(bot_data).await;
+
+                    self.start_bot(bot_data).await
                 }
+            };
+
+            if !result {
+                self.bot_status_and_cache_map.remove(&bot_data.id);
+                self.bot_shutdown_token_map.remove(&bot_data.id);
             }
         }
     }
