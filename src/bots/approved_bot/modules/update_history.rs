@@ -139,7 +139,13 @@ async fn update_log_pagination_handler(
 ) -> BotHandlerInternal {
     let message = match cq.message {
         Some(v) => v,
-        None => return Ok(()), // TODO: send notification
+        None => {
+            #[allow(unused_must_use)] {
+                bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(").send().await;
+            }
+
+            return Ok(())
+        },
     };
 
     let from = update_callback_data.from.format("%d.%m.%Y");

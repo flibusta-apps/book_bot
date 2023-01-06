@@ -123,7 +123,12 @@ async fn settings_callback_handler(
 ) -> BotHandlerInternal {
     let message = match cq.message {
         Some(v) => v,
-        None => return Ok(()), // TODO: alert
+        None => {
+            #[allow(unused_must_use)] {
+                bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(").send().await;
+            }
+            return Ok(())
+        },
     };
 
     let user = cq.from;
@@ -169,12 +174,22 @@ async fn settings_callback_handler(
     .await
     {
         Ok(_) => (),
-        Err(err) => return Err(err), // TODO: err
+        Err(err) => {
+            #[allow(unused_must_use)] {
+                bot.send_message(user.id, "Ошибка! Попробуйте заново(").send().await;
+            }
+            return Err(err)
+        },
     };
 
     let all_langs = match get_langs().await {
         Ok(v) => v,
-        Err(err) => return Err(err),
+        Err(err) => {
+            #[allow(unused_must_use)] {
+                bot.send_message(user.id, "Ошибка! Попробуйте заново(").send().await;
+            }
+            return Err(err)
+        },
     };
 
     let keyboard = get_lang_keyboard(all_langs, allowed_langs_set);
