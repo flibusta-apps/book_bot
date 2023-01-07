@@ -4,6 +4,8 @@ mod tools;
 
 use teloxide::{prelude::*, types::BotCommand};
 
+use crate::bots::approved_bot::services::user_settings::create_or_update_user_settings;
+
 use self::{
     modules::{
         annotations::get_annotations_handler, book::get_book_handler,
@@ -18,20 +20,26 @@ use super::{ignore_channel_messages, BotCommands, BotHandler};
 
 async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) -> Option<()> {
     tokio::spawn(async move {
-        let allowed_langs = get_user_or_default_lang_codes(user.id).await;
+        if let Err(err) = update_user_activity(user.id).await {
+            let allowed_langs = get_user_or_default_lang_codes(user.id).await;
 
-        match update_user_activity(
-            user.id,
-            user.last_name.clone().unwrap_or("".to_string()),
-            user.first_name.clone(),
-            user.username.clone().unwrap_or("".to_string()),
-            me.username.clone().unwrap(),
-            allowed_langs,
-        )
-        .await
-        {
-            Ok(_) => (),
-            Err(err) => log::warn!("{}", err),
+            if let Ok(_) = create_or_update_user_settings(
+                user.id,
+                user.last_name.clone().unwrap_or("".to_string()),
+                user.first_name.clone(),
+                user.username.clone().unwrap_or("".to_string()),
+                me.username.clone().unwrap(),
+                allowed_langs,
+            )
+            .await
+            {
+                #[allow(unused_must_use)]
+                {
+                    update_user_activity(user.id).await;
+                }
+            }
+
+            log::warn!("{}", err);
         }
     });
 
@@ -45,7 +53,7 @@ fn update_user_activity_handler() -> BotHandler {
                 |cq: CallbackQuery, me: teloxide::types::Me| async move {
                     _update_activity(me, cq.from).await
                 },
-            ))
+            )),
         )
         .branch(Update::filter_message().chain(dptree::filter_map_async(
             |message: Message, me: teloxide::types::Me| async move {
