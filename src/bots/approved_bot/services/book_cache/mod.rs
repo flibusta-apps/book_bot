@@ -45,6 +45,12 @@ pub async fn get_cached_message(
         Err(err) => return Err(Box::new(err)),
     };
 
+    if response.status() != StatusCode::OK {
+        return Err(Box::new(DownloadError {
+            status_code: response.status()
+        }));
+    };
+
     match response.json::<CachedMessage>().await {
         Ok(v) => Ok(v),
         Err(err) => Err(Box::new(err)),
@@ -83,6 +89,8 @@ pub async fn download_file(
     };
 
     let headers = response.headers();
+
+    log::info!("{:?}", headers);
 
     let filename = headers
         .get("content-disposition")
