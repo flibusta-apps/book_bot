@@ -8,7 +8,6 @@ use crate::config;
 #[derive(Debug)]
 pub enum RegisterStatus {
     Success {username: String},
-    NoToken,
     WrongToken,
     RegisterFail,
 }
@@ -56,10 +55,7 @@ async fn make_register_request(user_id: UserId, username: &str, token: &str) -> 
 
 
 pub async fn register(user_id: UserId, message_text: &str) -> RegisterStatus {
-    let token = match super::utils::get_token(message_text) {
-        Some(v) => v,
-        None => return RegisterStatus::NoToken
-    };
+    let token = super::utils::get_token(message_text).unwrap();
 
     let bot_username = match get_bot_username(token).await {
         Some(v) => v,

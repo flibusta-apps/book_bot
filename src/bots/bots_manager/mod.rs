@@ -20,7 +20,6 @@ pub async fn message_handler(
 
     let message_text = match result {
         register::RegisterStatus::Success { ref username } => format_registered_message(&username),
-        register::RegisterStatus::NoToken => strings::HELP_MESSAGE.to_string(),
         register::RegisterStatus::WrongToken => strings::ERROR_MESSAGE.to_string(),
         register::RegisterStatus::RegisterFail => strings::ALREADY_REGISTERED.to_string(),
     };

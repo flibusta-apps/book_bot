@@ -23,6 +23,11 @@ pub async fn help_handler(message: Message, bot: AutoSend<Bot>) -> BotHandlerInt
 Привет, {name}! \n
 Этот бот поможет тебе загружать книги.\n
 Настройки языков для поиска /settings.\n
+\n\n
+Регистрация своего бота: \n
+1. Зарегистрируй бота в @BotFather . \n
+2. И перешли сюда сообщение об успешной регистрации.
+(Начинается с: Done! Congratulations on your new bot.)
         "
             ),
         )
