@@ -261,7 +261,7 @@ pub async fn message_handler(message: Message, bot: AutoSend<Bot>) -> BotHandler
     }
 }
 
-pub fn get_search_hanlder() -> crate::bots::BotHandler {
+pub fn get_search_handler() -> crate::bots::BotHandler {
     dptree::entry().branch(
         Update::filter_message()
             .endpoint(|message, bot| async move { message_handler(message, bot).await }),

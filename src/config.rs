@@ -3,6 +3,8 @@ pub struct Config {
 
     pub webhook_base_url: String,
 
+    pub admin_id: String,
+    pub bot_token: String,
     pub manager_url: String,
     pub manager_api_key: String,
 
@@ -32,6 +34,8 @@ impl Config {
 
             webhook_base_url: get_env("WEBHOOK_BASE_URL"),
 
+            admin_id: get_env("ADMIN_ID"),
+            bot_token: get_env("BOT_TOKEN"),
             manager_url: get_env("MANAGER_URL"),
             manager_api_key: get_env("MANAGER_API_KEY"),
 

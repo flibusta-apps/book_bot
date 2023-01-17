@@ -1,4 +1,5 @@
 mod approved_bot;
+pub mod bots_manager;
 
 use std::error::Error;
 

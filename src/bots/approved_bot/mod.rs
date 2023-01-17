@@ -10,13 +10,13 @@ use self::{
     modules::{
         annotations::get_annotations_handler, book::get_book_handler,
         download::get_download_hander, help::get_help_handler, random::get_random_hander,
-        search::get_search_hanlder, settings::get_settings_handler, support::get_support_handler,
+        search::get_search_handler, settings::get_settings_handler, support::get_support_handler,
         update_history::get_update_log_handler,
     },
     services::user_settings::{get_user_or_default_lang_codes, update_user_activity},
 };
 
-use super::{ignore_channel_messages, BotCommands, BotHandler};
+use super::{ignore_channel_messages, BotCommands, BotHandler, bots_manager::get_manager_handler};
 
 async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) -> Option<()> {
     tokio::spawn(async move {
@@ -78,7 +78,8 @@ pub fn get_approved_handler() -> (BotHandler, BotCommands) {
             .branch(get_annotations_handler())
             .branch(get_book_handler())
             .branch(get_update_log_handler())
-            .branch(get_search_hanlder()),
+            .branch(get_manager_handler())
+            .branch(get_search_handler()),
         Some(vec![
             BotCommand {
                 command: String::from("random"),
