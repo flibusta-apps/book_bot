@@ -11,7 +11,7 @@ mod config;
 #[tokio::main]
 async fn main() {
     let _guard = sentry::init(config::CONFIG.sentry_dsn.clone());
-    env_logger::init();
+    pretty_env_logger::init();
 
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();

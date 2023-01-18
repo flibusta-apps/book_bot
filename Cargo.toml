@@ -11,7 +11,7 @@ reqwest = { version = "0.11.11", features = ["json"] }
 serde = { version = "1.0.144", features = ["derive"] }
 serde_json = "1.0.85"
 log = "0.4"
-env_logger = "0.9.0"
+pretty_env_logger = "0.4"
 teloxide = { version = "0.10.1", features = ["macros", "auto-send", "webhooks-axum"] }
 url = "2.2.2"
 ctrlc = { version = "3.2.3", features = ["termination"] }
