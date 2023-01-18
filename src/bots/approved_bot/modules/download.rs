@@ -69,29 +69,22 @@ async fn send_cached_message(
     bot: AutoSend<Bot>,
     download_data: DownloadData,
 ) -> BotHandlerInternal {
-    match get_cached_message(&download_data).await {
-        Ok(v) => match _send_cached(&message, &bot, v).await {
-            Ok(_) => return Ok(()),
-            Err(err) => return Err(err),
-        },
-        Err(err) => log::warn!("{:?}", err),
+    if let Ok(v) = get_cached_message(&download_data).await {
+        if let Ok(_) = _send_cached(&message, &bot, v).await {
+            return Ok(());
+        }
     };
 
-    match get_cached_message(&download_data).await {
-        Ok(v) => match _send_cached(&message, &bot, v).await {
-            Ok(v_2) => return Ok(v_2),
-            Err(err) => log::warn!("{:?}", err),
-        },
-        Err(err) => log::warn!("{:?}", err),
-    };
-
-    send_with_download_from_channel(message, bot, download_data).await
+    match send_with_download_from_channel(message, bot, download_data).await {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err),
+    }
 }
 
 async fn _send_downloaded_file(
     message: &Message,
     bot: &AutoSend<Bot>,
-    downloaded_data: DownloadFile
+    downloaded_data: DownloadFile,
 ) -> BotHandlerInternal {
     let DownloadFile {
         response,
@@ -136,7 +129,7 @@ async fn send_with_download_from_channel(
             Ok(v_2) => Ok(v_2),
             Err(err) => Err(err),
         },
-        Err(err) => Err(err)
+        Err(err) => Err(err),
     }
 }
 
