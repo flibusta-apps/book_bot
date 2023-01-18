@@ -118,14 +118,6 @@ async fn send_with_download_from_channel(
 ) -> BotHandlerInternal {
     match download_file(&download_data).await {
         Ok(v) => match _send_downloaded_file(&message, &bot, v).await {
-            Ok(_) => return Ok(()),
-            Err(err) => return Err(err),
-        },
-        Err(err) => log::warn!("{:?}", err),
-    };
-
-    match download_file(&download_data).await {
-        Ok(v) => match _send_downloaded_file(&message, &bot, v).await {
             Ok(v_2) => Ok(v_2),
             Err(err) => Err(err),
         },
