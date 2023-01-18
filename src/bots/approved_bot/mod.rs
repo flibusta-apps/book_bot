@@ -16,7 +16,7 @@ use self::{
     services::user_settings::{get_user_or_default_lang_codes, update_user_activity},
 };
 
-use super::{ignore_channel_messages, BotCommands, BotHandler, bots_manager::get_manager_handler};
+use super::{ignore_channel_messages, BotCommands, BotHandler, bots_manager::get_manager_handler, ignore_chat_member_update};
 
 async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) -> Option<()> {
     tokio::spawn(async move {
@@ -67,6 +67,7 @@ pub fn get_approved_handler() -> (BotHandler, BotCommands) {
     (
         dptree::entry()
             .branch(ignore_channel_messages())
+            .branch(ignore_chat_member_update())
             .branch(update_user_activity_handler())
             .branch(get_help_handler())
             .branch(get_settings_handler())

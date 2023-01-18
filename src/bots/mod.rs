@@ -18,7 +18,12 @@ type BotCommands = Option<Vec<teloxide::types::BotCommand>>;
 
 fn ignore_channel_messages() -> crate::bots::BotHandler {
     Update::filter_channel_post()
-        .endpoint(|_message: Message, _bot: AutoSend<Bot>| async { Ok(()) })
+        .endpoint(|| async { Ok(()) })
+}
+
+fn ignore_chat_member_update() -> crate::bots::BotHandler {
+    Update::filter_chat_member()
+        .endpoint(|| async { Ok(()) })
 }
 
 fn get_pending_handler() -> BotHandler {
@@ -34,6 +39,7 @@ fn get_pending_handler() -> BotHandler {
 
     dptree::entry()
         .branch(ignore_channel_messages())
+        .branch(ignore_chat_member_update())
         .branch(Update::filter_message().chain(dptree::endpoint(handler)))
 }
 
@@ -47,6 +53,7 @@ fn get_blocked_handler() -> BotHandler {
 
     dptree::entry()
         .branch(ignore_channel_messages())
+        .branch(ignore_chat_member_update())
         .branch(Update::filter_message().chain(dptree::endpoint(handler)))
 }
 
