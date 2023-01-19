@@ -1,5 +1,5 @@
-use std::fmt;
 use reqwest::StatusCode;
+use std::fmt;
 
 use crate::{bots::approved_bot::modules::download::DownloadData, config};
 
@@ -9,7 +9,7 @@ pub mod types;
 
 #[derive(Debug, Clone)]
 struct DownloadError {
-    status_code: StatusCode
+    status_code: StatusCode,
 }
 
 impl fmt::Display for DownloadError {
@@ -47,7 +47,7 @@ pub async fn get_cached_message(
 
     if response.status() != StatusCode::OK {
         return Err(Box::new(DownloadError {
-            status_code: response.status()
+            status_code: response.status(),
         }));
     };
 
@@ -84,7 +84,7 @@ pub async fn download_file(
 
     if response.status() != StatusCode::OK {
         return Err(Box::new(DownloadError {
-            status_code: response.status()
+            status_code: response.status(),
         }));
     };
 
@@ -92,22 +92,14 @@ pub async fn download_file(
 
     log::info!("{:?}", headers);
 
-    let filename = headers
-        .get("content-disposition")
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .replace('"', "")
-        .split("filename=")
-        .collect::<Vec<&str>>()
-        .get(1)
-        .unwrap()
-        .to_string();
-    let caption = std::str::from_utf8(
-        &base64::decode(headers.get("x-caption-b64").unwrap()).unwrap(),
-    )
-    .unwrap()
-    .to_string();
+    let filename =
+        std::str::from_utf8(&base64::decode(headers.get("x-filename-b64").unwrap()).unwrap())
+            .unwrap()
+            .to_string();
+    let caption =
+        std::str::from_utf8(&base64::decode(headers.get("x-caption-b64").unwrap()).unwrap())
+            .unwrap()
+            .to_string();
 
     Ok(DownloadFile {
         response,
