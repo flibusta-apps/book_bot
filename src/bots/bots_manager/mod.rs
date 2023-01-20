@@ -3,7 +3,6 @@ use teloxide::prelude::*;
 use std::error::Error;
 
 use self::{strings::format_registered_message, utils::get_token};
-use crate::config;
 
 pub mod register;
 pub mod strings;
@@ -29,17 +28,6 @@ pub async fn message_handler(
         bot.send_message(message.chat.id, message_text)
             .reply_to_message_id(message.id)
             .await;
-    }
-
-    if let register::RegisterStatus::Success { .. } = result {
-        #[allow(unused_must_use)]
-        {
-            bot.send_message(
-                config::CONFIG.admin_id.clone(),
-                strings::BOT_REGISTERED_TO_ADMIN,
-            )
-            .await;
-        }
     }
 
     return Ok(());

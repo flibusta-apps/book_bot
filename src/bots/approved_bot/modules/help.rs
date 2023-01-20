@@ -1,6 +1,6 @@
 use crate::bots::BotHandlerInternal;
 
-use teloxide::{prelude::*, utils::command::BotCommands};
+use teloxide::{prelude::*, utils::command::BotCommands, types::ParseMode};
 
 #[derive(BotCommands, Clone)]
 #[command(rename = "lowercase")]
@@ -20,17 +20,20 @@ pub async fn help_handler(message: Message, bot: AutoSend<Bot>) -> BotHandlerInt
             message.chat.id,
             format!(
                 "
-Привет, {name}! \n
-Этот бот поможет тебе загружать книги.\n
-Настройки языков для поиска /settings.\n
-\n\n
-Регистрация своего бота: \n
-1. Зарегистрируй бота в @BotFather . \n
+Привет, {name}!
+
+Этот бот поможет тебе загружать книги.
+
+Настройки языков для поиска /settings.
+
+Регистрация своего бота:
+1. [Зарегистрируй бота](https://telegra.ph/Registraciya-svoego-bota-01-24) в @BotFather.
 2. И перешли сюда сообщение об успешной регистрации.
 (Начинается с: Done! Congratulations on your new bot.)
         "
             ),
         )
+        .parse_mode(ParseMode::MarkdownV2)
         .send()
         .await
     {
