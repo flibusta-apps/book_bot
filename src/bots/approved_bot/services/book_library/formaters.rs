@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 use super::types::{Author, AuthorBook, Book, SearchBook, Sequence, Translator, TranslatorBook};
 
 pub trait Format {
@@ -143,32 +145,34 @@ impl Format for SearchBook {
             false => "".to_string(),
         };
 
-        let authors = match self.authors.len() != 0 {
-            true => {
-                let formated_authors = self
+        let authors = if self.authors.len() != 0 {
+            let formated_authors = self
                     .authors
-                    .clone()
+                    .clone()[..min(5, self.authors.len())]
                     .into_iter()
                     .map(|author| author.format_author())
                     .collect::<Vec<String>>()
                     .join("\n");
-                format!("Авторы:\n{formated_authors}\n")
-            }
-            false => "".to_string(),
+
+            let post_fix = if self.authors.len() > 5 { "\nи др." } else { "" };
+            format!("Авторы:\n{formated_authors}{post_fix}\n")
+        } else {
+            "".to_string()
         };
 
-        let translators = match self.translators.len() != 0 {
-            true => {
-                let formated_translators = self
+        let translators = if self.translators.len() != 0 {
+            let formated_translators = self
                     .translators
-                    .clone()
+                    .clone()[..min(5, self.translators.len())]
                     .into_iter()
                     .map(|translator| translator.format_translator())
                     .collect::<Vec<String>>()
                     .join("\n");
-                format!("Переводчики:\n{formated_translators}\n")
-            }
-            false => "".to_string(),
+
+            let post_fix = if self.translators.len() > 5 { "\nи др." } else { "" };
+            format!("Переводчики:\n{formated_translators}{post_fix}\n")
+        } else {
+            "".to_string()
         };
 
         let links: String = self
