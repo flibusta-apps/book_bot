@@ -17,7 +17,7 @@ use crate::bots::{
     BotHandlerInternal,
 };
 
-use super::utils::{filter_command, CommandParse, GetPaginationCallbackData};
+use super::utils::{filter_command, CommandParse, GetPaginationCallbackData, split_text_to_chunks};
 
 #[derive(Clone)]
 pub enum AnnotationCommand {
@@ -138,7 +138,7 @@ impl AnnotationFormat for AuthorAnnotation {
     }
 
     fn is_normal_text(&self) -> bool {
-        self.text.replace('\n', "").replace(' ', "").len() != 0
+        self.text.replace("\n", "").replace(' ', "").len() != 0
     }
 }
 
@@ -217,11 +217,8 @@ where
         return Ok(());
     }
 
-    let chunked_text: Vec<String> = textwrap::wrap(annotation.get_text(), 512)
-        .into_iter()
-        .filter(|text| text.replace('\r', "").len() != 0)
-        .map(|text| text.to_string())
-        .collect();
+    let annotation_text = annotation.get_text();
+    let chunked_text = split_text_to_chunks(annotation_text, 512);
     let current_text = chunked_text.get(0).unwrap();
 
     let callback_data = match command {
@@ -272,11 +269,9 @@ where
     };
 
     let page_index: usize = page.try_into().unwrap();
-    let chunked_text: Vec<String> = textwrap::wrap(annotation.get_text(), 512)
-        .into_iter()
-        .filter(|text| text.replace('\r', "").len() != 0)
-        .map(|text| text.to_string())
-        .collect();
+
+    let annotation_text = annotation.get_text();
+    let chunked_text = split_text_to_chunks(annotation_text, 512);
     let current_text = chunked_text.get(page_index - 1).unwrap();
 
     let keyboard = generic_get_pagination_keyboard(
