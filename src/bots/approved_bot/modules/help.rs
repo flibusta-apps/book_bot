@@ -27,13 +27,13 @@ pub async fn help_handler(message: Message, bot: AutoSend<Bot>) -> BotHandlerInt
 Настройки языков для поиска /settings.
 
 Регистрация своего бота:
-1. [Зарегистрируй бота](https://telegra.ph/Registraciya-svoego-bota-01-24) в @BotFather.
+1. <a href=\"https://telegra.ph/Registraciya-svoego-bota-01-24\">Зарегистрируй бота</a> в @BotFather.
 2. И перешли сюда сообщение об успешной регистрации.
 (Начинается с: Done! Congratulations on your new bot.)
         "
             ),
         )
-        .parse_mode(ParseMode::MarkdownV2)
+        .parse_mode(ParseMode::Html)
         .send()
         .await
     {
