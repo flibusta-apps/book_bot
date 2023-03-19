@@ -214,12 +214,15 @@ where
     };
 
     if !annotation.is_normal_text() {
-        return Ok(());
+        return Ok(()); // TODO: error message
     }
 
     let annotation_text = annotation.get_text();
     let chunked_text = split_text_to_chunks(annotation_text, 512);
-    let current_text = chunked_text.get(0).unwrap();
+    let current_text = match chunked_text.get(0) {
+        Some(v) => v,
+        None => return Ok(()), // TODO: error message
+    };
 
     let callback_data = match command {
         AnnotationCommand::Book { id } => AnnotationCallbackData::Book { id, page: 1 },
@@ -268,10 +271,17 @@ where
         None => return Ok(()),
     };
 
-    let page_index: usize = page.try_into().unwrap();
+    let request_page: usize = page.try_into().unwrap();
+
 
     let annotation_text = annotation.get_text();
     let chunked_text = split_text_to_chunks(annotation_text, 512);
+
+    let page_index = if request_page <= chunked_text.len() {
+        request_page
+    } else {
+        chunked_text.len()
+    };
     let current_text = chunked_text.get(page_index - 1).unwrap();
 
     let keyboard = generic_get_pagination_keyboard(
