@@ -10,7 +10,7 @@ pub mod utils;
 
 pub async fn message_handler(
     message: Message,
-    bot: AutoSend<Bot>,
+    bot: Bot,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let from_user = message.from().unwrap();
     let text = message.text().unwrap_or("");

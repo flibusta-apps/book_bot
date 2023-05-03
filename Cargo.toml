@@ -12,7 +12,7 @@ serde = { version = "1.0.144", features = ["derive"] }
 serde_json = "1.0.85"
 log = "0.4"
 pretty_env_logger = "0.4"
-teloxide = { version = "0.10.1", features = ["macros", "auto-send", "webhooks-axum"] }
+teloxide = { version = "0.12.2", features = ["macros", "webhooks-axum"] }
 url = "2.2.2"
 ctrlc = { version = "3.2.3", features = ["termination"] }
 strum = "0.24"

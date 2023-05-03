@@ -47,14 +47,14 @@ impl CommandParse<Self> for DownloadData {
 
 async fn _send_cached(
     message: &Message,
-    bot: &AutoSend<Bot>,
+    bot: &Bot,
     cached_message: CachedMessage,
 ) -> BotHandlerInternal {
     match bot
         .copy_message(
             message.chat.id,
             Recipient::Id(ChatId(cached_message.data.chat_id)),
-            cached_message.data.message_id,
+            MessageId(cached_message.data.message_id),
         )
         .send()
         .await
@@ -66,7 +66,7 @@ async fn _send_cached(
 
 async fn send_cached_message(
     message: Message,
-    bot: AutoSend<Bot>,
+    bot: Bot,
     download_data: DownloadData,
 ) -> BotHandlerInternal {
     if let Ok(v) = get_cached_message(&download_data).await {
@@ -83,7 +83,7 @@ async fn send_cached_message(
 
 async fn _send_downloaded_file(
     message: &Message,
-    bot: &AutoSend<Bot>,
+    bot: Bot,
     downloaded_data: DownloadFile,
 ) -> BotHandlerInternal {
     let DownloadFile {
@@ -113,11 +113,11 @@ async fn _send_downloaded_file(
 
 async fn send_with_download_from_channel(
     message: Message,
-    bot: AutoSend<Bot>,
+    bot: Bot,
     download_data: DownloadData,
 ) -> BotHandlerInternal {
     match download_file(&download_data).await {
-        Ok(v) => match _send_downloaded_file(&message, &bot, v).await {
+        Ok(v) => match _send_downloaded_file(&message, bot, v).await {
             Ok(v_2) => Ok(v_2),
             Err(err) => Err(err),
         },
@@ -127,7 +127,7 @@ async fn send_with_download_from_channel(
 
 async fn download_handler(
     message: Message,
-    bot: AutoSend<Bot>,
+    bot: Bot,
     cache: BotCache,
     download_data: DownloadData,
 ) -> BotHandlerInternal {
@@ -143,7 +143,7 @@ pub fn get_download_hander() -> crate::bots::BotHandler {
             .chain(filter_command::<DownloadData>())
             .endpoint(
                 |message: Message,
-                 bot: AutoSend<Bot>,
+                 bot: Bot,
                  cache: BotCache,
                  download_data: DownloadData| async move {
                     download_handler(message, bot, cache, download_data).await

@@ -74,10 +74,9 @@ impl BotsManager {
 
     async fn start_bot(&mut self, bot_data: &BotData) -> bool {
         let bot = Bot::new(bot_data.token.clone())
-            .set_api_url(config::CONFIG.telegram_bot_api.clone())
-            .auto_send();
+            .set_api_url(config::CONFIG.telegram_bot_api.clone());
 
-        let token = bot.inner().token();
+        let token = bot.token();
         let port = self.bot_port_map
             .get(&bot_data.id)
             .unwrap_or_else(|| panic!("Can't get bot port!"));
@@ -219,7 +218,7 @@ impl BotsManager {
             manager.check().await;
 
             for _ in 1..30 {
-                sleep(Duration::from_secs(1)).await;
+                sleep(Duration::from_millis(50)).await;
 
                 if !running.load(Ordering::SeqCst) {
                     manager.stop_all().await;

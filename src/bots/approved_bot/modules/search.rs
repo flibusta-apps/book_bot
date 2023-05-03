@@ -107,7 +107,7 @@ fn get_query(cq: CallbackQuery) -> Option<String> {
 
 async fn generic_search_pagination_handler<T, Fut>(
     cq: CallbackQuery,
-    bot: AutoSend<Bot>,
+    bot: Bot,
     search_data: SearchCallbackData,
     items_getter: fn(query: String, page: u32, allowed_langs: Vec<String>) -> Fut,
 ) -> BotHandlerInternal
@@ -217,7 +217,7 @@ where
     }
 }
 
-pub async fn message_handler(message: Message, bot: AutoSend<Bot>) -> BotHandlerInternal {
+pub async fn message_handler(message: Message, bot: Bot) -> BotHandlerInternal {
     let message_text = "Что ищем?";
 
     let keyboard = InlineKeyboardMarkup {
@@ -268,7 +268,7 @@ pub fn get_search_handler() -> crate::bots::BotHandler {
     ).branch(
         Update::filter_callback_query()
             .chain(filter_callback_query::<SearchCallbackData>())
-            .endpoint(|cq: CallbackQuery, callback_data: SearchCallbackData, bot: AutoSend<Bot>| async move {
+            .endpoint(|cq: CallbackQuery, callback_data: SearchCallbackData, bot: Bot| async move {
                 match callback_data {
                     SearchCallbackData::SearchBook { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_book).await,
                     SearchCallbackData::SearchAuthors { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_author).await,

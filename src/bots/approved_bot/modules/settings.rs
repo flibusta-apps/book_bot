@@ -18,7 +18,7 @@ use teloxide::{
 };
 
 #[derive(BotCommands, Clone)]
-#[command(rename = "lowercase")]
+#[command(rename_rule = "lowercase")]
 enum SettingsCommand {
     Settings,
 }
@@ -67,7 +67,7 @@ impl ToString for SettingsCallbackData {
     }
 }
 
-async fn settings_handler(message: Message, bot: AutoSend<Bot>) -> BotHandlerInternal {
+async fn settings_handler(message: Message, bot: Bot) -> BotHandlerInternal {
     let keyboard = InlineKeyboardMarkup {
         inline_keyboard: vec![vec![InlineKeyboardButton {
             text: "Языки".to_string(),
@@ -117,7 +117,7 @@ fn get_lang_keyboard(all_langs: Vec<Lang>, allowed_langs: HashSet<String>) -> In
 
 async fn settings_callback_handler(
     cq: CallbackQuery,
-    bot: AutoSend<Bot>,
+    bot: Bot,
     callback_data: SettingsCallbackData,
     me: Me,
 ) -> BotHandlerInternal {
@@ -219,7 +219,7 @@ pub fn get_settings_handler() -> crate::bots::BotHandler {
                 .chain(filter_callback_query::<SettingsCallbackData>())
                 .endpoint(
                     |cq: CallbackQuery,
-                     bot: AutoSend<Bot>,
+                     bot: Bot,
                      callback_data: SettingsCallbackData,
                      me: Me| async move {
                         settings_callback_handler(cq, bot, callback_data, me).await

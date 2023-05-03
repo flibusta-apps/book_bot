@@ -162,7 +162,7 @@ async fn download_image(
 
 pub async fn send_annotation_handler<T, Fut>(
     message: Message,
-    bot: AutoSend<Bot>,
+    bot: Bot,
     command: AnnotationCommand,
     annotation_getter: fn(id: u32) -> Fut,
 ) -> BotHandlerInternal
@@ -248,7 +248,7 @@ where
 
 pub async fn annotation_pagination_handler<T, Fut>(
     cq: CallbackQuery,
-    bot: AutoSend<Bot>,
+    bot: Bot,
     callback_data: AnnotationCallbackData,
     annotation_getter: fn(id: u32) -> Fut,
 ) -> BotHandlerInternal
@@ -308,7 +308,7 @@ pub fn get_annotations_handler() -> crate::bots::BotHandler {
             Update::filter_message()
                 .chain(filter_command::<AnnotationCommand>())
                 .endpoint(
-                    |message: Message, bot: AutoSend<Bot>, command: AnnotationCommand| async move {
+                    |message: Message, bot: Bot, command: AnnotationCommand| async move {
                         match command {
                             AnnotationCommand::Book { .. } => {
                                 send_annotation_handler(message, bot, command, get_book_annotation)
@@ -332,7 +332,7 @@ pub fn get_annotations_handler() -> crate::bots::BotHandler {
                 .chain(filter_callback_query::<AnnotationCallbackData>())
                 .endpoint(
                     |cq: CallbackQuery,
-                     bot: AutoSend<Bot>,
+                     bot: Bot,
                      callback_data: AnnotationCallbackData| async move {
                         match callback_data {
                             AnnotationCallbackData::Book { .. } => {

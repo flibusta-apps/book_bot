@@ -18,7 +18,7 @@ use teloxide::{
 use super::utils::{generic_get_pagination_keyboard, GetPaginationCallbackData};
 
 #[derive(BotCommands, Clone)]
-#[command(rename = "snake_case")]
+#[command(rename_rule = "snake_case")]
 enum UpdateLogCommand {
     UpdateLog,
 }
@@ -77,7 +77,7 @@ impl GetPaginationCallbackData for UpdateLogCallbackData {
     }
 }
 
-async fn update_log_command(message: Message, bot: AutoSend<Bot>) -> BotHandlerInternal {
+async fn update_log_command(message: Message, bot: Bot) -> BotHandlerInternal {
     let now = Utc::now().date_naive();
     let d3 = now - Duration::days(3);
     let d7 = now - Duration::days(7);
@@ -134,7 +134,7 @@ async fn update_log_command(message: Message, bot: AutoSend<Bot>) -> BotHandlerI
 
 async fn update_log_pagination_handler(
     cq: CallbackQuery,
-    bot: AutoSend<Bot>,
+    bot: Bot,
     update_callback_data: UpdateLogCallbackData,
 ) -> BotHandlerInternal {
     let message = match cq.message {
@@ -223,7 +223,7 @@ pub fn get_update_log_handler() -> crate::bots::BotHandler {
                     .chain(filter_callback_query::<UpdateLogCallbackData>())
                     .endpoint(
                         |cq: CallbackQuery,
-                         bot: AutoSend<Bot>,
+                         bot: Bot,
                          update_log_data: UpdateLogCallbackData| async move {
                             update_log_pagination_handler(cq, bot, update_log_data).await
                         },
