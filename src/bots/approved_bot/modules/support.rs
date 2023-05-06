@@ -3,7 +3,7 @@ use crate::bots::BotHandlerInternal;
 use teloxide::{
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
-    utils::command::BotCommands,
+    utils::command::BotCommands, adaptors::Throttle,
 };
 
 #[derive(BotCommands, Clone)]
