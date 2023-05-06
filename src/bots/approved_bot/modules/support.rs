@@ -3,7 +3,7 @@ use crate::bots::BotHandlerInternal;
 use teloxide::{
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
-    utils::command::BotCommands, adaptors::Throttle,
+    utils::command::BotCommands, adaptors::{Throttle, CacheMe},
 };
 
 #[derive(BotCommands, Clone)]
@@ -12,7 +12,7 @@ enum SupportCommand {
     Support,
 }
 
-pub async fn support_command_handler(message: Message, bot: Throttle<Bot>) -> BotHandlerInternal {
+pub async fn support_command_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     const MESSAGE_TEXT: &str = "
 [Лицензии](https://github.com/flibusta-apps/book_bot/blob/main/LICENSE.md)
 

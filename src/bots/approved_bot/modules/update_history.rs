@@ -12,7 +12,7 @@ use regex::Regex;
 use teloxide::{
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
-    utils::command::BotCommands, adaptors::Throttle,
+    utils::command::BotCommands, adaptors::{Throttle, CacheMe},
 };
 
 use super::utils::{generic_get_pagination_keyboard, GetPaginationCallbackData};
@@ -77,7 +77,7 @@ impl GetPaginationCallbackData for UpdateLogCallbackData {
     }
 }
 
-async fn update_log_command(message: Message, bot: Throttle<Bot>) -> BotHandlerInternal {
+async fn update_log_command(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let now = Utc::now().date_naive();
     let d3 = now - Duration::days(3);
     let d7 = now - Duration::days(7);
@@ -134,7 +134,7 @@ async fn update_log_command(message: Message, bot: Throttle<Bot>) -> BotHandlerI
 
 async fn update_log_pagination_handler(
     cq: CallbackQuery,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     update_callback_data: UpdateLogCallbackData,
 ) -> BotHandlerInternal {
     let message = match cq.message {
@@ -223,7 +223,7 @@ pub fn get_update_log_handler() -> crate::bots::BotHandler {
                     .chain(filter_callback_query::<UpdateLogCallbackData>())
                     .endpoint(
                         |cq: CallbackQuery,
-                         bot: Throttle<Bot>,
+                         bot: CacheMe<Throttle<Bot>>,
                          update_log_data: UpdateLogCallbackData| async move {
                             update_log_pagination_handler(cq, bot, update_log_data).await
                         },

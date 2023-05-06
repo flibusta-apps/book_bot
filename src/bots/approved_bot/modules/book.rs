@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use regex::Regex;
-use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, adaptors::Throttle};
+use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, adaptors::{Throttle, CacheMe}};
 
 use crate::bots::approved_bot::{
     services::{
@@ -114,7 +114,7 @@ impl GetPaginationCallbackData for BookCallbackData {
 
 async fn send_book_handler<T, Fut>(
     message: Message,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     command: BookCommand,
     books_getter: fn(id: u32, page: u32, allowed_langs: Vec<String>) -> Fut,
 ) -> crate::bots::BotHandlerInternal
@@ -196,7 +196,7 @@ where
 
 async fn send_pagination_book_handler<T, Fut>(
     cq: CallbackQuery,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     callback_data: BookCallbackData,
     books_getter: fn(id: u32, page: u32, allowed_langs: Vec<String>) -> Fut,
 ) -> crate::bots::BotHandlerInternal
@@ -295,7 +295,7 @@ pub fn get_book_handler() -> crate::bots::BotHandler {
             Update::filter_message()
                 .chain(filter_command::<BookCommand>())
                 .endpoint(
-                    |message: Message, bot: Throttle<Bot>, command: BookCommand| async move {
+                    |message: Message, bot: CacheMe<Throttle<Bot>>, command: BookCommand| async move {
                         match command {
                             BookCommand::Author { .. } => {
                                 send_book_handler(
@@ -331,7 +331,7 @@ pub fn get_book_handler() -> crate::bots::BotHandler {
         .branch(
             Update::filter_callback_query()
                 .chain(filter_callback_query::<BookCallbackData>())
-                .endpoint(|cq: CallbackQuery, bot: Throttle<Bot>, callback_data: BookCallbackData| async move {
+                .endpoint(|cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>, callback_data: BookCallbackData| async move {
                     match callback_data {
                         BookCallbackData::Author { .. } => send_pagination_book_handler(cq, bot, callback_data, get_author_books).await,
                         BookCallbackData::Translator { .. } => send_pagination_book_handler(cq, bot, callback_data,  get_translator_books).await,

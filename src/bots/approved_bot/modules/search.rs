@@ -4,7 +4,7 @@ use regex::Regex;
 use strum_macros::EnumIter;
 use teloxide::{
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardMarkup}, dispatching::dialogue::GetChatId, adaptors::Throttle,
+    types::{InlineKeyboardButton, InlineKeyboardMarkup}, dispatching::dialogue::GetChatId, adaptors::{Throttle, CacheMe},
 };
 
 use crate::bots::{
@@ -107,7 +107,7 @@ fn get_query(cq: CallbackQuery) -> Option<String> {
 
 async fn generic_search_pagination_handler<T, Fut>(
     cq: CallbackQuery,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     search_data: SearchCallbackData,
     items_getter: fn(query: String, page: u32, allowed_langs: Vec<String>) -> Fut,
 ) -> BotHandlerInternal
@@ -217,7 +217,7 @@ where
     }
 }
 
-pub async fn message_handler(message: Message, bot: Throttle<Bot>) -> BotHandlerInternal {
+pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let message_text = "Что ищем?";
 
     let keyboard = InlineKeyboardMarkup {
@@ -268,7 +268,7 @@ pub fn get_search_handler() -> crate::bots::BotHandler {
     ).branch(
         Update::filter_callback_query()
             .chain(filter_callback_query::<SearchCallbackData>())
-            .endpoint(|cq: CallbackQuery, callback_data: SearchCallbackData, bot: Throttle<Bot>| async move {
+            .endpoint(|cq: CallbackQuery, callback_data: SearchCallbackData, bot: CacheMe<Throttle<Bot>>| async move {
                 match callback_data {
                     SearchCallbackData::SearchBook { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_book).await,
                     SearchCallbackData::SearchAuthors { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_author).await,

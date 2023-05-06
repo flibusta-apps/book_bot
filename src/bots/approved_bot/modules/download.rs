@@ -1,6 +1,6 @@
 use futures::TryStreamExt;
 use regex::Regex;
-use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, types::*, adaptors::Throttle};
+use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, types::*, adaptors::{Throttle, CacheMe}};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 
 use crate::{
@@ -47,7 +47,7 @@ impl CommandParse<Self> for DownloadData {
 
 async fn _send_cached(
     message: &Message,
-    bot: &Throttle<Bot>,
+    bot: &CacheMe<Throttle<Bot>>,
     cached_message: CachedMessage,
 ) -> BotHandlerInternal {
     match bot
@@ -66,7 +66,7 @@ async fn _send_cached(
 
 async fn send_cached_message(
     message: Message,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadData,
 ) -> BotHandlerInternal {
     if let Ok(v) = get_cached_message(&download_data).await {
@@ -83,7 +83,7 @@ async fn send_cached_message(
 
 async fn _send_downloaded_file(
     message: &Message,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     downloaded_data: DownloadFile,
 ) -> BotHandlerInternal {
     let DownloadFile {
@@ -113,7 +113,7 @@ async fn _send_downloaded_file(
 
 async fn send_with_download_from_channel(
     message: Message,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadData,
 ) -> BotHandlerInternal {
     match download_file(&download_data).await {
@@ -127,7 +127,7 @@ async fn send_with_download_from_channel(
 
 async fn download_handler(
     message: Message,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     cache: BotCache,
     download_data: DownloadData,
 ) -> BotHandlerInternal {
@@ -143,7 +143,7 @@ pub fn get_download_hander() -> crate::bots::BotHandler {
             .chain(filter_command::<DownloadData>())
             .endpoint(
                 |message: Message,
-                 bot: Throttle<Bot>,
+                 bot: CacheMe<Throttle<Bot>>,
                  cache: BotCache,
                  download_data: DownloadData| async move {
                     download_handler(message, bot, cache, download_data).await

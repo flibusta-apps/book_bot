@@ -2,7 +2,7 @@ use std::{convert::TryInto, str::FromStr};
 
 use futures::TryStreamExt;
 use regex::Regex;
-use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, types::*, adaptors::Throttle};
+use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, types::*, adaptors::{Throttle, CacheMe}};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 
 use crate::bots::{
@@ -162,7 +162,7 @@ async fn download_image(
 
 pub async fn send_annotation_handler<T, Fut>(
     message: Message,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     command: AnnotationCommand,
     annotation_getter: fn(id: u32) -> Fut,
 ) -> BotHandlerInternal
@@ -248,7 +248,7 @@ where
 
 pub async fn annotation_pagination_handler<T, Fut>(
     cq: CallbackQuery,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     callback_data: AnnotationCallbackData,
     annotation_getter: fn(id: u32) -> Fut,
 ) -> BotHandlerInternal
@@ -308,7 +308,7 @@ pub fn get_annotations_handler() -> crate::bots::BotHandler {
             Update::filter_message()
                 .chain(filter_command::<AnnotationCommand>())
                 .endpoint(
-                    |message: Message, bot: Throttle<Bot>, command: AnnotationCommand| async move {
+                    |message: Message, bot: CacheMe<Throttle<Bot>>, command: AnnotationCommand| async move {
                         match command {
                             AnnotationCommand::Book { .. } => {
                                 send_annotation_handler(message, bot, command, get_book_annotation)
@@ -332,7 +332,7 @@ pub fn get_annotations_handler() -> crate::bots::BotHandler {
                 .chain(filter_callback_query::<AnnotationCallbackData>())
                 .endpoint(
                     |cq: CallbackQuery,
-                     bot: Throttle<Bot>,
+                     bot: CacheMe<Throttle<Bot>>,
                      callback_data: AnnotationCallbackData| async move {
                         match callback_data {
                             AnnotationCallbackData::Book { .. } => {

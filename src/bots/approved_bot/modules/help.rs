@@ -1,6 +1,6 @@
 use crate::bots::BotHandlerInternal;
 
-use teloxide::{prelude::*, utils::command::BotCommands, types::ParseMode, adaptors::Throttle};
+use teloxide::{prelude::*, utils::command::BotCommands, types::ParseMode, adaptors::{Throttle, CacheMe}};
 
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase")]
@@ -10,7 +10,7 @@ enum HelpCommand {
 }
 
 
-pub async fn help_handler(message: Message, bot: Throttle<Bot>) -> BotHandlerInternal {
+pub async fn help_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let name = message
         .from()
         .map(|user| user.first_name.clone())

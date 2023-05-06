@@ -3,7 +3,7 @@ pub mod bots_manager;
 
 use std::error::Error;
 
-use teloxide::{prelude::*, adaptors::Throttle};
+use teloxide::{prelude::*, adaptors::{Throttle, CacheMe}};
 
 pub type BotHandlerInternal = Result<(), Box<dyn Error + Send + Sync>>;
 
@@ -27,7 +27,7 @@ fn ignore_chat_member_update() -> crate::bots::BotHandler {
 }
 
 fn get_pending_handler() -> BotHandler {
-    let handler = |msg: Message, bot: Throttle<Bot>| async move {
+    let handler = |msg: Message, bot: CacheMe<Throttle<Bot>>| async move {
         let message_text = "
         Бот зарегистрирован, но не подтвержден администратором! \
         Подтверждение занимает примерно 12 часов.
@@ -44,7 +44,7 @@ fn get_pending_handler() -> BotHandler {
 }
 
 fn get_blocked_handler() -> BotHandler {
-    let handler = |msg: Message, bot: Throttle<Bot>| async move {
+    let handler = |msg: Message, bot: CacheMe<Throttle<Bot>>| async move {
         let message_text = "Бот заблокирован!";
 
         bot.send_message(msg.chat.id, message_text).await?;

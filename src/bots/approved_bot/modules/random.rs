@@ -2,7 +2,7 @@ use strum_macros::{Display, EnumIter};
 use teloxide::{
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
-    utils::command::BotCommands, adaptors::Throttle,
+    utils::command::BotCommands, adaptors::{Throttle, CacheMe},
 };
 
 use crate::bots::{
@@ -75,7 +75,7 @@ impl std::str::FromStr for RandomCallbackData {
     }
 }
 
-async fn random_handler(message: Message, bot: Throttle<Bot>) -> crate::bots::BotHandlerInternal {
+async fn random_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> crate::bots::BotHandlerInternal {
     const MESSAGE_TEXT: &str = "Что хотим получить?";
 
     let keyboard = InlineKeyboardMarkup {
@@ -122,7 +122,7 @@ async fn random_handler(message: Message, bot: Throttle<Bot>) -> crate::bots::Bo
 
 async fn get_random_item_handler_internal<T>(
     cq: CallbackQuery,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     item: Result<T, Box<dyn std::error::Error + Send + Sync>>,
 ) -> BotHandlerInternal
 where
@@ -176,7 +176,7 @@ where
 
 async fn get_random_item_handler<T, Fut>(
     cq: CallbackQuery,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     item_getter: fn(allowed_langs: Vec<String>) -> Fut,
 ) -> BotHandlerInternal
 where
@@ -190,7 +190,7 @@ where
     get_random_item_handler_internal(cq, bot, item).await
 }
 
-async fn get_genre_metas_handler(cq: CallbackQuery, bot: Throttle<Bot>) -> BotHandlerInternal {
+async fn get_genre_metas_handler(cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let genre_metas = match book_library::get_genre_metas().await {
         Ok(v) => v,
         Err(err) => return Err(err),
@@ -243,7 +243,7 @@ async fn get_genre_metas_handler(cq: CallbackQuery, bot: Throttle<Bot>) -> BotHa
 
 async fn get_genres_by_meta_handler(
     cq: CallbackQuery,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     genre_index: u32,
 ) -> BotHandlerInternal {
     let genre_metas = match book_library::get_genre_metas().await {
@@ -323,7 +323,7 @@ async fn get_genres_by_meta_handler(
 
 async fn get_random_book_by_genre(
     cq: CallbackQuery,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
     genre_id: u32,
 ) -> BotHandlerInternal {
     let allowed_langs = get_user_or_default_lang_codes(cq.from.id).await;
@@ -350,7 +350,7 @@ pub fn get_random_hander() -> crate::bots::BotHandler {
         .branch(
             Update::filter_callback_query()
                 .chain(filter_callback_query::<RandomCallbackData>())
-                .endpoint(|cq: CallbackQuery, callback_data: RandomCallbackData, bot: Throttle<Bot>| async move {
+                .endpoint(|cq: CallbackQuery, callback_data: RandomCallbackData, bot: CacheMe<Throttle<Bot>>| async move {
                     match callback_data {
                         RandomCallbackData::RandomBook => get_random_item_handler(cq, bot, book_library::get_random_book).await,
                         RandomCallbackData::RandomAuthor => get_random_item_handler(cq, bot, book_library::get_random_author).await,

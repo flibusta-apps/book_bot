@@ -1,4 +1,4 @@
-use teloxide::{prelude::*, adaptors::Throttle};
+use teloxide::{prelude::*, adaptors::{Throttle, CacheMe}};
 
 use std::error::Error;
 
@@ -10,7 +10,7 @@ pub mod utils;
 
 pub async fn message_handler(
     message: Message,
-    bot: Throttle<Bot>,
+    bot: CacheMe<Throttle<Bot>>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let from_user = message.from().unwrap();
     let text = message.text().unwrap_or("");
