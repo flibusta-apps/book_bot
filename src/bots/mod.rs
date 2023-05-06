@@ -17,8 +17,14 @@ type BotHandler = Handler<
 type BotCommands = Option<Vec<teloxide::types::BotCommand>>;
 
 fn ignore_channel_messages() -> crate::bots::BotHandler {
-    Update::filter_channel_post()
-        .endpoint(|| async { Ok(()) })
+    dptree::entry()
+        .branch(
+            Update::filter_channel_post()
+                .endpoint(|| async { Ok(()) })
+        ).branch(
+            Update::filter_edited_channel_post()
+                .endpoint(|| async { Ok(()) })
+        )
 }
 
 fn ignore_chat_member_update() -> crate::bots::BotHandler {
