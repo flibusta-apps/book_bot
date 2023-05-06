@@ -2,7 +2,7 @@ pub mod modules;
 pub mod services;
 mod tools;
 
-use teloxide::{prelude::*, types::BotCommand};
+use teloxide::{prelude::*, types::BotCommand, adaptors::{Throttle, CacheMe}};
 
 use crate::bots::approved_bot::services::user_settings::create_or_update_user_settings;
 
@@ -48,15 +48,15 @@ fn update_user_activity_handler() -> BotHandler {
     dptree::entry()
         .branch(
             Update::filter_callback_query().chain(dptree::filter_map_async(
-                |cq: CallbackQuery, me: teloxide::types::Me| async move {
-                    _update_activity(me, cq.from).await
+                |cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>| async move {
+                    _update_activity(bot.get_me().await.unwrap(), cq.from).await
                 },
             )),
         )
         .branch(Update::filter_message().chain(dptree::filter_map_async(
-            |message: Message, me: teloxide::types::Me| async move {
+            |message: Message, bot: CacheMe<Throttle<Bot>>| async move {
                 match message.from() {
-                    Some(user) => _update_activity(me, user.clone()).await,
+                    Some(user) => _update_activity(bot.get_me().await.unwrap(), user.clone()).await,
                     None => None,
                 }
             },
