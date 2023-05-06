@@ -12,7 +12,7 @@ enum SupportCommand {
     Support,
 }
 
-pub async fn support_command_handler(message: Message, bot: Bot) -> BotHandlerInternal {
+pub async fn support_command_handler(message: Message, bot: Throttle<Bot>) -> BotHandlerInternal {
     const MESSAGE_TEXT: &str = "
 [Лицензии](https://github.com/flibusta-apps/book_bot/blob/main/LICENSE.md)
 
