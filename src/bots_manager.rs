@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+use teloxide::adaptors::throttle::Limits;
 use teloxide::types::BotCommand;
 use tokio::time::{sleep, Duration};
 
@@ -74,9 +75,10 @@ impl BotsManager {
 
     async fn start_bot(&mut self, bot_data: &BotData) -> bool {
         let bot = Bot::new(bot_data.token.clone())
-            .set_api_url(config::CONFIG.telegram_bot_api.clone());
+            .set_api_url(config::CONFIG.telegram_bot_api.clone())
+            .throttle(Limits::default());
 
-        let token = bot.token();
+        let token = bot.inner().token();
         let port = self.bot_port_map
             .get(&bot_data.id)
             .unwrap_or_else(|| panic!("Can't get bot port!"));
