@@ -220,14 +220,12 @@ impl BotsManager {
         loop {
             manager.check().await;
 
-            for _ in 1..30 {
-                sleep(Duration::from_millis(50)).await;
-
-                if !running.load(Ordering::SeqCst) {
-                    manager.stop_all().await;
-                    return;
-                }
+            if !running.load(Ordering::SeqCst) {
+                manager.stop_all().await;
+                return;
             }
+
+            sleep(Duration::from_secs(30)).await;
         }
     }
 }
