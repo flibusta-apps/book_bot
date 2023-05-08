@@ -18,7 +18,7 @@ pub async fn message_handler(
     let result = register::register(from_user.id, text).await;
 
     let message_text = match result {
-        register::RegisterStatus::Success { ref username } => format_registered_message(&username),
+        register::RegisterStatus::Success { ref username } => format_registered_message(username),
         register::RegisterStatus::WrongToken => strings::ERROR_MESSAGE.to_string(),
         register::RegisterStatus::RegisterFail => strings::ALREADY_REGISTERED.to_string(),
     };
@@ -30,7 +30,7 @@ pub async fn message_handler(
             .await;
     }
 
-    return Ok(());
+    Ok(())
 }
 
 pub fn get_manager_handler() -> Handler<

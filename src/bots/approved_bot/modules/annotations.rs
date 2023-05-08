@@ -108,7 +108,7 @@ impl AnnotationFormat for BookAnnotation {
     }
 
     fn is_normal_text(&self) -> bool {
-        self.text.replace('\n', "").replace(' ', "").len() != 0
+        !self.text.replace(['\n', ' '], "").is_empty()
     }
 }
 
@@ -116,11 +116,11 @@ impl GetPaginationCallbackData for AnnotationCallbackData {
     fn get_pagination_callback_data(&self, target_page: u32) -> String {
         match self {
             AnnotationCallbackData::Book { id, .. } => AnnotationCallbackData::Book {
-                id: id.clone(),
+                id: *id,
                 page: target_page,
             },
             AnnotationCallbackData::Author { id, .. } => AnnotationCallbackData::Author {
-                id: id.clone(),
+                id: *id,
                 page: target_page,
             },
         }
@@ -138,7 +138,7 @@ impl AnnotationFormat for AuthorAnnotation {
     }
 
     fn is_normal_text(&self) -> bool {
-        self.text.replace("\n", "").replace(' ', "").len() != 0
+        !self.text.replace(['\n', ' '], "").is_empty()
     }
 }
 

@@ -69,8 +69,8 @@ impl GetPaginationCallbackData for UpdateLogCallbackData {
     fn get_pagination_callback_data(&self, target_page: u32) -> String {
         let UpdateLogCallbackData { from, to, .. } = self;
         UpdateLogCallbackData {
-            from: from.clone(),
-            to: to.clone(),
+            from: *from,
+            to: *to,
             page: target_page,
         }
         .to_string()

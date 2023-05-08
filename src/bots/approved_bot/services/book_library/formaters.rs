@@ -26,7 +26,7 @@ impl Format for Book {
             false => "".to_string(),
         };
 
-        let authors = match self.authors.len() != 0 {
+        let authors = match !self.authors.is_empty() {
             true => {
                 let formated_authors = self
                     .authors
@@ -40,7 +40,7 @@ impl Format for Book {
             false => "".to_string(),
         };
 
-        let translators = match self.translators.len() != 0 {
+        let translators = match !self.translators.is_empty() {
             true => {
                 let formated_translators = self
                     .translators
@@ -54,7 +54,7 @@ impl Format for Book {
             false => "".to_string(),
         };
 
-        let sequences = match self.sequences.len() != 0 {
+        let sequences = match !self.sequences.is_empty() {
             true => {
                 let formated_sequences: String = self
                     .sequences
@@ -68,7 +68,7 @@ impl Format for Book {
             false => "".to_string(),
         };
 
-        let genres = match self.genres.len() != 0 {
+        let genres = match !self.genres.is_empty() {
             true => {
                 let formated_genres: String = self
                     .genres
@@ -145,11 +145,11 @@ impl Format for SearchBook {
             false => "".to_string(),
         };
 
-        let authors = if self.authors.len() != 0 {
+        let authors = if !self.authors.is_empty() {
             let formated_authors = self
                     .authors
                     .clone()[..min(5, self.authors.len())]
-                    .into_iter()
+                    .iter()
                     .map(|author| author.format_author())
                     .collect::<Vec<String>>()
                     .join("\n");
@@ -160,11 +160,11 @@ impl Format for SearchBook {
             "".to_string()
         };
 
-        let translators = if self.translators.len() != 0 {
+        let translators = if !self.translators.is_empty() {
             let formated_translators = self
                     .translators
                     .clone()[..min(5, self.translators.len())]
-                    .into_iter()
+                    .iter()
                     .map(|translator| translator.format_translator())
                     .collect::<Vec<String>>()
                     .join("\n");
@@ -227,7 +227,7 @@ impl Format for AuthorBook {
             false => "".to_string(),
         };
 
-        let translators = match self.translators.len() != 0 {
+        let translators = match !self.translators.is_empty() {
             true => {
                 let formated_translators = self
                     .translators
@@ -272,7 +272,7 @@ impl Format for TranslatorBook {
             false => "".to_string(),
         };
 
-        let authors = match self.authors.len() != 0 {
+        let authors = match !self.authors.is_empty() {
             true => {
                 let formated_authors = self
                     .authors

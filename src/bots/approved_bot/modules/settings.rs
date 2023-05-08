@@ -150,7 +150,7 @@ async fn settings_callback_handler(
         }
     };
 
-    if allowed_langs_set.len() == 0 {
+    if allowed_langs_set.is_empty() {
         return match bot
             .answer_callback_query(cq.id)
             .text("Должен быть активен, хотя бы один язык!")

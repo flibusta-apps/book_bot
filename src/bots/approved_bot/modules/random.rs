@@ -71,7 +71,7 @@ impl std::str::FromStr for RandomCallbackData {
             }
         }
 
-        return Err(strum::ParseError::VariantNotFound);
+        Err(strum::ParseError::VariantNotFound)
     }
 }
 
@@ -169,7 +169,7 @@ where
                 Err(int_error) => return Err(Box::new(int_error)),
             }
 
-            return Err(err);
+            Err(err)
         }
     }
 }
@@ -210,7 +210,6 @@ async fn get_genre_metas_handler(cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>)
                                 RandomCallbackData::Genres {
                                     index: index as u32
                                 }
-                                .to_string()
                             )),
                             text: genre_meta,
                         }]
@@ -277,7 +276,7 @@ async fn get_genres_by_meta_handler(
             vec![InlineKeyboardButton {
                 kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(format!(
                     "{}_{}",
-                    RandomCallbackData::RandomBookByGenre { id: genre.id }.to_string(),
+                    RandomCallbackData::RandomBookByGenre { id: genre.id },
                     genre.id
                 )),
                 text: genre.description,

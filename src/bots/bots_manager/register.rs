@@ -68,5 +68,5 @@ pub async fn register(user_id: UserId, message_text: &str) -> RegisterStatus {
         return RegisterStatus::RegisterFail;
     }
 
-    return RegisterStatus::Success { username: bot_username };
+    RegisterStatus::Success { username: bot_username }
 }

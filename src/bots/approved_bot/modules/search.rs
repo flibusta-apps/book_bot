@@ -98,7 +98,7 @@ fn get_query(cq: CallbackQuery) -> Option<String> {
                 .map(|reply_to_message| {
                     reply_to_message
                         .text()
-                        .map(|text| text.replace('/', "").replace('&', "").replace('?', ""))
+                        .map(|text| text.replace(['/', '&', '?'], ""))
                 })
                 .unwrap_or(None)
         })

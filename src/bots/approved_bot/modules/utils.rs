@@ -73,14 +73,14 @@ where
                 &search_data,
             ))
         }
-        if t_page + 1 <= total_pages.into() {
+        if t_page < total_pages.into() {
             one_page_row.push(generic_get_pagination_button(
                 page + 1,
                 PaginationDelta::OnePlus,
                 &search_data,
             ))
         }
-        if one_page_row.len() != 0 {
+        if !one_page_row.is_empty() {
             result.push(one_page_row);
         }
 
@@ -93,14 +93,14 @@ where
                     &search_data,
                 ))
             }
-            if t_page + 1 <= total_pages.into() {
+            if t_page < total_pages.into() {
                 five_page_row.push(generic_get_pagination_button(
                     page + 5,
                     PaginationDelta::FivePlus,
                     &search_data,
                 ))
             }
-            if five_page_row.len() != 0 {
+            if !five_page_row.is_empty() {
                 result.push(five_page_row);
             }
         }
@@ -118,7 +118,7 @@ pub fn split_text_to_chunks(text: &str, width: usize) -> Vec<String> {
 
     let chunks = textwrap::wrap(text, 512)
         .into_iter()
-        .filter(|text| text.replace('\r', "").len() != 0)
+        .filter(|text| !text.replace('\r', "").is_empty())
         .map(|text| text.to_string());
 
     let mut index = 0;

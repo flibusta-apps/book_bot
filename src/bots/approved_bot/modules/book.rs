@@ -96,15 +96,15 @@ impl GetPaginationCallbackData for BookCallbackData {
     fn get_pagination_callback_data(&self, target_page: u32) -> String {
         match self {
             BookCallbackData::Author { id, .. } => BookCallbackData::Author {
-                id: id.clone(),
+                id: *id,
                 page: target_page,
             },
             BookCallbackData::Translator { id, .. } => BookCallbackData::Translator {
-                id: id.clone(),
+                id: *id,
                 page: target_page,
             },
             BookCallbackData::Sequence { id, .. } => BookCallbackData::Sequence {
-                id: id.clone(),
+                id: *id,
                 page: target_page,
             },
         }

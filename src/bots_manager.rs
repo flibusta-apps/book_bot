@@ -157,8 +157,8 @@ impl BotsManager {
 
     async fn update_data(&mut self, bots_data: Vec<BotData>) {
         for bot_data in bots_data.iter() {
-            if !self.bot_port_map.contains_key(&bot_data.id) {
-                self.bot_port_map.insert(bot_data.id, self.next_port);
+            if let std::collections::hash_map::Entry::Vacant(e) = self.bot_port_map.entry(bot_data.id) {
+                e.insert(self.next_port);
                 self.next_port += 1;
             }
 
