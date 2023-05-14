@@ -27,7 +27,7 @@ async fn make_register_request(user_id: UserId, username: &str, token: &str) -> 
         ("token", token),
         ("user", user_id),
         ("username", username),
-        ("status", "pending"),
+        ("status", "approved"),
         ("cache", "no_cache")
     ]);
 
