@@ -107,17 +107,14 @@ async fn random_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> crate:
         ],
     };
 
-    let res = bot
+    bot
         .send_message(message.chat.id, MESSAGE_TEXT)
         .reply_to_message_id(message.id)
         .reply_markup(keyboard)
         .send()
-        .await;
+        .await?;
 
-    match res {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+    Ok(())
 }
 
 async fn get_random_item_handler_internal<T>(
@@ -128,49 +125,42 @@ async fn get_random_item_handler_internal<T>(
 where
     T: Format,
 {
-    match item {
-        Ok(item) => {
-            let item_message = item.format();
-
-            let send_item_handler = tokio::spawn(
-                bot.send_message(cq.from.id, item_message)
-                    .reply_markup(InlineKeyboardMarkup {
-                        inline_keyboard: vec![vec![InlineKeyboardButton {
-                            kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                                cq.data.unwrap(),
-                            ),
-                            text: String::from("Повторить?"),
-                        }]],
-                    })
-                    .send(),
-            );
-
-            cq.message.map(|message| async move {
-                bot.edit_message_reply_markup(message.chat.id, message.id)
-                    .reply_markup(InlineKeyboardMarkup {
-                        inline_keyboard: vec![],
-                    })
-                    .send()
-                    .await
-            });
-
-            match send_item_handler.await {
-                Ok(_) => Ok(()),
-                Err(err) => Err(Box::new(err)),
-            }
-        }
+    let item = match item {
+        Ok(v) => v,
         Err(err) => {
-            match bot
+            bot
                 .send_message(cq.from.id, "Ошибка! Попробуйте позже :(")
                 .send()
-                .await
-            {
-                Ok(_) => (),
-                Err(int_error) => return Err(Box::new(int_error)),
-            }
+                .await?;
+            return Err(err);
+        },
+    };
 
-            Err(err)
-        }
+    let item_message = item.format();
+
+    bot.send_message(cq.from.id, item_message)
+        .reply_markup(InlineKeyboardMarkup {
+            inline_keyboard: vec![vec![InlineKeyboardButton {
+                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
+                    cq.data.unwrap(),
+                ),
+                text: String::from("Повторить?"),
+            }]],
+        })
+        .send()
+        .await?;
+
+    match cq.message {
+        Some(message) => {
+            bot.edit_message_reply_markup(message.chat.id, message.id)
+            .reply_markup(InlineKeyboardMarkup {
+                inline_keyboard: vec![],
+            })
+            .send()
+            .await?;
+            Ok(())
+        },
+        None => Ok(()),
     }
 }
 
@@ -191,53 +181,45 @@ where
 }
 
 async fn get_genre_metas_handler(cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
-    let genre_metas = match book_library::get_genre_metas().await {
-        Ok(v) => v,
-        Err(err) => return Err(err),
+    let genre_metas = book_library::get_genre_metas().await?;
+
+    let message = match cq.message {
+        Some(v) => v,
+        None => {
+            bot
+            .send_message(cq.from.id, "Ошибка! Начните заново :(")
+            .send()
+            .await?;
+        return Ok(());
+        },
     };
 
-    match cq.message {
-        Some(message) => {
-            let keyboard = InlineKeyboardMarkup {
-                inline_keyboard: genre_metas
-                    .clone()
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, genre_meta)| {
-                        vec![InlineKeyboardButton {
-                            kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(format!(
-                                "{}_{index}",
-                                RandomCallbackData::Genres {
-                                    index: index as u32
-                                }
-                            )),
-                            text: genre_meta,
-                        }]
-                    })
-                    .collect(),
-            };
+    let keyboard = InlineKeyboardMarkup {
+        inline_keyboard: genre_metas
+            .clone()
+            .into_iter()
+            .enumerate()
+            .map(|(index, genre_meta)| {
+                vec![InlineKeyboardButton {
+                    kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(format!(
+                        "{}_{index}",
+                        RandomCallbackData::Genres {
+                            index: index as u32
+                        }
+                    )),
+                    text: genre_meta,
+                }]
+            })
+            .collect(),
+    };
 
-            match bot
-                .edit_message_reply_markup(message.chat.id, message.id)
-                .reply_markup(keyboard)
-                .send()
-                .await
-            {
-                Ok(_) => Ok(()),
-                Err(err) => Err(Box::new(err)),
-            }
-        }
-        None => {
-            match bot
-                .send_message(cq.from.id, "Ошибка! Начните заново :(")
-                .send()
-                .await
-            {
-                Ok(_) => Ok(()),
-                Err(err) => Err(Box::new(err)),
-            }
-        }
-    }
+    bot
+        .edit_message_reply_markup(message.chat.id, message.id)
+        .reply_markup(keyboard)
+        .send()
+        .await?;
+
+    Ok(())
 }
 
 async fn get_genres_by_meta_handler(
@@ -245,32 +227,22 @@ async fn get_genres_by_meta_handler(
     bot: CacheMe<Throttle<Bot>>,
     genre_index: u32,
 ) -> BotHandlerInternal {
-    let genre_metas = match book_library::get_genre_metas().await {
-        Ok(v) => v,
-        Err(err) => return Err(err),
-    };
+    let genre_metas = book_library::get_genre_metas().await?;
 
     let meta = match genre_metas.get(genre_index as usize) {
         Some(v) => v,
         None => {
-            return match bot
+            bot
                 .send_message(cq.from.id, "Ошибка! Попробуйте позже :(")
                 .send()
-                .await
-            {
-                Ok(_) => Ok(()),
-                Err(err) => Err(Box::new(err)),
-            }
+                .await?;
+
+            return Ok(());
         }
     };
 
-    let genres = match book_library::get_genres(meta.to_string()).await {
-        Ok(v) => v.items,
-        Err(err) => return Err(err),
-    };
-
-    let mut buttons: Vec<Vec<InlineKeyboardButton>> = genres
-        .clone()
+    let mut buttons: Vec<Vec<InlineKeyboardButton>> = book_library::get_genres(meta.to_string()).await?
+        .items
         .into_iter()
         .map(|genre| {
             vec![InlineKeyboardButton {
@@ -295,29 +267,25 @@ async fn get_genres_by_meta_handler(
         inline_keyboard: buttons,
     };
 
-    match cq.message {
-        Some(message) => {
-            match bot
-                .edit_message_reply_markup(message.chat.id, message.id)
-                .reply_markup(keyboard)
-                .send()
-                .await
-            {
-                Ok(_) => Ok(()),
-                Err(err) => Err(Box::new(err)),
-            }
-        }
+    let message = match cq.message {
+        Some(message) => message,
         None => {
-            match bot
+            bot
                 .send_message(cq.from.id, "Ошибка! Начните заново :(")
                 .send()
-                .await
-            {
-                Ok(_) => Ok(()),
-                Err(err) => Err(Box::new(err)),
-            }
+                .await?;
+
+            return Ok(());
         }
-    }
+    };
+
+    bot
+        .edit_message_reply_markup(message.chat.id, message.id)
+        .reply_markup(keyboard)
+        .send()
+        .await?;
+
+    Ok(())
 }
 
 async fn get_random_book_by_genre(
