@@ -145,19 +145,7 @@ impl AnnotationFormat for AuthorAnnotation {
 async fn download_image(
     file: &String,
 ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
-    let response = reqwest::get(file).await;
-
-    let response = match response {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    let response = match response.error_for_status() {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    Ok(response)
+    Ok(reqwest::get(file).await?.error_for_status()?)
 }
 
 pub async fn send_annotation_handler<T, Fut>(
@@ -175,10 +163,7 @@ where
         AnnotationCommand::Author { id } => id,
     };
 
-    let annotation = match annotation_getter(id).await {
-        Ok(v) => v,
-        Err(err) => return Err(err),
-    };
+    let annotation = annotation_getter(id).await?;
 
     if annotation.get_file().is_none() && !annotation.is_normal_text() {
         return match bot
@@ -202,13 +187,11 @@ where
                 .into_async_read()
                 .compat();
 
-            match bot
-                .send_photo(message.chat.id, InputFile::read(data))
-                .send()
-                .await
-            {
-                Ok(_) => (),
-                Err(err) => log::info!("{}", err),
+            #[allow(unused_must_use)] {
+                bot
+                    .send_photo(message.chat.id, InputFile::read(data))
+                    .send()
+                    .await;
             }
         }
     };
@@ -230,20 +213,18 @@ where
     };
     let keyboard = generic_get_pagination_keyboard(
         1,
-        chunked_text.len().try_into().unwrap(),
+        chunked_text.len().try_into()?,
         callback_data,
         false,
     );
 
-    match bot
+    bot
         .send_message(message.chat.id, current_text)
         .reply_markup(keyboard)
         .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+        .await?;
+
+    Ok(())
 }
 
 pub async fn annotation_pagination_handler<T, Fut>(
@@ -261,10 +242,7 @@ where
         AnnotationCallbackData::Author { id, page } => (id, page),
     };
 
-    let annotation = match annotation_getter(id).await {
-        Ok(v) => v,
-        Err(err) => return Err(err),
-    };
+    let annotation = annotation_getter(id).await?;
 
     let message = match cq.message {
         Some(v) => v,
@@ -272,7 +250,6 @@ where
     };
 
     let request_page: usize = page.try_into().unwrap();
-
 
     let annotation_text = annotation.get_text();
     let chunked_text = split_text_to_chunks(annotation_text, 512);
@@ -286,20 +263,18 @@ where
 
     let keyboard = generic_get_pagination_keyboard(
         page,
-        chunked_text.len().try_into().unwrap(),
+        chunked_text.len().try_into()?,
         callback_data,
         false,
     );
 
-    match bot
+    bot
         .edit_message_text(message.chat.id, message.id, current_text)
         .reply_markup(keyboard)
         .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+        .await?;
+
+    Ok(())
 }
 
 pub fn get_annotations_handler() -> crate::bots::BotHandler {
