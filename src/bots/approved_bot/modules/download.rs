@@ -70,15 +70,14 @@ async fn send_cached_message(
     download_data: DownloadData,
 ) -> BotHandlerInternal {
     if let Ok(v) = get_cached_message(&download_data).await {
-        if let Ok(_) = _send_cached(&message, &bot, v).await {
+        if _send_cached(&message, &bot, v).await.is_ok() {
             return Ok(());
         }
     };
 
-    match send_with_download_from_channel(message, bot, download_data).await {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err),
-    }
+    send_with_download_from_channel(message, bot, download_data).await?;
+
+    Ok(())
 }
 
 async fn _send_downloaded_file(

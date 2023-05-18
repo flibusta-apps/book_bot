@@ -25,19 +25,19 @@ use super::utils::{generic_get_pagination_keyboard, GetPaginationCallbackData};
 
 #[derive(Clone, EnumIter)]
 pub enum SearchCallbackData {
-    SearchBook { page: u32 },
-    SearchAuthors { page: u32 },
-    SearchSequences { page: u32 },
-    SearchTranslators { page: u32 },
+    Book { page: u32 },
+    Authors { page: u32 },
+    Sequences { page: u32 },
+    Translators { page: u32 },
 }
 
 impl ToString for SearchCallbackData {
     fn to_string(&self) -> String {
         match self {
-            SearchCallbackData::SearchBook { page } => format!("sb_{page}"),
-            SearchCallbackData::SearchAuthors { page } => format!("sa_{page}"),
-            SearchCallbackData::SearchSequences { page } => format!("ss_{page}"),
-            SearchCallbackData::SearchTranslators { page } => format!("st_{page}"),
+            SearchCallbackData::Book { page } => format!("sb_{page}"),
+            SearchCallbackData::Authors { page } => format!("sa_{page}"),
+            SearchCallbackData::Sequences { page } => format!("ss_{page}"),
+            SearchCallbackData::Translators { page } => format!("st_{page}"),
         }
     }
 }
@@ -61,10 +61,10 @@ impl FromStr for SearchCallbackData {
         let page: u32 = std::cmp::max(1, page);
 
         match search_type {
-            "sb" => Ok(SearchCallbackData::SearchBook { page }),
-            "sa" => Ok(SearchCallbackData::SearchAuthors { page }),
-            "ss" => Ok(SearchCallbackData::SearchSequences { page }),
-            "st" => Ok(SearchCallbackData::SearchTranslators { page }),
+            "sb" => Ok(SearchCallbackData::Book { page }),
+            "sa" => Ok(SearchCallbackData::Authors { page }),
+            "ss" => Ok(SearchCallbackData::Sequences { page }),
+            "st" => Ok(SearchCallbackData::Translators { page }),
             _ => Err(strum::ParseError::VariantNotFound),
         }
     }
@@ -73,17 +73,17 @@ impl FromStr for SearchCallbackData {
 impl GetPaginationCallbackData for SearchCallbackData {
     fn get_pagination_callback_data(&self, target_page: u32) -> String {
         match self {
-            SearchCallbackData::SearchBook { .. } => {
-                SearchCallbackData::SearchBook { page: target_page }
+            SearchCallbackData::Book { .. } => {
+                SearchCallbackData::Book { page: target_page }
             }
-            SearchCallbackData::SearchAuthors { .. } => {
-                SearchCallbackData::SearchAuthors { page: target_page }
+            SearchCallbackData::Authors { .. } => {
+                SearchCallbackData::Authors { page: target_page }
             }
-            SearchCallbackData::SearchSequences { .. } => {
-                SearchCallbackData::SearchSequences { page: target_page }
+            SearchCallbackData::Sequences { .. } => {
+                SearchCallbackData::Sequences { page: target_page }
             }
-            SearchCallbackData::SearchTranslators { .. } => {
-                SearchCallbackData::SearchTranslators { page: target_page }
+            SearchCallbackData::Translators { .. } => {
+                SearchCallbackData::Translators { page: target_page }
             }
         }
         .to_string()
@@ -139,10 +139,10 @@ where
     let allowed_langs = get_user_or_default_lang_codes(user_id).await;
 
     let page = match search_data {
-        SearchCallbackData::SearchBook { page } => page,
-        SearchCallbackData::SearchAuthors { page } => page,
-        SearchCallbackData::SearchSequences { page } => page,
-        SearchCallbackData::SearchTranslators { page } => page,
+        SearchCallbackData::Book { page } => page,
+        SearchCallbackData::Authors { page } => page,
+        SearchCallbackData::Sequences { page } => page,
+        SearchCallbackData::Translators { page } => page,
     };
 
     let mut items_page = match items_getter(query.clone(), page, allowed_langs.clone()).await {
@@ -162,10 +162,10 @@ where
 
     if items_page.total_pages == 0 {
         let message_text = match search_data {
-            SearchCallbackData::SearchBook { .. } => "Книги не найдены!",
-            SearchCallbackData::SearchAuthors { .. } => "Авторы не найдены!",
-            SearchCallbackData::SearchSequences { .. } => "Серии не найдены!",
-            SearchCallbackData::SearchTranslators { .. } => "Переводчики не найдены!",
+            SearchCallbackData::Book { .. } => "Книги не найдены!",
+            SearchCallbackData::Authors { .. } => "Авторы не найдены!",
+            SearchCallbackData::Sequences { .. } => "Серии не найдены!",
+            SearchCallbackData::Translators { .. } => "Переводчики не найдены!",
         };
 
         return match bot.send_message(chat_id, message_text).send().await {
@@ -225,25 +225,25 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
             vec![InlineKeyboardButton {
                 text: "Книгу".to_string(),
                 kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    (SearchCallbackData::SearchBook { page: 1 }).to_string(),
+                    (SearchCallbackData::Book { page: 1 }).to_string(),
                 ),
             }],
             vec![InlineKeyboardButton {
                 text: "Автора".to_string(),
                 kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    (SearchCallbackData::SearchAuthors { page: 1 }).to_string(),
+                    (SearchCallbackData::Authors { page: 1 }).to_string(),
                 ),
             }],
             vec![InlineKeyboardButton {
                 text: "Серию".to_string(),
                 kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    (SearchCallbackData::SearchSequences { page: 1 }).to_string(),
+                    (SearchCallbackData::Sequences { page: 1 }).to_string(),
                 ),
             }],
             vec![InlineKeyboardButton {
                 text: "Переводчика".to_string(),
                 kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    (SearchCallbackData::SearchTranslators { page: 1 }).to_string(),
+                    (SearchCallbackData::Translators { page: 1 }).to_string(),
                 ),
             }],
         ],
@@ -270,10 +270,10 @@ pub fn get_search_handler() -> crate::bots::BotHandler {
             .chain(filter_callback_query::<SearchCallbackData>())
             .endpoint(|cq: CallbackQuery, callback_data: SearchCallbackData, bot: CacheMe<Throttle<Bot>>| async move {
                 match callback_data {
-                    SearchCallbackData::SearchBook { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_book).await,
-                    SearchCallbackData::SearchAuthors { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_author).await,
-                    SearchCallbackData::SearchSequences { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_sequence).await,
-                    SearchCallbackData::SearchTranslators { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_translator).await,
+                    SearchCallbackData::Book { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_book).await,
+                    SearchCallbackData::Authors { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_author).await,
+                    SearchCallbackData::Sequences { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_sequence).await,
+                    SearchCallbackData::Translators { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_translator).await,
                 }
             })
     )
