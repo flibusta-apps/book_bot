@@ -209,7 +209,7 @@ where
     let (chat_id, message_id) = match (chat_id, message_id) {
         (Some(chat_id), Some(message_id)) => (chat_id, message_id),
         (Some(chat_id), None) => {
-            bot.send_message(chat_id, "Повторите поиск сначала").send().await;
+            bot.send_message(chat_id, "Повторите поиск сначала").send().await?;
             return Ok(());
         },
         _ => {
