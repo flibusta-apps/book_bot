@@ -140,10 +140,7 @@ async fn update_log_pagination_handler(
     let message = match cq.message {
         Some(v) => v,
         None => {
-            #[allow(unused_must_use)] {
-                bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(").send().await;
-            }
-
+            bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(").send().await?;
             return Ok(())
         },
     };
@@ -153,39 +150,27 @@ async fn update_log_pagination_handler(
 
     let header = format!("Обновление каталога ({from} - {to}):\n\n");
 
-    let mut items_page = match get_uploaded_books(
+    let mut items_page = get_uploaded_books(
         update_callback_data.page,
         update_callback_data.from.format("%Y-%m-%d").to_string(),
         update_callback_data.to.format("%Y-%m-%d").to_string(),
     )
-    .await
-    {
-        Ok(v) => v,
-        Err(err) => return Err(err),
-    };
+    .await?;
 
     if items_page.total_pages == 0 {
-        return match bot
+        bot
             .send_message(message.chat.id, "Нет новых книг за этот период.")
             .send()
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(err) => Err(Box::new(err)),
-        };
+            .await?;
+        return Ok(());
     }
 
     if update_callback_data.page > items_page.total_pages {
-        items_page = match get_uploaded_books(
+        items_page = get_uploaded_books(
             items_page.total_pages,
             update_callback_data.from.format("%Y-%m-%d").to_string(),
             update_callback_data.to.format("%Y-%m-%d").to_string(),
-        )
-        .await
-        {
-            Ok(v) => v,
-            Err(err) => return Err(err),
-        };
+        ).await?;
     }
 
     let formated_items = items_page.format_items();
@@ -197,15 +182,13 @@ async fn update_log_pagination_handler(
     let message_text = format!("{header}{formated_items}{footer}");
 
     let keyboard = generic_get_pagination_keyboard(page, total_pages, update_callback_data, true);
-    match bot
+    bot
         .edit_message_text(message.chat.id, message.id, message_text)
         .reply_markup(keyboard)
         .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+        .await?;
+
+    Ok(())
 }
 
 pub fn get_update_log_handler() -> crate::bots::BotHandler {

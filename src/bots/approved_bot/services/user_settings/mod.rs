@@ -24,8 +24,7 @@ pub struct UserSettings {
 pub async fn get_user_settings(
     user_id: UserId,
 ) -> Result<UserSettings, Box<dyn std::error::Error + Send + Sync>> {
-    let client = reqwest::Client::new();
-    let response = client
+    let response = reqwest::Client::new()
         .get(format!(
             "{}/users/{}",
             &config::CONFIG.user_settings_url,
@@ -33,22 +32,10 @@ pub async fn get_user_settings(
         ))
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
-        .await;
+        .await?
+        .error_for_status()?;
 
-    let response = match response {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    let response = match response.error_for_status() {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    match response.json::<UserSettings>().await {
-        Ok(v) => Ok(v),
-        Err(err) => Err(Box::new(err)),
-    }
+    Ok(response.json::<UserSettings>().await?)
 }
 
 pub async fn get_user_or_default_lang_codes(user_id: UserId) -> Vec<String> {
@@ -77,71 +64,37 @@ pub async fn create_or_update_user_settings(
         "allowed_langs": allowed_langs
     });
 
-    let client = reqwest::Client::new();
-    let response = client
+    let response = reqwest::Client::new()
         .post(format!("{}/users/", &config::CONFIG.user_settings_url))
         .body(body.to_string())
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
-        .await;
+        .await?
+        .error_for_status()?;
 
-    let response = match response {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    let response = match response.error_for_status() {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    match response.json::<UserSettings>().await {
-        Ok(v) => Ok(v),
-        Err(err) => Err(Box::new(err)),
-    }
+    Ok(response.json::<UserSettings>().await?)
 }
 
 pub async fn get_langs() -> Result<Vec<Lang>, Box<dyn std::error::Error + Send + Sync>> {
-    let client = reqwest::Client::new();
-    let response = client
+    let response = reqwest::Client::new()
         .get(format!("{}/languages/", &config::CONFIG.user_settings_url))
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
-        .await;
+        .await?
+        .error_for_status()?;
 
-    let response = match response {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    let response = match response.error_for_status() {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    match response.json::<Vec<Lang>>().await {
-        Ok(v) => Ok(v),
-        Err(err) => Err(Box::new(err)),
-    }
+    Ok(response.json::<Vec<Lang>>().await?)
 }
 
 pub async fn update_user_activity(
     user_id: UserId,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let client = reqwest::Client::new();
-    let response = client
+    reqwest::Client::new()
         .post(format!("{}/users/{user_id}/update_activity", &config::CONFIG.user_settings_url))
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
-        .await;
+        .await?
+        .error_for_status()?;
 
-    let response = match response {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    match response.error_for_status() {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+    Ok(())
 }

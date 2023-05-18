@@ -33,17 +33,8 @@ pub async fn get_cached_message(
         ))
         .header("Authorization", &config::CONFIG.cache_server_api_key)
         .send()
-        .await;
-
-    let response = match response {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    let response = match response.error_for_status() {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
+        .await?
+        .error_for_status()?;
 
     if response.status() != StatusCode::OK {
         return Err(Box::new(DownloadError {
@@ -51,10 +42,7 @@ pub async fn get_cached_message(
         }));
     };
 
-    match response.json::<CachedMessage>().await {
-        Ok(v) => Ok(v),
-        Err(err) => Err(Box::new(err)),
-    }
+    Ok(response.json::<CachedMessage>().await?)
 }
 
 pub async fn download_file(
@@ -62,25 +50,15 @@ pub async fn download_file(
 ) -> Result<DownloadFile, Box<dyn std::error::Error + Send + Sync>> {
     let DownloadData { format, id } = download_data;
 
-    let client = reqwest::Client::new();
-    let response = client
+    let response = reqwest::Client::new()
         .get(format!(
             "{}/api/v1/download/{id}/{format}",
             &config::CONFIG.cache_server_url
         ))
         .header("Authorization", &config::CONFIG.cache_server_api_key)
         .send()
-        .await;
-
-    let response = match response {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    let response = match response.error_for_status() {
-        Ok(response) => response,
-        Err(err) => return Err(Box::new(err)),
-    };
+        .await?
+        .error_for_status()?;
 
     if response.status() != StatusCode::OK {
         return Err(Box::new(DownloadError {
@@ -89,8 +67,6 @@ pub async fn download_file(
     };
 
     let headers = response.headers();
-
-    log::info!("{:?}", headers);
 
     let filename =
         std::str::from_utf8(&base64::decode(headers.get("x-filename-b64").unwrap()).unwrap())

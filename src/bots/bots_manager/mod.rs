@@ -23,12 +23,10 @@ pub async fn message_handler(
         register::RegisterStatus::RegisterFail => strings::ALREADY_REGISTERED.to_string(),
     };
 
-    #[allow(unused_must_use)]
-    {
-        bot.send_message(message.chat.id, message_text)
-            .reply_to_message_id(message.id)
-            .await;
-    }
+
+    bot.send_message(message.chat.id, message_text)
+        .reply_to_message_id(message.id)
+        .await?;
 
     Ok(())
 }

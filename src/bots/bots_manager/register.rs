@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use std::collections::HashMap;
 
 use teloxide::prelude::*;
@@ -20,7 +22,7 @@ async fn get_bot_username(token: &str) -> Option<String> {
     }
 }
 
-async fn make_register_request(user_id: UserId, username: &str, token: &str) -> Result<(), ()> {
+async fn make_register_request(user_id: UserId, username: &str, token: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
     let user_id = &user_id.to_string();
 
     let data = HashMap::from([
@@ -31,24 +33,12 @@ async fn make_register_request(user_id: UserId, username: &str, token: &str) -> 
         ("cache", "no_cache")
     ]);
 
-    let client = reqwest::Client::new();
-    let response = client
+    reqwest::Client::new()
         .post(config::CONFIG.manager_url.clone())
         .header("Authorization", config::CONFIG.manager_api_key.clone())
         .json(&data)
         .send()
-        .await;
-
-    let status_code = match response {
-        Ok(v) => v.status(),
-        Err(_) => return Err(()),
-    };
-
-    log::debug!("make_register_request status_code={}", status_code);
-
-    if status_code != 200 {
-        return Err(());
-    }
+        .await?;
 
     Ok(())
 }

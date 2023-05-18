@@ -77,15 +77,13 @@ async fn settings_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotH
         }]],
     };
 
-    match bot
+    bot
         .send_message(message.chat.id, "Настройки")
         .reply_markup(keyboard)
         .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+        .await?;
+
+    Ok(())
 }
 
 fn get_lang_keyboard(all_langs: Vec<Lang>, allowed_langs: HashSet<String>) -> InlineKeyboardMarkup {
@@ -124,10 +122,8 @@ async fn settings_callback_handler(
     let message = match cq.message {
         Some(v) => v,
         None => {
-            #[allow(unused_must_use)] {
-                bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(").send().await;
-            }
-            return Ok(())
+            bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(").send().await?;
+            return Ok(());
         },
     };
 
@@ -151,19 +147,17 @@ async fn settings_callback_handler(
     };
 
     if allowed_langs_set.is_empty() {
-        return match bot
+        bot
             .answer_callback_query(cq.id)
             .text("Должен быть активен, хотя бы один язык!")
             .show_alert(true)
             .send()
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(err) => Err(Box::new(err)),
-        };
+            .await?;
+
+        return Ok(())
     }
 
-    match create_or_update_user_settings(
+    if let Err(err) = create_or_update_user_settings(
         user.id,
         user.last_name.clone().unwrap_or("".to_string()),
         user.first_name.clone(),
@@ -171,38 +165,28 @@ async fn settings_callback_handler(
         me.username.clone().unwrap(),
         allowed_langs_set.clone().into_iter().collect(),
     )
-    .await
-    {
-        Ok(_) => (),
-        Err(err) => {
-            #[allow(unused_must_use)] {
-                bot.send_message(user.id, "Ошибка! Попробуйте заново(").send().await;
-            }
-            return Err(err)
-        },
-    };
+    .await {
+        bot.send_message(user.id, "Ошибка! Попробуйте заново(").send().await?;
+        return Err(err);
+    }
 
     let all_langs = match get_langs().await {
         Ok(v) => v,
         Err(err) => {
-            #[allow(unused_must_use)] {
-                bot.send_message(user.id, "Ошибка! Попробуйте заново(").send().await;
-            }
+            bot.send_message(user.id, "Ошибка! Попробуйте заново(").send().await?;
             return Err(err)
         },
     };
 
     let keyboard = get_lang_keyboard(all_langs, allowed_langs_set);
 
-    match bot
+    bot
         .edit_message_reply_markup(message.chat.id, message.id)
         .reply_markup(keyboard)
         .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+        .await?;
+
+    Ok(())
 }
 
 pub fn get_settings_handler() -> crate::bots::BotHandler {

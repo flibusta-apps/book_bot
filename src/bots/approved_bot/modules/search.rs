@@ -124,15 +124,12 @@ where
         (Some(chat_id), Some(query), Some(message_id)) => {
             (chat_id, query, message_id)
         }
+        (Some(chat_id), _, _) => {
+            bot.send_message(chat_id, "Повторите поиск сначала").send().await?;
+            return Ok(());
+        }
         _ => {
-            return match chat_id {
-                Some(v) => match bot.send_message(v, "Повторите поиск сначала").send().await
-                {
-                    Ok(_) => Ok(()),
-                    Err(err) => Err(Box::new(err)),
-                },
-                None => return Ok(()),
-            }
+            return Ok(());
         }
     };
 
@@ -148,14 +145,11 @@ where
     let mut items_page = match items_getter(query.clone(), page, allowed_langs.clone()).await {
         Ok(v) => v,
         Err(err) => {
-            match bot
+            bot
                 .send_message(chat_id, "Ошибка! Попробуйте позже :(")
                 .send()
-                .await
-            {
-                Ok(_) => (),
-                Err(err) => log::error!("{:?}", err),
-            }
+                .await?;
+
             return Err(err);
         }
     };
@@ -168,10 +162,8 @@ where
             SearchCallbackData::Translators { .. } => "Переводчики не найдены!",
         };
 
-        return match bot.send_message(chat_id, message_text).send().await {
-            Ok(_) => Ok(()),
-            Err(err) => Err(Box::new(err)),
-        };
+        bot.send_message(chat_id, message_text).send().await?;
+        return Ok(());
     };
 
     if page > items_page.total_pages {
@@ -184,14 +176,11 @@ where
         {
             Ok(v) => v,
             Err(err) => {
-                match bot
+                bot
                     .send_message(chat_id, "Ошибка! Попробуйте позже :(")
                     .send()
-                    .await
-                {
-                    Ok(_) => (),
-                    Err(err) => log::error!("{:?}", err),
-                }
+                    .await?;
+
                 return Err(err);
             }
         };
@@ -206,15 +195,13 @@ where
 
     let keyboard = generic_get_pagination_keyboard(page, total_pages, search_data, true);
 
-    match bot
+    bot
         .edit_message_text(chat_id, message_id, message_text)
         .reply_markup(keyboard)
         .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+        .await?;
+
+    Ok(())
 }
 
 pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
@@ -249,16 +236,14 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
         ],
     };
 
-    match bot
+    bot
         .send_message(message.chat.id, message_text)
         .reply_to_message_id(message.id)
         .reply_markup(keyboard)
         .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+        .await?;
+
+    Ok(())
 }
 
 pub fn get_search_handler() -> crate::bots::BotHandler {

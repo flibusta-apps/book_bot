@@ -28,15 +28,13 @@ pub async fn support_command_handler(message: Message, bot: CacheMe<Throttle<Bot
         }]],
     };
 
-    match bot
+    bot
         .send_message(message.chat.id, MESSAGE_TEXT)
         .parse_mode(teloxide::types::ParseMode::MarkdownV2)
         .reply_markup(keyboard)
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+        .await?;
+
+    Ok(())
 }
 
 pub fn get_support_handler() -> crate::bots::BotHandler {

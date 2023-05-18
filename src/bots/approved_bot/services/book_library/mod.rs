@@ -19,28 +19,15 @@ async fn _make_request<T>(
 where
     T: DeserializeOwned,
 {
-    let client = reqwest::Client::new();
-    let response = client
+    let response = reqwest::Client::new()
         .get(format!("{}{}", &config::CONFIG.book_server_url, url))
         .query(&params)
         .header("Authorization", &config::CONFIG.book_server_api_key)
         .send()
-        .await;
+        .await?
+        .error_for_status()?;
 
-    let response = match response {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    let response = match response.error_for_status() {
-        Ok(v) => v,
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    match response.json::<T>().await {
-        Ok(v) => Ok(v),
-        Err(err) => Err(Box::new(err)),
-    }
+    Ok(response.json::<T>().await?)
 }
 
 pub async fn get_random_book_by_genre(
