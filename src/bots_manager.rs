@@ -139,20 +139,21 @@ impl BotsManager {
         true
     }
 
+    async fn sd_token(token: &ShutdownToken) {
+        for _ in 1..10 {
+            if let Ok(v) = token.clone().shutdown() { return v.await }
+
+            sleep(Duration::from_millis(100)).await;
+        }
+    }
+
     async fn stop_bot(&mut self, bot_id: u32) {
         let shutdown_token = match self.bot_shutdown_token_map.remove(&bot_id) {
             Some(v) => v,
             None => return,
         };
 
-        for _ in 1..100 {
-            match shutdown_token.clone().shutdown() {
-                Ok(v) => return v.await,
-                Err(_) => (),
-            };
-
-            sleep(Duration::from_millis(100)).await;
-        }
+        BotsManager::sd_token(&shutdown_token).await;
     }
 
     async fn update_data(&mut self, bots_data: Vec<BotData>) {
@@ -202,15 +203,7 @@ impl BotsManager {
 
     async fn stop_all(&mut self) {
         for token in self.bot_shutdown_token_map.values() {
-            for _ in 1..100 {
-                match token.clone().shutdown() {
-                    Ok(v) => {
-                        v.await;
-                        break;
-                    }
-                    Err(_) => (),
-                }
-            }
+            BotsManager::sd_token(token).await;
         }
     }
 

@@ -100,15 +100,13 @@ async fn _send_downloaded_file(
 
     let document: InputFile = InputFile::read(data).file_name(filename);
 
-    match bot
+    bot
         .send_document(message.chat.id, document)
         .caption(caption)
         .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+        .await?;
+
+    Ok(())
 }
 
 async fn send_with_download_from_channel(

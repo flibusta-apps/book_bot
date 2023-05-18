@@ -49,9 +49,8 @@ pub async fn get_random_book_by_genre(
 ) -> Result<types::Book, Box<dyn std::error::Error + Send + Sync>> {
     let mut params: Vec<(&str, String)> = get_allowed_langs_params(allowed_langs);
 
-    match genre {
-        Some(v) => params.push(("genre", v.to_string())),
-        None => (),
+    if let Some(v) = genre {
+        params.push(("genre", v.to_string()));
     }
 
     _make_request("/api/v1/books/random", params).await

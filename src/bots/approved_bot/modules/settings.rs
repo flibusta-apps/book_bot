@@ -25,17 +25,17 @@ enum SettingsCommand {
 
 #[derive(Clone)]
 enum SettingsCallbackData {
-    LangSettings,
-    LangOn { code: String },
-    LangOff { code: String },
+    Settings,
+    On { code: String },
+    Off { code: String },
 }
 
 impl FromStr for SettingsCallbackData {
     type Err = strum::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == SettingsCallbackData::LangSettings.to_string().as_str() {
-            return Ok(SettingsCallbackData::LangSettings);
+        if s == SettingsCallbackData::Settings.to_string().as_str() {
+            return Ok(SettingsCallbackData::Settings);
         }
 
         let re = Regex::new(r"^lang_(?P<action>(off)|(on))_(?P<code>[a-zA-z]+)$").unwrap();
@@ -50,8 +50,8 @@ impl FromStr for SettingsCallbackData {
         let code = caps["code"].to_string();
 
         match action {
-            "on" => Ok(SettingsCallbackData::LangOn { code }),
-            "off" => Ok(SettingsCallbackData::LangOff { code }),
+            "on" => Ok(SettingsCallbackData::On { code }),
+            "off" => Ok(SettingsCallbackData::Off { code }),
             _ => Err(strum::ParseError::VariantNotFound),
         }
     }
@@ -60,9 +60,9 @@ impl FromStr for SettingsCallbackData {
 impl ToString for SettingsCallbackData {
     fn to_string(&self) -> String {
         match self {
-            SettingsCallbackData::LangSettings => "lang_settings".to_string(),
-            SettingsCallbackData::LangOn { code } => format!("lang_on_{code}"),
-            SettingsCallbackData::LangOff { code } => format!("lang_off_{code}"),
+            SettingsCallbackData::Settings => "lang_settings".to_string(),
+            SettingsCallbackData::On { code } => format!("lang_on_{code}"),
+            SettingsCallbackData::Off { code } => format!("lang_off_{code}"),
         }
     }
 }
@@ -72,7 +72,7 @@ async fn settings_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotH
         inline_keyboard: vec![vec![InlineKeyboardButton {
             text: "Языки".to_string(),
             kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                SettingsCallbackData::LangSettings.to_string(),
+                SettingsCallbackData::Settings.to_string(),
             ),
         }]],
     };
@@ -95,11 +95,11 @@ fn get_lang_keyboard(all_langs: Vec<Lang>, allowed_langs: HashSet<String>) -> In
             let (emoji, callback_data) = match allowed_langs.contains(&lang.code) {
                 true => (
                     "🟢".to_string(),
-                    SettingsCallbackData::LangOff { code: lang.code }.to_string(),
+                    SettingsCallbackData::Off { code: lang.code }.to_string(),
                 ),
                 false => (
                     "🔴".to_string(),
-                    SettingsCallbackData::LangOn { code: lang.code }.to_string(),
+                    SettingsCallbackData::On { code: lang.code }.to_string(),
                 ),
             };
 
@@ -141,11 +141,11 @@ async fn settings_callback_handler(
     });
 
     match callback_data {
-        SettingsCallbackData::LangSettings => (),
-        SettingsCallbackData::LangOn { code } => {
+        SettingsCallbackData::Settings => (),
+        SettingsCallbackData::On { code } => {
             allowed_langs_set.insert(code);
         }
-        SettingsCallbackData::LangOff { code } => {
+        SettingsCallbackData::Off { code } => {
             allowed_langs_set.remove(&code);
         }
     };

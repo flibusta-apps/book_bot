@@ -20,18 +20,17 @@ use super::{ignore_channel_messages, BotCommands, BotHandler, bots_manager::get_
 
 async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) -> Option<()> {
     tokio::spawn(async move {
-        if let Err(_) = update_user_activity(user.id).await {
+        if update_user_activity(user.id).await.is_err() {
             let allowed_langs = get_user_or_default_lang_codes(user.id).await;
 
-            if let Ok(_) = create_or_update_user_settings(
+            if create_or_update_user_settings(
                 user.id,
                 user.last_name.clone().unwrap_or("".to_string()),
                 user.first_name.clone(),
                 user.username.clone().unwrap_or("".to_string()),
                 me.username.clone().unwrap(),
                 allowed_langs,
-            )
-            .await
+            ).await.is_ok()
             {
                 #[allow(unused_must_use)]
                 {
