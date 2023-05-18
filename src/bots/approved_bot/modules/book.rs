@@ -150,23 +150,17 @@ where
     let items_page = match books_getter(id, 1, allowed_langs.clone()).await {
         Ok(v) => v,
         Err(err) => {
-            match bot
+            bot
                 .send_message(chat_id, "Ошибка! Попробуйте позже :(")
                 .send()
-                .await
-            {
-                Ok(_) => (),
-                Err(err) => log::error!("{:?}", err),
-            }
+                .await?;
             return Err(err);
         }
     };
 
     if items_page.total_pages == 0 {
-        return match bot.send_message(chat_id, "Книги не найдены!").send().await {
-            Ok(_) => Ok(()),
-            Err(err) => Err(Box::new(err)),
-        };
+        bot.send_message(chat_id, "Книги не найдены!").send().await?;
+        return Ok(());
     };
 
     let formated_items = items_page.format_items();
@@ -183,15 +177,13 @@ where
 
     let keyboard = generic_get_pagination_keyboard(1, total_pages, callback_data, true);
 
-    match bot
+    bot
         .send_message(chat_id, message_text)
         .reply_markup(keyboard)
         .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+        .await?;
+
+    Ok(())
 }
 
 async fn send_pagination_book_handler<T, Fut>(
@@ -216,15 +208,12 @@ where
 
     let (chat_id, message_id) = match (chat_id, message_id) {
         (Some(chat_id), Some(message_id)) => (chat_id, message_id),
+        (Some(chat_id), None) => {
+            bot.send_message(chat_id, "Повторите поиск сначала").send().await;
+            return Ok(());
+        },
         _ => {
-            return match chat_id {
-                Some(v) => match bot.send_message(v, "Повторите поиск сначала").send().await
-                {
-                    Ok(_) => Ok(()),
-                    Err(err) => Err(Box::new(err)),
-                },
-                None => return Ok(()),
-            }
+            return Ok(());
         }
     };
 
@@ -246,24 +235,19 @@ where
     };
 
     if items_page.total_pages == 0 {
-        return match bot.send_message(chat_id, "Книги не найдены!").send().await {
-            Ok(_) => Ok(()),
-            Err(err) => Err(Box::new(err)),
-        };
+        bot.send_message(chat_id, "Книги не найдены!").send().await?;
+        return Ok(());
     };
 
     if page > items_page.total_pages {
         items_page = match books_getter(id, items_page.total_pages, allowed_langs.clone()).await {
             Ok(v) => v,
             Err(err) => {
-                match bot
+                bot
                     .send_message(chat_id, "Ошибка! Попробуйте позже :(")
                     .send()
-                    .await
-                {
-                    Ok(_) => (),
-                    Err(err) => log::error!("{:?}", err),
-                }
+                    .await?;
+
                 return Err(err);
             }
         };
@@ -278,15 +262,13 @@ where
 
     let keyboard = generic_get_pagination_keyboard(page, total_pages, callback_data, true);
 
-    match bot
+    bot
         .edit_message_text(chat_id, message_id, message_text)
         .reply_markup(keyboard)
         .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
-    }
+        .await?;
+
+    Ok(())
 }
 
 pub fn get_book_handler() -> crate::bots::BotHandler {
