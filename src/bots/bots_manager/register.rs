@@ -54,7 +54,9 @@ pub async fn register(user_id: UserId, message_text: &str) -> RegisterStatus {
 
     let register_request_status = make_register_request(user_id, &bot_username, token).await;
 
-    if register_request_status.is_err() {
+    if let Err(err) = register_request_status {
+        log::error!("Bot reg error: {:?}", err);
+
         return RegisterStatus::RegisterFail;
     }
 
