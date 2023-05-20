@@ -41,7 +41,8 @@ async fn make_register_request(user_id: UserId, username: &str, token: &str) -> 
         .header("Authorization", config::CONFIG.manager_api_key.clone())
         .json(&data)
         .send()
-        .await?;
+        .await?
+        .error_for_status()?;
 
     Ok(())
 }
