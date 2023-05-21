@@ -1,3 +1,5 @@
+pub mod bot_manager_client;
+
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -12,51 +14,20 @@ use teloxide::{
 };
 use url::Url;
 
-use serde::Deserialize;
+use moka::future::Cache;
 
 use crate::config;
+pub use self::bot_manager_client::{BotStatus, BotCache, BotData};
+use self::bot_manager_client::get_bots;
 
-#[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
-pub enum BotStatus {
-    #[serde(rename = "pending")]
-    Pending,
-    #[serde(rename = "approved")]
-    Approved,
-    #[serde(rename = "blocked")]
-    Blocked,
-}
 
-#[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
-pub enum BotCache {
-    #[serde(rename = "original")]
-    Original,
-    #[serde(rename = "no_cache")]
-    NoCache,
-}
-
-#[derive(Deserialize, Debug)]
-struct BotData {
-    id: u32,
-    token: String,
-    status: BotStatus,
-    cache: BotCache,
-}
-
-async fn get_bots() -> Result<Vec<BotData>, reqwest::Error> {
-    let client = reqwest::Client::new();
-    let response = client
-        .get(&config::CONFIG.manager_url)
-        .header("Authorization", &config::CONFIG.manager_api_key)
-        .send()
-        .await;
-
-    match response {
-        Ok(v) => v.json::<Vec<BotData>>().await,
-        Err(err) => Err(err),
-    }
+#[derive(Clone)]
+pub struct AppState {
+    pub user_activity_cache: Cache<UserId, bool>,
 }
 
 pub struct BotsManager {
+    app_state: AppState,
     next_port: u16,
     bot_port_map: HashMap<u32, u16>,
     bot_status_and_cache_map: HashMap<u32, (BotStatus, BotCache)>,
@@ -66,6 +37,12 @@ pub struct BotsManager {
 impl BotsManager {
     pub fn create() -> Self {
         BotsManager {
+            app_state: AppState {
+                user_activity_cache: Cache::builder()
+                    .time_to_live(Duration::from_secs(5 * 60))
+                    .max_capacity(4096)
+                    .build()
+            },
             next_port: 8000,
             bot_port_map: HashMap::new(),
             bot_status_and_cache_map: HashMap::new(),
@@ -120,7 +97,7 @@ impl BotsManager {
         }
 
         let mut dispatcher = Dispatcher::builder(bot, handler)
-            .dependencies(dptree::deps![bot_data.cache])
+            .dependencies(dptree::deps![bot_data.cache, self.app_state.clone()])
             .build();
 
         let shutdown_token = dispatcher.shutdown_token();

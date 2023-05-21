@@ -26,3 +26,4 @@ chrono = "0.4.22"
 dateparser = "0.1.7"
 sentry = "0.27.0"
 lazy_static = "1.4.0"
+moka = { version = "0.11", features = ["future"] }
