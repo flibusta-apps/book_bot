@@ -89,19 +89,19 @@ pub fn get_approved_handler() -> (BotHandler, BotCommands) {
         Some(vec![
             BotCommand {
                 command: String::from("random"),
-                description: String::from("Попытать удачу"),
+                description: String::from("🎲 Попытать удачу"),
             },
             BotCommand {
                 command: String::from("update_log"),
-                description: String::from("Обновления каталога"),
+                description: String::from("🔄 Обновления каталога"),
             },
             BotCommand {
                 command: String::from("settings"),
-                description: String::from("Настройки"),
+                description: String::from("⚙️ Настройки"),
             },
             BotCommand {
-                command: String::from("support"),
-                description: String::from("Поддержать разработчика"),
+                command: String::from("donate"),
+                description: String::from("☕️ Поддержать разработчика"),
             },
         ]),
     )

@@ -2,7 +2,6 @@ use crate::bots::BotHandlerInternal;
 
 use teloxide::{
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardMarkup},
     utils::command::BotCommands, adaptors::{Throttle, CacheMe},
 };
 
@@ -10,28 +9,28 @@ use teloxide::{
 #[command(rename_rule = "lowercase")]
 enum SupportCommand {
     Support,
+    Donate
 }
 
 pub async fn support_command_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
-    const MESSAGE_TEXT: &str = "
-[Лицензии](https://github.com/flibusta-apps/book_bot/blob/main/LICENSE.md)
+    let username = &message.from().unwrap().first_name;
 
-[Исходный код](https://github.com/flibusta-apps)
-    ";
+    let message_text = format!("
+Привет, {:?}!
 
-    let keyboard = InlineKeyboardMarkup {
-        inline_keyboard: vec![vec![InlineKeyboardButton {
-            kind: teloxide::types::InlineKeyboardButtonKind::Url(
-                url::Url::parse("https://kurbezz.github.io/Kurbezz/").unwrap(),
-            ),
-            text: String::from("☕️ Поддержать разработчика"),
-        }]],
-    };
+Этот бот существует благодаря пожертвованиям от наших пользователей.
+Однако, для его дальнейшего развития и поддержки серверов требуются финансовые средства.
+Мы будем очень благодарны за любую сумму пожертвования!
+
+Спасибо!
+
+Тинькофф/Сбербанк:
+`+79534966556`
+", username);
 
     bot
-        .send_message(message.chat.id, MESSAGE_TEXT)
+        .send_message(message.chat.id, message_text)
         .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-        .reply_markup(keyboard)
         .await?;
 
     Ok(())
