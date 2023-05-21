@@ -16,7 +16,7 @@ pub async fn support_command_handler(message: Message, bot: CacheMe<Throttle<Bot
     let username = &message.from().unwrap().first_name;
 
     let message_text = format!("
-Привет, {:?}!
+Привет, {username}!
 
 Этот бот существует благодаря пожертвованиям от наших пользователей.
 Однако, для его дальнейшего развития и поддержки серверов требуются финансовые средства.
@@ -25,12 +25,12 @@ pub async fn support_command_handler(message: Message, bot: CacheMe<Throttle<Bot
 Спасибо!
 
 Тинькофф/Сбербанк:
-`+79534966556`
-", username);
+<pre>+79534966556</pre>
+");
 
     bot
         .send_message(message.chat.id, message_text)
-        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+        .parse_mode(teloxide::types::ParseMode::Html)
         .await?;
 
     Ok(())
