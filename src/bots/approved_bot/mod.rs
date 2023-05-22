@@ -19,8 +19,13 @@ use self::{
 
 use super::{ignore_channel_messages, BotCommands, BotHandler, bots_manager::get_manager_handler, ignore_chat_member_update};
 
-async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User, cache: Cache<UserId, bool>) -> Option<()> {
-    if cache.contains_key(&user.id) {
+async fn _update_activity(
+    me: teloxide::types::Me,
+    user: teloxide::types::User,
+    activity_cache: Cache<UserId, bool>,
+    user_langs_cache: Cache<UserId, Vec<String>>,
+) -> Option<()> {
+    if activity_cache.contains_key(&user.id) {
         return None;
     }
 
@@ -28,7 +33,7 @@ async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User, 
         let mut update_result = update_user_activity(user.id).await;
 
         if update_result.is_err() {
-            let allowed_langs = get_user_or_default_lang_codes(user.id).await;
+            let allowed_langs = get_user_or_default_lang_codes(user.id, user_langs_cache.clone()).await;
 
             if create_or_update_user_settings(
                 user.id,
@@ -37,6 +42,7 @@ async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User, 
                 user.username.clone().unwrap_or("".to_string()),
                 me.username.clone().unwrap(),
                 allowed_langs,
+                user_langs_cache,
             ).await.is_ok()
             {
                 update_result = update_user_activity(user.id).await;
@@ -44,7 +50,7 @@ async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User, 
         }
 
         if update_result.is_ok() {
-            cache.insert(user.id, true).await;
+            activity_cache.insert(user.id, true).await;
         }
     });
 
@@ -56,14 +62,14 @@ fn update_user_activity_handler() -> BotHandler {
         .branch(
             Update::filter_callback_query().chain(dptree::filter_map_async(
                 |cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>, app_state: AppState| async move {
-                    _update_activity(bot.get_me().await.unwrap(), cq.from, app_state.user_activity_cache).await
+                    _update_activity(bot.get_me().await.unwrap(), cq.from, app_state.user_activity_cache, app_state.user_langs_cache).await
                 },
             )),
         )
         .branch(Update::filter_message().chain(dptree::filter_map_async(
             |message: Message, bot: CacheMe<Throttle<Bot>>, app_state: AppState| async move {
                 match message.from() {
-                    Some(user) => _update_activity(bot.get_me().await.unwrap(), user.clone(), app_state.user_activity_cache).await,
+                    Some(user) => _update_activity(bot.get_me().await.unwrap(), user.clone(), app_state.user_activity_cache, app_state.user_langs_cache).await,
                     None => None,
                 }
             },

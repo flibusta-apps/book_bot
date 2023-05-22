@@ -1,3 +1,4 @@
+use moka::future::Cache;
 use serde::Deserialize;
 use serde_json::json;
 use teloxide::types::UserId;
@@ -38,11 +39,22 @@ pub async fn get_user_settings(
     Ok(response.json::<UserSettings>().await?)
 }
 
-pub async fn get_user_or_default_lang_codes(user_id: UserId) -> Vec<String> {
+pub async fn get_user_or_default_lang_codes(
+    user_id: UserId,
+    cache: Cache<UserId, Vec<String>>
+) -> Vec<String> {
+    if let Some(cached_langs) = cache.get(&user_id) {
+        return cached_langs;
+    }
+
     let default_lang_codes = vec![String::from("ru"), String::from("be"), String::from("uk")];
 
     match get_user_settings(user_id).await {
-        Ok(v) => v.allowed_langs.into_iter().map(|lang| lang.code).collect(),
+        Ok(v) => {
+            let langs: Vec<String> = v.allowed_langs.into_iter().map(|lang| lang.code).collect();
+            cache.insert(user_id, langs.clone()).await;
+            langs
+        },
         Err(_) => default_lang_codes,
     }
 }
@@ -54,7 +66,10 @@ pub async fn create_or_update_user_settings(
     username: String,
     source: String,
     allowed_langs: Vec<String>,
+    cache: Cache<UserId, Vec<String>>
 ) -> Result<UserSettings, Box<dyn std::error::Error + Send + Sync>> {
+    cache.invalidate(&user_id).await;
+
     let body = json!({
         "user_id": user_id,
         "last_name": last_name,

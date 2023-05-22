@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use moka::future::Cache;
 use regex::Regex;
 use strum_macros::EnumIter;
 use teloxide::{
@@ -110,6 +111,7 @@ async fn generic_search_pagination_handler<T, Fut>(
     bot: CacheMe<Throttle<Bot>>,
     search_data: SearchCallbackData,
     items_getter: fn(query: String, page: u32, allowed_langs: Vec<String>) -> Fut,
+    user_langs_cache: Cache<UserId, Vec<String>>,
 ) -> BotHandlerInternal
 where
     T: Format + Clone,
@@ -133,7 +135,7 @@ where
         }
     };
 
-    let allowed_langs = get_user_or_default_lang_codes(user_id).await;
+    let allowed_langs = get_user_or_default_lang_codes(user_id, user_langs_cache).await;
 
     let page = match search_data {
         SearchCallbackData::Book { page } => page,
@@ -253,12 +255,12 @@ pub fn get_search_handler() -> crate::bots::BotHandler {
     ).branch(
         Update::filter_callback_query()
             .chain(filter_callback_query::<SearchCallbackData>())
-            .endpoint(|cq: CallbackQuery, callback_data: SearchCallbackData, bot: CacheMe<Throttle<Bot>>| async move {
+            .endpoint(|cq: CallbackQuery, callback_data: SearchCallbackData, bot: CacheMe<Throttle<Bot>>, user_langs_cache: Cache<UserId, Vec<String>>| async move {
                 match callback_data {
-                    SearchCallbackData::Book { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_book).await,
-                    SearchCallbackData::Authors { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_author).await,
-                    SearchCallbackData::Sequences { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_sequence).await,
-                    SearchCallbackData::Translators { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_translator).await,
+                    SearchCallbackData::Book { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_book, user_langs_cache).await,
+                    SearchCallbackData::Authors { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_author, user_langs_cache).await,
+                    SearchCallbackData::Sequences { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_sequence, user_langs_cache).await,
+                    SearchCallbackData::Translators { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_translator, user_langs_cache).await,
                 }
             })
     )

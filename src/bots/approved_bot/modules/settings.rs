@@ -10,6 +10,7 @@ use crate::bots::{
     BotHandlerInternal,
 };
 
+use moka::future::Cache;
 use regex::Regex;
 use teloxide::{
     prelude::*,
@@ -118,6 +119,7 @@ async fn settings_callback_handler(
     bot: CacheMe<Throttle<Bot>>,
     callback_data: SettingsCallbackData,
     me: Me,
+    user_langs_cache: Cache<UserId, Vec<String>>,
 ) -> BotHandlerInternal {
     let message = match cq.message {
         Some(v) => v,
@@ -129,7 +131,7 @@ async fn settings_callback_handler(
 
     let user = cq.from;
 
-    let allowed_langs = get_user_or_default_lang_codes(user.id).await;
+    let allowed_langs = get_user_or_default_lang_codes(user.id, user_langs_cache.clone()).await;
 
     let mut allowed_langs_set: HashSet<String> = HashSet::new();
     allowed_langs.clone().into_iter().for_each(|v| {
@@ -164,6 +166,7 @@ async fn settings_callback_handler(
         user.username.clone().unwrap_or("".to_string()),
         me.username.clone().unwrap(),
         allowed_langs_set.clone().into_iter().collect(),
+        user_langs_cache,
     )
     .await {
         bot.send_message(user.id, "Ошибка! Попробуйте заново(").send().await?;
@@ -205,8 +208,9 @@ pub fn get_settings_handler() -> crate::bots::BotHandler {
                     |cq: CallbackQuery,
                      bot: CacheMe<Throttle<Bot>>,
                      callback_data: SettingsCallbackData,
-                     me: Me| async move {
-                        settings_callback_handler(cq, bot, callback_data, me).await
+                     me: Me,
+                     user_langs_cache: Cache<UserId, Vec<String>>| async move {
+                        settings_callback_handler(cq, bot, callback_data, me, user_langs_cache).await
                     },
                 ),
         )

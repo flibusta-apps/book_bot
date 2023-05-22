@@ -1,3 +1,4 @@
+use moka::future::Cache;
 use strum_macros::{Display, EnumIter};
 use teloxide::{
     prelude::*,
@@ -168,12 +169,13 @@ async fn get_random_item_handler<T, Fut>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
     item_getter: fn(allowed_langs: Vec<String>) -> Fut,
+    user_langs_cache: Cache<UserId, Vec<String>>,
 ) -> BotHandlerInternal
 where
     T: Format,
     Fut: std::future::Future<Output = Result<T, Box<dyn std::error::Error + Send + Sync>>>,
 {
-    let allowed_langs = get_user_or_default_lang_codes(cq.from.id).await;
+    let allowed_langs = get_user_or_default_lang_codes(cq.from.id, user_langs_cache).await;
 
     let item = item_getter(allowed_langs).await;
 
@@ -292,8 +294,9 @@ async fn get_random_book_by_genre(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
     genre_id: u32,
+    user_langs_cache: Cache<UserId, Vec<String>>,
 ) -> BotHandlerInternal {
-    let allowed_langs = get_user_or_default_lang_codes(cq.from.id).await;
+    let allowed_langs = get_user_or_default_lang_codes(cq.from.id, user_langs_cache).await;
 
     let item = book_library::get_random_book_by_genre(allowed_langs, Some(genre_id)).await;
 
@@ -317,14 +320,14 @@ pub fn get_random_hander() -> crate::bots::BotHandler {
         .branch(
             Update::filter_callback_query()
                 .chain(filter_callback_query::<RandomCallbackData>())
-                .endpoint(|cq: CallbackQuery, callback_data: RandomCallbackData, bot: CacheMe<Throttle<Bot>>| async move {
+                .endpoint(|cq: CallbackQuery, callback_data: RandomCallbackData, bot: CacheMe<Throttle<Bot>>, user_langs_cache: Cache<UserId, Vec<String>>| async move {
                     match callback_data {
-                        RandomCallbackData::RandomBook => get_random_item_handler(cq, bot, book_library::get_random_book).await,
-                        RandomCallbackData::RandomAuthor => get_random_item_handler(cq, bot, book_library::get_random_author).await,
-                        RandomCallbackData::RandomSequence => get_random_item_handler(cq, bot, book_library::get_random_sequence).await,
+                        RandomCallbackData::RandomBook => get_random_item_handler(cq, bot, book_library::get_random_book, user_langs_cache).await,
+                        RandomCallbackData::RandomAuthor => get_random_item_handler(cq, bot, book_library::get_random_author, user_langs_cache).await,
+                        RandomCallbackData::RandomSequence => get_random_item_handler(cq, bot, book_library::get_random_sequence, user_langs_cache).await,
                         RandomCallbackData::RandomBookByGenreRequest => get_genre_metas_handler(cq, bot).await,
                         RandomCallbackData::Genres { index } => get_genres_by_meta_handler(cq, bot, index).await,
-                        RandomCallbackData::RandomBookByGenre { id } => get_random_book_by_genre(cq, bot, id).await,
+                        RandomCallbackData::RandomBookByGenre { id } => get_random_book_by_genre(cq, bot, id, user_langs_cache).await,
                     }
                 })
         )

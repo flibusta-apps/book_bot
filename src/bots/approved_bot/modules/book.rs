@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use moka::future::Cache;
 use regex::Regex;
 use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, adaptors::{Throttle, CacheMe}};
 
@@ -117,6 +118,7 @@ async fn send_book_handler<T, Fut>(
     bot: CacheMe<Throttle<Bot>>,
     command: BookCommand,
     books_getter: fn(id: u32, page: u32, allowed_langs: Vec<String>) -> Fut,
+    user_langs_cache: Cache<UserId, Vec<String>>,
 ) -> crate::bots::BotHandlerInternal
 where
     T: Format + Clone,
@@ -145,7 +147,7 @@ where
         }
     };
 
-    let allowed_langs = get_user_or_default_lang_codes(user_id).await;
+    let allowed_langs = get_user_or_default_lang_codes(user_id, user_langs_cache).await;
 
     let items_page = match books_getter(id, 1, allowed_langs.clone()).await {
         Ok(v) => v,
@@ -191,6 +193,7 @@ async fn send_pagination_book_handler<T, Fut>(
     bot: CacheMe<Throttle<Bot>>,
     callback_data: BookCallbackData,
     books_getter: fn(id: u32, page: u32, allowed_langs: Vec<String>) -> Fut,
+    user_langs_cache: Cache<UserId, Vec<String>>,
 ) -> crate::bots::BotHandlerInternal
 where
     T: Format + Clone,
@@ -217,7 +220,7 @@ where
         }
     };
 
-    let allowed_langs = get_user_or_default_lang_codes(user_id).await;
+    let allowed_langs = get_user_or_default_lang_codes(user_id, user_langs_cache).await;
 
     let mut items_page = match books_getter(id, page, allowed_langs.clone()).await {
         Ok(v) => v,
@@ -277,7 +280,7 @@ pub fn get_book_handler() -> crate::bots::BotHandler {
             Update::filter_message()
                 .chain(filter_command::<BookCommand>())
                 .endpoint(
-                    |message: Message, bot: CacheMe<Throttle<Bot>>, command: BookCommand| async move {
+                    |message: Message, bot: CacheMe<Throttle<Bot>>, command: BookCommand, user_langs_cache: Cache<UserId, Vec<String>>| async move {
                         match command {
                             BookCommand::Author { .. } => {
                                 send_book_handler(
@@ -285,6 +288,7 @@ pub fn get_book_handler() -> crate::bots::BotHandler {
                                     bot,
                                     command,
                                     get_author_books,
+                                    user_langs_cache
                                 )
                                 .await
                             }
@@ -294,6 +298,7 @@ pub fn get_book_handler() -> crate::bots::BotHandler {
                                     bot,
                                     command,
                                     get_translator_books,
+                                    user_langs_cache
                                 )
                                 .await
                             }
@@ -303,6 +308,7 @@ pub fn get_book_handler() -> crate::bots::BotHandler {
                                     bot,
                                     command,
                                     get_sequence_books,
+                                    user_langs_cache,
                                 )
                                 .await
                             }
@@ -313,11 +319,11 @@ pub fn get_book_handler() -> crate::bots::BotHandler {
         .branch(
             Update::filter_callback_query()
                 .chain(filter_callback_query::<BookCallbackData>())
-                .endpoint(|cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>, callback_data: BookCallbackData| async move {
+                .endpoint(|cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>, callback_data: BookCallbackData, user_langs_cache: Cache<UserId, Vec<String>>| async move {
                     match callback_data {
-                        BookCallbackData::Author { .. } => send_pagination_book_handler(cq, bot, callback_data, get_author_books).await,
-                        BookCallbackData::Translator { .. } => send_pagination_book_handler(cq, bot, callback_data,  get_translator_books).await,
-                        BookCallbackData::Sequence { .. } => send_pagination_book_handler(cq, bot, callback_data,  get_sequence_books).await,
+                        BookCallbackData::Author { .. } => send_pagination_book_handler(cq, bot, callback_data, get_author_books, user_langs_cache).await,
+                        BookCallbackData::Translator { .. } => send_pagination_book_handler(cq, bot, callback_data,  get_translator_books, user_langs_cache).await,
+                        BookCallbackData::Sequence { .. } => send_pagination_book_handler(cq, bot, callback_data,  get_sequence_books, user_langs_cache).await,
                     }
                 }),
         )
