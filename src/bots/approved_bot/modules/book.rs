@@ -4,7 +4,7 @@ use moka::future::Cache;
 use regex::Regex;
 use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, adaptors::{Throttle, CacheMe}};
 
-use crate::bots::approved_bot::{
+use crate::{bots::approved_bot::{
     services::{
         book_library::{
             formaters::Format, get_author_books, get_sequence_books, get_translator_books,
@@ -13,7 +13,7 @@ use crate::bots::approved_bot::{
         user_settings::get_user_or_default_lang_codes,
     },
     tools::filter_callback_query,
-};
+}, bots_manager::AppState};
 
 use super::utils::{
     filter_command, generic_get_pagination_keyboard, CommandParse, GetPaginationCallbackData,
@@ -319,11 +319,11 @@ pub fn get_book_handler() -> crate::bots::BotHandler {
         .branch(
             Update::filter_callback_query()
                 .chain(filter_callback_query::<BookCallbackData>())
-                .endpoint(|cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>, callback_data: BookCallbackData, user_langs_cache: Cache<UserId, Vec<String>>| async move {
+                .endpoint(|cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>, callback_data: BookCallbackData, app_state: AppState| async move {
                     match callback_data {
-                        BookCallbackData::Author { .. } => send_pagination_book_handler(cq, bot, callback_data, get_author_books, user_langs_cache).await,
-                        BookCallbackData::Translator { .. } => send_pagination_book_handler(cq, bot, callback_data,  get_translator_books, user_langs_cache).await,
-                        BookCallbackData::Sequence { .. } => send_pagination_book_handler(cq, bot, callback_data,  get_sequence_books, user_langs_cache).await,
+                        BookCallbackData::Author { .. } => send_pagination_book_handler(cq, bot, callback_data, get_author_books, app_state.user_langs_cache).await,
+                        BookCallbackData::Translator { .. } => send_pagination_book_handler(cq, bot, callback_data,  get_translator_books, app_state.user_langs_cache).await,
+                        BookCallbackData::Sequence { .. } => send_pagination_book_handler(cq, bot, callback_data,  get_sequence_books, app_state.user_langs_cache).await,
                     }
                 }),
         )
