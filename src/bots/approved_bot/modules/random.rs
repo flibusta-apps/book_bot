@@ -6,7 +6,7 @@ use teloxide::{
     utils::command::BotCommands, adaptors::{Throttle, CacheMe},
 };
 
-use crate::bots::{
+use crate::{bots::{
     approved_bot::{
         services::{
             book_library::{self, formaters::Format},
@@ -15,7 +15,7 @@ use crate::bots::{
         tools::filter_callback_query,
     },
     BotHandlerInternal,
-};
+}, bots_manager::AppState};
 
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase")]
@@ -320,14 +320,14 @@ pub fn get_random_hander() -> crate::bots::BotHandler {
         .branch(
             Update::filter_callback_query()
                 .chain(filter_callback_query::<RandomCallbackData>())
-                .endpoint(|cq: CallbackQuery, callback_data: RandomCallbackData, bot: CacheMe<Throttle<Bot>>, user_langs_cache: Cache<UserId, Vec<String>>| async move {
+                .endpoint(|cq: CallbackQuery, callback_data: RandomCallbackData, bot: CacheMe<Throttle<Bot>>, app_state: AppState| async move {
                     match callback_data {
-                        RandomCallbackData::RandomBook => get_random_item_handler(cq, bot, book_library::get_random_book, user_langs_cache).await,
-                        RandomCallbackData::RandomAuthor => get_random_item_handler(cq, bot, book_library::get_random_author, user_langs_cache).await,
-                        RandomCallbackData::RandomSequence => get_random_item_handler(cq, bot, book_library::get_random_sequence, user_langs_cache).await,
+                        RandomCallbackData::RandomBook => get_random_item_handler(cq, bot, book_library::get_random_book, app_state.user_langs_cache).await,
+                        RandomCallbackData::RandomAuthor => get_random_item_handler(cq, bot, book_library::get_random_author, app_state.user_langs_cache).await,
+                        RandomCallbackData::RandomSequence => get_random_item_handler(cq, bot, book_library::get_random_sequence, app_state.user_langs_cache).await,
                         RandomCallbackData::RandomBookByGenreRequest => get_genre_metas_handler(cq, bot).await,
                         RandomCallbackData::Genres { index } => get_genres_by_meta_handler(cq, bot, index).await,
-                        RandomCallbackData::RandomBookByGenre { id } => get_random_book_by_genre(cq, bot, id, user_langs_cache).await,
+                        RandomCallbackData::RandomBookByGenre { id } => get_random_book_by_genre(cq, bot, id, app_state.user_langs_cache).await,
                     }
                 })
         )
