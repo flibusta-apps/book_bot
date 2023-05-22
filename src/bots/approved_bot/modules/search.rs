@@ -8,7 +8,7 @@ use teloxide::{
     types::{InlineKeyboardButton, InlineKeyboardMarkup}, dispatching::dialogue::GetChatId, adaptors::{Throttle, CacheMe},
 };
 
-use crate::bots::{
+use crate::{bots::{
     approved_bot::{
         services::{
             book_library::{
@@ -20,7 +20,7 @@ use crate::bots::{
         tools::filter_callback_query,
     },
     BotHandlerInternal,
-};
+}, bots_manager::AppState};
 
 use super::utils::{generic_get_pagination_keyboard, GetPaginationCallbackData};
 
@@ -255,12 +255,12 @@ pub fn get_search_handler() -> crate::bots::BotHandler {
     ).branch(
         Update::filter_callback_query()
             .chain(filter_callback_query::<SearchCallbackData>())
-            .endpoint(|cq: CallbackQuery, callback_data: SearchCallbackData, bot: CacheMe<Throttle<Bot>>, user_langs_cache: Cache<UserId, Vec<String>>| async move {
+            .endpoint(|cq: CallbackQuery, callback_data: SearchCallbackData, bot: CacheMe<Throttle<Bot>>, app_state: AppState| async move {
                 match callback_data {
-                    SearchCallbackData::Book { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_book, user_langs_cache).await,
-                    SearchCallbackData::Authors { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_author, user_langs_cache).await,
-                    SearchCallbackData::Sequences { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_sequence, user_langs_cache).await,
-                    SearchCallbackData::Translators { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_translator, user_langs_cache).await,
+                    SearchCallbackData::Book { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_book, app_state.user_langs_cache).await,
+                    SearchCallbackData::Authors { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_author, app_state.user_langs_cache).await,
+                    SearchCallbackData::Sequences { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_sequence, app_state.user_langs_cache).await,
+                    SearchCallbackData::Translators { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_translator, app_state.user_langs_cache).await,
                 }
             })
     )
