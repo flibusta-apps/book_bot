@@ -280,7 +280,7 @@ pub fn get_book_handler() -> crate::bots::BotHandler {
             Update::filter_message()
                 .chain(filter_command::<BookCommand>())
                 .endpoint(
-                    |message: Message, bot: CacheMe<Throttle<Bot>>, command: BookCommand, user_langs_cache: Cache<UserId, Vec<String>>| async move {
+                    |message: Message, bot: CacheMe<Throttle<Bot>>, command: BookCommand, app_state: AppState| async move {
                         match command {
                             BookCommand::Author { .. } => {
                                 send_book_handler(
@@ -288,7 +288,7 @@ pub fn get_book_handler() -> crate::bots::BotHandler {
                                     bot,
                                     command,
                                     get_author_books,
-                                    user_langs_cache
+                                    app_state.user_langs_cache
                                 )
                                 .await
                             }
@@ -298,7 +298,7 @@ pub fn get_book_handler() -> crate::bots::BotHandler {
                                     bot,
                                     command,
                                     get_translator_books,
-                                    user_langs_cache
+                                    app_state.user_langs_cache
                                 )
                                 .await
                             }
@@ -308,7 +308,7 @@ pub fn get_book_handler() -> crate::bots::BotHandler {
                                     bot,
                                     command,
                                     get_sequence_books,
-                                    user_langs_cache,
+                                    app_state.user_langs_cache,
                                 )
                                 .await
                             }
