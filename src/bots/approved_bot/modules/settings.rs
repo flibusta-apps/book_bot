@@ -1,6 +1,6 @@
 use std::{collections::HashSet, str::FromStr, vec};
 
-use crate::bots::{
+use crate::{bots::{
     approved_bot::{
         services::user_settings::{
             create_or_update_user_settings, get_langs, get_user_or_default_lang_codes, Lang,
@@ -8,7 +8,7 @@ use crate::bots::{
         tools::filter_callback_query,
     },
     BotHandlerInternal,
-};
+}, bots_manager::AppState};
 
 use moka::future::Cache;
 use regex::Regex;
@@ -209,8 +209,8 @@ pub fn get_settings_handler() -> crate::bots::BotHandler {
                      bot: CacheMe<Throttle<Bot>>,
                      callback_data: SettingsCallbackData,
                      me: Me,
-                     user_langs_cache: Cache<UserId, Vec<String>>| async move {
-                        settings_callback_handler(cq, bot, callback_data, me, user_langs_cache).await
+                     app_state: AppState| async move {
+                        settings_callback_handler(cq, bot, callback_data, me, app_state.user_langs_cache).await
                     },
                 ),
         )
