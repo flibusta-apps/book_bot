@@ -12,7 +12,9 @@ enum SupportCommand {
     Donate
 }
 
-pub async fn support_command_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
+pub async fn support_command_handler(
+    message: Message,
+    bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let username = &message.from().unwrap().first_name;
 
     let message_text = format!("

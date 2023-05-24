@@ -25,6 +25,7 @@ use self::bot_manager_client::get_bots;
 pub struct AppState {
     pub user_activity_cache: Cache<UserId, bool>,
     pub user_langs_cache: Cache<UserId, Vec<String>>,
+    pub chat_donation_notifications_cache: Cache<ChatId, bool>,
 }
 
 pub struct BotsManager {
@@ -41,12 +42,16 @@ impl BotsManager {
             app_state: AppState {
                 user_activity_cache: Cache::builder()
                     .time_to_live(Duration::from_secs(5 * 60))
-                    .max_capacity(4096)
+                    .max_capacity(16384)
                     .build(),
                 user_langs_cache: Cache::builder()
                     .time_to_live(Duration::from_secs(5 * 60))
-                    .max_capacity(4096)
+                    .max_capacity(16384)
                     .build(),
+                chat_donation_notifications_cache: Cache::builder()
+                    .time_to_live(Duration::from_secs(24 * 60 * 60))
+                    .max_capacity(32768)
+                    .build()
             },
             next_port: 8000,
             bot_port_map: HashMap::new(),

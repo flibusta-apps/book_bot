@@ -1,7 +1,7 @@
 use moka::future::Cache;
 use serde::Deserialize;
 use serde_json::json;
-use teloxide::types::UserId;
+use teloxide::{types::{UserId, ChatId}};
 
 use crate::config;
 
@@ -106,6 +106,28 @@ pub async fn update_user_activity(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     reqwest::Client::new()
         .post(format!("{}/users/{user_id}/update_activity", &config::CONFIG.user_settings_url))
+        .header("Authorization", &config::CONFIG.user_settings_api_key)
+        .send()
+        .await?
+        .error_for_status()?;
+
+    Ok(())
+}
+
+pub async fn is_need_donate_notifications(chat_id: ChatId) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    let response = reqwest::Client::new()
+        .get(format!("{}/donate_notifications/{chat_id}/is_need_send", &config::CONFIG.user_settings_url))
+        .header("Authorization", &config::CONFIG.user_settings_api_key)
+        .send()
+        .await?
+        .error_for_status()?;
+
+    Ok(response.json::<bool>().await?)
+}
+
+pub async fn mark_donate_notification_sended(chat_id: ChatId) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    reqwest::Client::new()
+        .post(format!("{}/donate_notifications/{chat_id}", &config::CONFIG.user_settings_url))
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
         .await?

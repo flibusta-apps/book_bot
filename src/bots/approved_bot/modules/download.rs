@@ -1,17 +1,18 @@
 use futures::TryStreamExt;
+use moka::future::Cache;
 use regex::Regex;
 use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, types::*, adaptors::{Throttle, CacheMe}};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 
 use crate::{
     bots::{
-        approved_bot::services::book_cache::{
+        approved_bot::services::{book_cache::{
             download_file, get_cached_message,
             types::{CachedMessage, DownloadFile},
-        },
+        }, donation_notificatioins::send_donation_notification},
         BotHandlerInternal,
     },
-    bots_manager::BotCache,
+    bots_manager::{BotCache, AppState},
 };
 
 use super::utils::{filter_command, CommandParse};
@@ -68,14 +69,17 @@ async fn send_cached_message(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadData,
+    donation_notification_cache: Cache<ChatId, bool>,
 ) -> BotHandlerInternal {
     if let Ok(v) = get_cached_message(&download_data).await {
         if _send_cached(&message, &bot, v).await.is_ok() {
+            send_donation_notification(bot.clone(), message, donation_notification_cache).await?;
+
             return Ok(());
         }
     };
 
-    send_with_download_from_channel(message, bot, download_data).await?;
+    send_with_download_from_channel(message, bot, download_data, donation_notification_cache).await?;
 
     Ok(())
 }
@@ -84,6 +88,7 @@ async fn _send_downloaded_file(
     message: &Message,
     bot: CacheMe<Throttle<Bot>>,
     downloaded_data: DownloadFile,
+    donation_notification_cache: Cache<ChatId, bool>,
 ) -> BotHandlerInternal {
     let DownloadFile {
         response,
@@ -105,6 +110,8 @@ async fn _send_downloaded_file(
         .send()
         .await?;
 
+    send_donation_notification(bot, message.clone(), donation_notification_cache).await?;
+
     Ok(())
 }
 
@@ -112,12 +119,10 @@ async fn send_with_download_from_channel(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadData,
+    donation_notification_cache: Cache<ChatId, bool>,
 ) -> BotHandlerInternal {
     match download_file(&download_data).await {
-        Ok(v) => match _send_downloaded_file(&message, bot, v).await {
-            Ok(v_2) => Ok(v_2),
-            Err(err) => Err(err),
-        },
+        Ok(v) => Ok(_send_downloaded_file(&message, bot, v, donation_notification_cache).await?),
         Err(err) => Err(err),
     }
 }
@@ -127,10 +132,11 @@ async fn download_handler(
     bot: CacheMe<Throttle<Bot>>,
     cache: BotCache,
     download_data: DownloadData,
+    donation_notification_cache: Cache<ChatId, bool>,
 ) -> BotHandlerInternal {
     match cache {
-        BotCache::Original => send_cached_message(message, bot, download_data).await,
-        BotCache::NoCache => send_with_download_from_channel(message, bot, download_data).await,
+        BotCache::Original => send_cached_message(message, bot, download_data, donation_notification_cache).await,
+        BotCache::NoCache => send_with_download_from_channel(message, bot, download_data, donation_notification_cache).await,
     }
 }
 
@@ -142,8 +148,15 @@ pub fn get_download_hander() -> crate::bots::BotHandler {
                 |message: Message,
                  bot: CacheMe<Throttle<Bot>>,
                  cache: BotCache,
-                 download_data: DownloadData| async move {
-                    download_handler(message, bot, cache, download_data).await
+                 download_data: DownloadData,
+                 app_state: AppState| async move {
+                    download_handler(
+                        message,
+                        bot,
+                        cache,
+                        download_data,
+                        app_state.chat_donation_notifications_cache
+                    ).await
                 },
             ),
     )
