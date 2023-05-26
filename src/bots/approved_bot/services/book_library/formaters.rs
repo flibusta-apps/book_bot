@@ -1,5 +1,7 @@
 use std::cmp::min;
 
+use crate::bots::approved_bot::modules::download::StartDownloadData;
+
 use super::types::{Author, AuthorBook, Book, SearchBook, Sequence, Translator, TranslatorBook};
 
 pub trait Format {
@@ -82,17 +84,8 @@ impl Format for Book {
             false => "".to_string(),
         };
 
-        let links: String = self
-            .available_types
-            .clone()
-            .into_iter()
-            .map(|a_type| {
-                let Book { id, .. } = self;
-                format!("📥 {a_type}: /d_{a_type}_{id}")
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-        let download_links = format!("Скачать:\n{links}");
+        let download_command = (StartDownloadData { id: self.id }).to_string();
+        let download_links = format!("Скачать:\n📥{download_command}");
 
         format!("{book_title}{pages_count}{annotations}{authors}{translators}{sequences}{genres}{download_links}")
     }
@@ -175,17 +168,8 @@ impl Format for SearchBook {
             "".to_string()
         };
 
-        let links: String = self
-            .available_types
-            .clone()
-            .into_iter()
-            .map(|a_type| {
-                let SearchBook { id, .. } = self;
-                format!("📥 {a_type}: /d_{a_type}_{id}")
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-        let download_links = format!("Скачать:\n{links}");
+        let download_command = (StartDownloadData { id: self.id }).to_string();
+        let download_links = format!("Скачать:\n📥{download_command}");
 
         format!("{book_title}{annotations}{authors}{translators}{download_links}")
     }
@@ -241,17 +225,8 @@ impl Format for AuthorBook {
             false => "".to_string(),
         };
 
-        let links: String = self
-            .available_types
-            .clone()
-            .into_iter()
-            .map(|a_type| {
-                let AuthorBook { id, .. } = self;
-                format!("📥 {a_type}: /d_{a_type}_{id}")
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-        let download_links = format!("Скачать:\n{links}");
+        let download_command = (StartDownloadData { id: self.id }).to_string();
+        let download_links = format!("Скачать:\n📥{download_command}");
 
         format!("{book_title}{annotations}{translators}{download_links}")
     }
@@ -286,17 +261,8 @@ impl Format for TranslatorBook {
             false => "".to_string(),
         };
 
-        let links: String = self
-            .available_types
-            .clone()
-            .into_iter()
-            .map(|a_type| {
-                let TranslatorBook { id, .. } = self;
-                format!("📥 {a_type}: /d_{a_type}_{id}")
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-        let download_links = format!("Скачать:\n{links}");
+        let download_command = (StartDownloadData { id: self.id }).to_string();
+        let download_links = format!("Скачать:\n📥{download_command}");
 
         format!("{book_title}{annotations}{authors}{download_links}")
     }

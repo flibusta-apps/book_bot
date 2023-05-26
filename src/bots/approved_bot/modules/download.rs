@@ -67,6 +67,13 @@ pub struct StartDownloadData {
     pub id: u32,
 }
 
+impl ToString for StartDownloadData {
+    fn to_string(&self) -> String {
+        let id = self.id;
+        format!("/d_{id}")
+    }
+}
+
 impl CommandParse<Self> for StartDownloadData {
     fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
         let re = Regex::new(r"^/d_(?P<book_id>\d+)$").unwrap();
