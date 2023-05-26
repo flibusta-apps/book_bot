@@ -77,7 +77,7 @@ pub async fn get_genres(
     _make_request("/api/v1/genres/", params).await
 }
 
-const PAGE_SIZE: &str = "7";
+const PAGE_SIZE: &str = "5";
 
 pub async fn search_book(
     query: String,
