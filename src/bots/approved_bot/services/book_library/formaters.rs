@@ -164,7 +164,7 @@ impl Format for SearchBook {
                     .join("\n");
 
                 let post_fix = if self.sequences.len() > 5 { "\nи др." } else { "" };
-                format!("Серии:\n{formated_sequences}{post_fix}\n\n")
+                format!("Серии:\n{formated_sequences}{post_fix}\n")
             }
             false => "".to_string(),
         };
@@ -252,7 +252,7 @@ impl Format for AuthorBook {
                     .join("\n");
 
                 let post_fix = if self.sequences.len() > 5 { "\nи др." } else { "" };
-                format!("Серии:\n{formated_sequences}{post_fix}\n\n")
+                format!("Серии:\n{formated_sequences}{post_fix}\n")
             }
             false => "".to_string(),
         };
@@ -304,7 +304,7 @@ impl Format for TranslatorBook {
                     .join("\n");
 
                 let post_fix = if self.sequences.len() > 5 { "\nи др." } else { "" };
-                format!("Серии:\n{formated_sequences}{post_fix}\n\n")
+                format!("Серии:\n{formated_sequences}{post_fix}\n")
             }
             false => "".to_string(),
         };
