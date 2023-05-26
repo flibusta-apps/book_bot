@@ -139,6 +139,7 @@ pub struct SearchBook {
     pub annotation_exists: bool,
     pub authors: Vec<BookAuthor>,
     pub translators: Vec<BookAuthor>,
+    pub sequences: Vec<Sequence>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

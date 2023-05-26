@@ -69,7 +69,7 @@ pub struct StartDownloadData {
 
 impl ToString for StartDownloadData {
     fn to_string(&self) -> String {
-        let id = self.id;
+        let StartDownloadData { id } = self;
         format!("/d_{id}")
     }
 }
