@@ -241,10 +241,26 @@ impl Format for AuthorBook {
             false => "".to_string(),
         };
 
+        let sequences = match !self.sequences.is_empty() {
+            true => {
+                let formated_sequences: String = self
+                    .sequences
+                    .clone()[..min(5, self.sequences.len())]
+                    .into_iter()
+                    .map(|sequence| sequence.format())
+                    .collect::<Vec<String>>()
+                    .join("\n");
+
+                let post_fix = if self.sequences.len() > 5 { "\nи др." } else { "" };
+                format!("Серии:\n{formated_sequences}{post_fix}\n\n")
+            }
+            false => "".to_string(),
+        };
+
         let download_command = (StartDownloadData { id: self.id }).to_string();
         let download_links = format!("Скачать:\n📥{download_command}");
 
-        format!("{book_title}{annotations}{translators}{download_links}")
+        format!("{book_title}{annotations}{translators}{sequences}{download_links}")
     }
 }
 
@@ -277,9 +293,25 @@ impl Format for TranslatorBook {
             false => "".to_string(),
         };
 
+        let sequences = match !self.sequences.is_empty() {
+            true => {
+                let formated_sequences: String = self
+                    .sequences
+                    .clone()[..min(5, self.sequences.len())]
+                    .into_iter()
+                    .map(|sequence| sequence.format())
+                    .collect::<Vec<String>>()
+                    .join("\n");
+
+                let post_fix = if self.sequences.len() > 5 { "\nи др." } else { "" };
+                format!("Серии:\n{formated_sequences}{post_fix}\n\n")
+            }
+            false => "".to_string(),
+        };
+
         let download_command = (StartDownloadData { id: self.id }).to_string();
         let download_links = format!("Скачать:\n📥{download_command}");
 
-        format!("{book_title}{annotations}{authors}{download_links}")
+        format!("{book_title}{annotations}{authors}{sequences}{download_links}")
     }
 }
