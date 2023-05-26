@@ -30,6 +30,12 @@ where
     Ok(response.json::<T>().await?)
 }
 
+pub async fn get_book(
+    id: u32,
+) -> Result<types::Book , Box<dyn std::error::Error + Send + Sync>> {
+    _make_request(&format!("/api/v1/books/{id}"), vec![]).await
+}
+
 pub async fn get_random_book_by_genre(
     allowed_langs: Vec<String>,
     genre: Option<u32>,

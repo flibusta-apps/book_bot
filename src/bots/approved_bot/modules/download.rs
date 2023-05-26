@@ -1,18 +1,34 @@
+use std::str::FromStr;
+
 use futures::TryStreamExt;
 use moka::future::Cache;
 use regex::Regex;
-use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, types::*, adaptors::{Throttle, CacheMe}};
+use strum_macros::EnumIter;
+use teloxide::{
+    adaptors::{CacheMe, Throttle},
+    dispatching::UpdateFilterExt,
+    dptree,
+    prelude::*,
+    types::*,
+};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 
 use crate::{
     bots::{
-        approved_bot::services::{book_cache::{
-            download_file, get_cached_message,
-            types::{CachedMessage, DownloadFile},
-        }, donation_notificatioins::send_donation_notification},
+        approved_bot::{
+            services::{
+                book_cache::{
+                    download_file, get_cached_message,
+                    types::{CachedMessage, DownloadFile},
+                },
+                book_library::get_book,
+                donation_notificatioins::send_donation_notification,
+            },
+            tools::filter_callback_query,
+        },
         BotHandlerInternal,
     },
-    bots_manager::{BotCache, AppState},
+    bots_manager::{AppState, BotCache},
 };
 
 use super::utils::{filter_command, CommandParse};
@@ -46,6 +62,64 @@ impl CommandParse<Self> for DownloadData {
     }
 }
 
+#[derive(Clone)]
+pub struct StartDownloadData {
+    pub id: u32,
+}
+
+impl CommandParse<Self> for StartDownloadData {
+    fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
+        let re = Regex::new(r"^/d_(?P<book_id>\d+)$").unwrap();
+
+        let full_bot_name = format!("@{bot_name}");
+        let after_replace = s.replace(&full_bot_name, "");
+
+        let caps = re.captures(&after_replace);
+        let caps = match caps {
+            Some(v) => v,
+            None => return Err(strum::ParseError::VariantNotFound),
+        };
+
+        let book_id: u32 = caps["book_id"].parse().unwrap();
+
+        Ok(StartDownloadData { id: book_id })
+    }
+}
+
+#[derive(Clone, EnumIter)]
+pub enum DownloadQueryData {
+    DownloadData { book_id: u32, file_type: String },
+}
+
+impl ToString for DownloadQueryData {
+    fn to_string(&self) -> String {
+        match self {
+            DownloadQueryData::DownloadData { book_id, file_type } => {
+                format!("d_{book_id}_{file_type}")
+            }
+        }
+    }
+}
+
+impl FromStr for DownloadQueryData {
+    type Err = strum::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let re = Regex::new(r"^d_(?P<book_id>\d+)_(?P<file_type>\w+)$").unwrap();
+
+        let caps = re.captures(s);
+        let caps = match caps {
+            Some(v) => v,
+            None => return Err(strum::ParseError::VariantNotFound),
+        };
+
+        let book_id: u32 = caps["book_id"].parse().unwrap();
+        let file_type: String = caps["file_type"].to_string();
+
+        Ok(DownloadQueryData::DownloadData { book_id, file_type })
+    }
+}
+
 async fn _send_cached(
     message: &Message,
     bot: &CacheMe<Throttle<Bot>>,
@@ -70,16 +144,22 @@ async fn send_cached_message(
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadData,
     donation_notification_cache: Cache<ChatId, bool>,
+    need_delete_message: bool,
 ) -> BotHandlerInternal {
     if let Ok(v) = get_cached_message(&download_data).await {
         if _send_cached(&message, &bot, v).await.is_ok() {
+            if need_delete_message {
+                bot.delete_message(message.chat.id, message.id).await?;
+            }
+
             send_donation_notification(bot.clone(), message, donation_notification_cache).await?;
 
             return Ok(());
         }
     };
 
-    send_with_download_from_channel(message, bot, download_data, donation_notification_cache).await?;
+    send_with_download_from_channel(message, bot, download_data, donation_notification_cache, need_delete_message)
+        .await?;
 
     Ok(())
 }
@@ -104,8 +184,7 @@ async fn _send_downloaded_file(
 
     let document: InputFile = InputFile::read(data).file_name(filename);
 
-    bot
-        .send_document(message.chat.id, document)
+    bot.send_document(message.chat.id, document)
         .caption(caption)
         .send()
         .await?;
@@ -120,9 +199,18 @@ async fn send_with_download_from_channel(
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadData,
     donation_notification_cache: Cache<ChatId, bool>,
+    need_delete_message: bool,
 ) -> BotHandlerInternal {
     match download_file(&download_data).await {
-        Ok(v) => Ok(_send_downloaded_file(&message, bot, v, donation_notification_cache).await?),
+        Ok(v) => {
+            _send_downloaded_file(&message, bot.clone(), v, donation_notification_cache).await?;
+
+            if need_delete_message {
+                bot.delete_message(message.chat.id, message.id).await?;
+            }
+
+            Ok(())
+        },
         Err(err) => Err(err),
     }
 }
@@ -133,31 +221,136 @@ async fn download_handler(
     cache: BotCache,
     download_data: DownloadData,
     donation_notification_cache: Cache<ChatId, bool>,
+    need_delete_message: bool,
 ) -> BotHandlerInternal {
     match cache {
-        BotCache::Original => send_cached_message(message, bot, download_data, donation_notification_cache).await,
-        BotCache::NoCache => send_with_download_from_channel(message, bot, download_data, donation_notification_cache).await,
+        BotCache::Original => {
+            send_cached_message(
+                message,
+                bot,
+                download_data,
+                donation_notification_cache,
+                need_delete_message,
+            )
+            .await
+        }
+        BotCache::NoCache => {
+            send_with_download_from_channel(
+                message,
+                bot,
+                download_data,
+                donation_notification_cache,
+                need_delete_message,
+            )
+            .await
+        }
     }
 }
 
+async fn get_download_keyboard_handler(
+    message: Message,
+    bot: CacheMe<Throttle<Bot>>,
+    download_data: StartDownloadData,
+) -> BotHandlerInternal {
+    let book = match get_book(download_data.id).await {
+        Ok(v) => v,
+        Err(err) => {
+            bot.send_message(message.chat.id, "Ошибка! Попробуйте позже :(")
+                .send()
+                .await?;
+
+            return Err(err);
+        }
+    };
+
+    let keyboard = InlineKeyboardMarkup {
+        inline_keyboard: book
+            .available_types
+            .into_iter()
+            .map(|item| -> Vec<InlineKeyboardButton> {
+                vec![InlineKeyboardButton {
+                    text: item.clone(),
+                    kind: InlineKeyboardButtonKind::CallbackData(
+                        (DownloadQueryData::DownloadData {
+                            book_id: book.id,
+                            file_type: item,
+                        })
+                        .to_string(),
+                    ),
+                }]
+            })
+            .collect(),
+    };
+
+    bot.send_message(message.chat.id, "Выбери формат:")
+        .reply_markup(keyboard)
+        .reply_to_message_id(message.id)
+        .send()
+        .await?;
+
+    Ok(())
+}
+
 pub fn get_download_hander() -> crate::bots::BotHandler {
-    dptree::entry().branch(
-        Update::filter_message()
-            .chain(filter_command::<DownloadData>())
-            .endpoint(
-                |message: Message,
-                 bot: CacheMe<Throttle<Bot>>,
-                 cache: BotCache,
-                 download_data: DownloadData,
-                 app_state: AppState| async move {
-                    download_handler(
-                        message,
-                        bot,
-                        cache,
-                        download_data,
-                        app_state.chat_donation_notifications_cache
-                    ).await
-                },
-            ),
-    )
+    dptree::entry()
+        .branch(
+            Update::filter_message()
+                .chain(filter_command::<DownloadData>())
+                .endpoint(
+                    |message: Message,
+                     bot: CacheMe<Throttle<Bot>>,
+                     cache: BotCache,
+                     download_data: DownloadData,
+                     app_state: AppState| async move {
+                        download_handler(
+                            message,
+                            bot,
+                            cache,
+                            download_data,
+                            app_state.chat_donation_notifications_cache,
+                            false,
+                        )
+                        .await
+                    },
+                ),
+        )
+        .branch(
+            Update::filter_message()
+                .chain(filter_command::<StartDownloadData>())
+                .endpoint(
+                    |message: Message,
+                     bot: CacheMe<Throttle<Bot>>,
+                     download_data: StartDownloadData| async move {
+                        get_download_keyboard_handler(message, bot, download_data).await
+                    },
+                ),
+        )
+        .branch(
+            Update::filter_callback_query()
+                .chain(filter_callback_query::<DownloadQueryData>())
+                .endpoint(
+                    |cq: CallbackQuery,
+                     download_query_data: DownloadQueryData,
+                     bot: CacheMe<Throttle<Bot>>,
+                     cache: BotCache,
+                     app_state: AppState| async move {
+                        match download_query_data {
+                            DownloadQueryData::DownloadData { book_id, file_type } => {
+                                download_handler(
+                                    cq.message.unwrap(),
+                                    bot,
+                                    cache,
+                                    DownloadData {
+                                        format: file_type,
+                                        id: book_id,
+                                    },
+                                    app_state.chat_donation_notifications_cache,
+                                    true,
+                                )
+                                .await
+                            }
+                        }
+                    },
+                ),
+        )
 }
