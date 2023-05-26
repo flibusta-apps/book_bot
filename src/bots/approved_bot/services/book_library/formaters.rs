@@ -116,10 +116,10 @@ impl Format for Sequence {
     fn format(&self) -> String {
         let Sequence { id, name, .. } = self;
 
-        let title = format!("📚 {name}\n");
+        let title = format!("📚 {name}");
         let link = format!("/s_{id}");
 
-        format!("{title}{link}")
+        format!("{title} {link}\n")
     }
 }
 
