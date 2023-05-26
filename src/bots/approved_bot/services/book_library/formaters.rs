@@ -119,7 +119,7 @@ impl Format for Sequence {
         let title = format!("📚 {name}");
         let link = format!("/s_{id}");
 
-        format!("{title} {link}\n")
+        format!("{title} {link}")
     }
 }
 
