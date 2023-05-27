@@ -161,6 +161,78 @@ impl Format for Translator {
     }
 }
 
+struct FormatVectorsCounts {
+    authors: usize,
+    translators: usize,
+    sequences: usize,
+    genres: usize,
+}
+
+impl FormatVectorsCounts {
+    fn sum(&self) -> usize {
+        self.authors + self.translators + self.sequences + self.genres
+    }
+
+    fn can_sub(&self) -> bool {
+        self.sum() > 0
+    }
+
+    fn sub(self) -> Self {
+        let Self {mut authors, mut translators, mut sequences, mut genres} = self;
+
+        if translators > 0 {
+            translators -= 1;
+
+            return Self {
+                authors,
+                translators,
+                sequences,
+                genres
+            }
+        }
+
+        if genres > 0 {
+            genres -= 1;
+
+            return Self {
+                authors,
+                translators,
+                sequences,
+                genres
+            }
+        }
+
+        if sequences > 0 {
+            sequences -= 1;
+
+            return Self {
+                authors,
+                translators,
+                sequences,
+                genres
+            }
+        }
+
+        if authors > 0 {
+            authors -= 1;
+
+            return Self {
+                authors,
+                translators,
+                sequences,
+                genres
+            }
+        }
+
+        Self {
+            authors,
+            translators,
+            sequences,
+            genres
+        }
+    }
+}
+
 struct FormatVectorsResult {
     authors: String,
     translators: String,
@@ -168,14 +240,42 @@ struct FormatVectorsResult {
     genres: String,
 }
 
+impl FormatVectorsResult {
+    fn len(&self) -> usize {
+        self.authors.len() + self.translators.len() + self.sequences.len() + self.genres.len()
+    }
+}
+
 impl Book {
     fn format_vectors(&self, max_size: u32) -> FormatVectorsResult {
-        FormatVectorsResult {
-            authors: format_authors(self.authors.clone(), self.authors.len()),
-            translators: format_translators(self.translators.clone(), self.translators.len()),
-            sequences: format_sequences(self.sequences.clone(), self.sequences.len()),
-            genres: format_genres(self.genres.clone(), self.genres.len()),
+        let max_size_u: usize = max_size.try_into().unwrap();
+
+        let mut counts = FormatVectorsCounts {
+            authors: self.authors.len(),
+            translators: self.translators.len(),
+            sequences: self.sequences.len(),
+            genres: self.genres.len()
+        };
+
+        let mut result = FormatVectorsResult {
+            authors: format_authors(self.authors.clone(), counts.authors),
+            translators: format_translators(self.translators.clone(), counts.translators),
+            sequences: format_sequences(self.sequences.clone(), counts.sequences),
+            genres: format_genres(self.genres.clone(), counts.genres),
+        };
+
+        while result.len() > max_size_u && counts.can_sub() {
+            counts = counts.sub();
+
+            result = FormatVectorsResult {
+                authors: format_authors(self.authors.clone(), counts.authors),
+                translators: format_translators(self.translators.clone(), counts.translators),
+                sequences: format_sequences(self.sequences.clone(), counts.sequences),
+                genres: format_genres(self.genres.clone(), counts.genres),
+            };
         }
+
+        result
     }
 }
 
