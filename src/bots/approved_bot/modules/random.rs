@@ -137,7 +137,7 @@ where
         },
     };
 
-    let item_message = item.format();
+    let item_message = item.format(4096);
 
     bot.send_message(cq.from.id, item_message)
         .reply_markup(InlineKeyboardMarkup {

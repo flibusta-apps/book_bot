@@ -173,11 +173,11 @@ async fn update_log_pagination_handler(
         ).await?;
     }
 
-    let formated_items = items_page.format_items();
-
     let page = update_callback_data.page;
     let total_pages = items_page.total_pages;
     let footer = format!("\n\nСтраница {page}/{total_pages}");
+
+    let formated_items = items_page.format_items((4096 - footer.len()).try_into().unwrap());
 
     let message_text = format!("{header}{formated_items}{footer}");
 

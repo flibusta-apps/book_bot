@@ -2,36 +2,13 @@ use serde::Deserialize;
 
 use super::formaters::Format;
 
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct BookAuthor {
-    id: u32,
-    first_name: String,
-    last_name: String,
-    middle_name: String,
-}
-
-impl BookAuthor {
-    pub fn format_author(&self) -> String {
-        let BookAuthor {
-            id,
-            last_name,
-            first_name,
-            middle_name,
-        } = self;
-
-        format!("👤 {last_name} {first_name} {middle_name} /a_{id}")
-    }
-
-    pub fn format_translator(&self) -> String {
-        let BookAuthor {
-            id,
-            first_name,
-            last_name,
-            middle_name,
-        } = self;
-
-        format!("👤 {last_name} {first_name} {middle_name} /t_{id}")
-    }
+    pub id: u32,
+    pub first_name: String,
+    pub last_name: String,
+    pub middle_name: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -50,25 +27,6 @@ impl BookGenre {
 pub struct Source {
     // id: u32,
     // name: String
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct Book {
-    pub id: u32,
-    pub title: String,
-    pub lang: String,
-    // file_type: String,
-    pub available_types: Vec<String>,
-    // uploaded: String,
-    pub annotation_exists: bool,
-    pub authors: Vec<BookAuthor>,
-    pub translators: Vec<BookAuthor>,
-    pub sequences: Vec<Sequence>,
-    pub genres: Vec<BookGenre>,
-    // source: Source,
-    // remote_id: u32,
-    // id_deleted: bool,
-    pub pages: Option<u32>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -118,28 +76,17 @@ impl<T> Page<T>
 where
     T: Format + Clone,
 {
-    pub fn format_items(&self) -> String {
+    pub fn format_items(&self, max_size: u32) -> String {
+        let items_count: u32 = self.items.len().try_into().unwrap();
+        let item_size: u32 = max_size / items_count;
+
         self.items
             .clone()
             .into_iter()
-            .map(|book| book.format())
+            .map(|item| item.format(item_size))
             .collect::<Vec<String>>()
             .join("\n\n\n")
     }
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct SearchBook {
-    pub id: u32,
-    pub title: String,
-    pub lang: String,
-    // file_type: String,
-    pub available_types: Vec<String>,
-    // uploaded: String,
-    pub annotation_exists: bool,
-    pub authors: Vec<BookAuthor>,
-    pub translators: Vec<BookAuthor>,
-    pub sequences: Vec<Sequence>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -158,6 +105,66 @@ pub struct AuthorAnnotation {
     pub file: Option<String>,
 }
 
+pub trait AsBook<T> {
+    fn as_book(self) -> T;
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct Book {
+    pub id: u32,
+    pub title: String,
+    pub lang: String,
+    // file_type: String,
+    pub available_types: Vec<String>,
+    // uploaded: String,
+    pub annotation_exists: bool,
+    pub authors: Vec<BookAuthor>,
+    pub translators: Vec<Translator>,
+    pub sequences: Vec<Sequence>,
+    pub genres: Vec<BookGenre>,
+    // source: Source,
+    // remote_id: u32,
+    // id_deleted: bool,
+    pub pages: Option<u32>,
+}
+
+impl AsBook<Book> for Book {
+    fn as_book(self) -> Book {
+        self
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct SearchBook {
+    pub id: u32,
+    pub title: String,
+    pub lang: String,
+    // file_type: String,
+    pub available_types: Vec<String>,
+    // uploaded: String,
+    pub annotation_exists: bool,
+    pub authors: Vec<BookAuthor>,
+    pub translators: Vec<Translator>,
+    pub sequences: Vec<Sequence>,
+}
+
+impl AsBook<Book> for SearchBook {
+    fn as_book(self) -> Book {
+        Book {
+            id: self.id,
+            title: self.title,
+            lang: self.lang,
+            available_types: self.available_types,
+            annotation_exists: self.annotation_exists,
+            authors: self.authors,
+            translators: self.translators,
+            sequences: self.sequences,
+            genres: vec![],
+            pages: None
+        }
+    }
+}
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct AuthorBook {
     pub id: u32,
@@ -167,8 +174,25 @@ pub struct AuthorBook {
     pub available_types: Vec<String>,
     // uploaded: String,
     pub annotation_exists: bool,
-    pub translators: Vec<BookAuthor>,
+    pub translators: Vec<Translator>,
     pub sequences: Vec<Sequence>,
+}
+
+impl AsBook<Book> for AuthorBook {
+    fn as_book(self) -> Book {
+        Book {
+            id: self.id,
+            title: self.title,
+            lang: self.lang,
+            available_types: self.available_types,
+            annotation_exists: self.annotation_exists,
+            authors: vec![],
+            translators: self.translators,
+            sequences: self.sequences,
+            genres: vec![],
+            pages: None
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -182,4 +206,21 @@ pub struct TranslatorBook {
     pub annotation_exists: bool,
     pub authors: Vec<BookAuthor>,
     pub sequences: Vec<Sequence>,
+}
+
+impl AsBook<Book> for TranslatorBook {
+    fn as_book(self) -> Book {
+        Book {
+            id: self.id,
+            title: self.title,
+            lang: self.lang,
+            available_types: self.available_types,
+            annotation_exists: self.annotation_exists,
+            authors: self.authors,
+            translators: vec![],
+            sequences: self.sequences,
+            genres: vec![],
+            pages: None
+        }
+    }
 }

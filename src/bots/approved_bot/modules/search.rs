@@ -188,11 +188,11 @@ where
         };
     }
 
-    let formated_items = items_page.format_items();
-
     let total_pages = items_page.total_pages;
-
     let footer = format!("\n\nСтраница {page}/{total_pages}");
+
+    let formated_items = items_page.format_items((4096 - footer.len()).try_into().unwrap());
+
     let message_text = format!("{formated_items}{footer}");
 
     let keyboard = generic_get_pagination_keyboard(page, total_pages, search_data, true);
