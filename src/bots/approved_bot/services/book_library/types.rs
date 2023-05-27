@@ -78,7 +78,7 @@ where
 {
     pub fn format_items(&self, max_size: u32) -> String {
         let items_count: u32 = self.items.len().try_into().unwrap();
-        let item_size: u32 = max_size / items_count;
+        let item_size: u32 = (max_size - 3 * items_count) / items_count;
 
         self.items
             .clone()
