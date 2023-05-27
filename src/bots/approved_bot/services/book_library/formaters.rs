@@ -195,12 +195,12 @@ impl Format for Book {
         let download_command = (StartDownloadData { id: self.id }).to_string();
         let download_links = format!("Скачать:\n📥{download_command}");
 
-        let required_data_len: u32 = format!("{book_title}{pages_count}{annotations}{download_links}").len().try_into().unwrap();
+        let required_data_len: u32 = format!("{book_title}{annotations}{download_links}").len().try_into().unwrap();
         let FormatVectorsResult { authors, translators, sequences, genres } = self.format_vectors(
             max_size - required_data_len
         );
 
-        format!("{book_title}{pages_count}{annotations}{authors}{translators}{sequences}{genres}{download_links}")
+        format!("{book_title}{annotations}{authors}{translators}{sequences}{genres}{download_links}")
     }
 }
 
