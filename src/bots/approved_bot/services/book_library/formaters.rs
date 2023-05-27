@@ -2,20 +2,20 @@ use std::cmp::min;
 
 use crate::bots::approved_bot::modules::download::StartDownloadData;
 
-use super::types::{Author, AuthorBook, Book, SearchBook, Sequence, Translator, TranslatorBook, BookAuthor, BookGenre, AsBook};
+use super::types::{
+    AsBook, Author, AuthorBook, Book, BookAuthor, BookGenre, SearchBook, Sequence, Translator,
+    TranslatorBook,
+};
 
 const NO_LIMIT: u32 = 4096;
-
 
 pub trait Format {
     fn format(&self, max_size: u32) -> String;
 }
 
-
 pub trait FormatInline {
     fn format_inline(&self) -> String;
 }
-
 
 impl FormatInline for BookAuthor {
     fn format_inline(&self) -> String {
@@ -29,7 +29,6 @@ impl FormatInline for BookAuthor {
         format!("👤 {last_name} {first_name} {middle_name} /a_{id}")
     }
 }
-
 
 impl FormatInline for Translator {
     fn format_inline(&self) -> String {
@@ -45,12 +44,10 @@ impl FormatInline for Translator {
     }
 }
 
-
 fn format_authors(authors: Vec<BookAuthor>, count: usize) -> String {
     match !authors.is_empty() {
         true => {
-            let formated_authors = authors
-                .clone()[..min(count, authors.len())]
+            let formated_authors = authors.clone()[..min(count, authors.len())]
                 .into_iter()
                 .map(|author| author.format_inline())
                 .collect::<Vec<String>>()
@@ -61,12 +58,10 @@ fn format_authors(authors: Vec<BookAuthor>, count: usize) -> String {
     }
 }
 
-
 fn format_translators(translators: Vec<Translator>, count: usize) -> String {
     match !translators.is_empty() {
         true => {
-            let formated_translators = translators
-                .clone()[..min(count, translators.len())]
+            let formated_translators = translators.clone()[..min(count, translators.len())]
                 .into_iter()
                 .map(|translator| translator.format_inline())
                 .collect::<Vec<String>>()
@@ -77,12 +72,10 @@ fn format_translators(translators: Vec<Translator>, count: usize) -> String {
     }
 }
 
-
 fn format_sequences(sequences: Vec<Sequence>, count: usize) -> String {
     match !sequences.is_empty() {
         true => {
-            let formated_sequences: String = sequences
-                .clone()[..min(count, sequences.len())]
+            let formated_sequences: String = sequences.clone()[..min(count, sequences.len())]
                 .into_iter()
                 .map(|sequence| sequence.format(NO_LIMIT))
                 .collect::<Vec<String>>()
@@ -93,12 +86,10 @@ fn format_sequences(sequences: Vec<Sequence>, count: usize) -> String {
     }
 }
 
-
 fn format_genres(genres: Vec<BookGenre>, count: usize) -> String {
     match !genres.is_empty() {
         true => {
-            let formated_genres: String = genres
-                .clone()[..min(count, genres.len())]
+            let formated_genres: String = genres.clone()[..min(count, genres.len())]
                 .into_iter()
                 .map(|genre| genre.format())
                 .collect::<Vec<String>>()
@@ -108,7 +99,6 @@ fn format_genres(genres: Vec<BookGenre>, count: usize) -> String {
         false => "".to_string(),
     }
 }
-
 
 impl Format for Author {
     fn format(&self, _max_size: u32) -> String {
@@ -131,7 +121,6 @@ impl Format for Author {
     }
 }
 
-
 impl Format for Sequence {
     fn format(&self, _max_size: u32) -> String {
         let Sequence { id, name, .. } = self;
@@ -142,7 +131,6 @@ impl Format for Sequence {
         format!("{title} {link}")
     }
 }
-
 
 impl Format for Translator {
     fn format(&self, _max_size: u32) -> String {
@@ -165,6 +153,23 @@ impl Format for Translator {
     }
 }
 
+struct FormatVectorsResult {
+    authors: String,
+    translators: String,
+    sequences: String,
+    genres: String,
+}
+
+impl Book {
+    fn format_vectors(&self, max_size: u32) -> FormatVectorsResult {
+        FormatVectorsResult {
+            authors: format_authors(self.authors.clone(), self.authors.len()),
+            translators: format_translators(self.translators.clone(), self.translators.len()),
+            sequences: format_sequences(self.sequences.clone(), self.sequences.len()),
+            genres: format_genres(self.genres.clone(), self.genres.len()),
+        }
+    }
+}
 
 impl Format for Book {
     fn format(&self, max_size: u32) -> String {
@@ -189,15 +194,14 @@ impl Format for Book {
         let download_command = (StartDownloadData { id: self.id }).to_string();
         let download_links = format!("Скачать:\n📥{download_command}");
 
-        let authors = format_authors(self.authors.clone(), self.authors.len());
-        let translators = format_translators(self.translators.clone(), self.translators.len());
-        let sequences = format_sequences(self.sequences.clone(), self.sequences.len());
-        let genres = format_genres(self.genres.clone(), self.genres.len());
+        let required_data_len: u32 = format!("{book_title}{pages_count}{annotations}{download_links}").len().try_into().unwrap();
+        let FormatVectorsResult { authors, translators, sequences, genres } = self.format_vectors(
+            max_size - required_data_len
+        );
 
         format!("{book_title}{pages_count}{annotations}{authors}{translators}{sequences}{genres}{download_links}")
     }
 }
-
 
 impl Format for SearchBook {
     fn format(&self, max_size: u32) -> String {
@@ -205,13 +209,11 @@ impl Format for SearchBook {
     }
 }
 
-
 impl Format for AuthorBook {
     fn format(&self, max_size: u32) -> String {
         self.clone().as_book().format(max_size)
     }
 }
-
 
 impl Format for TranslatorBook {
     fn format(&self, max_size: u32) -> String {
