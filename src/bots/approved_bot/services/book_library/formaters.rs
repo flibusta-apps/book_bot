@@ -295,7 +295,7 @@ impl Format for Book {
         let annotations = match self.annotation_exists {
             true => {
                 let Book { id, .. } = self;
-                format!("📝 Аннотация: /b_an_{id}\n\n")
+                format!("📝 Аннотация: /b_an_{id}\n")
             }
             false => "".to_string(),
         };
