@@ -52,7 +52,9 @@ fn format_authors(authors: Vec<BookAuthor>, count: usize) -> String {
                 .map(|author| author.format_inline())
                 .collect::<Vec<String>>()
                 .join("\n");
-            format!("Авторы:\n{formated_authors}\n")
+
+            let post_fix = if authors.len() > count { "\nи др." } else { "" };
+            format!("Авторы:\n{formated_authors}{post_fix}\n")
         }
         false => "".to_string(),
     }
@@ -66,7 +68,9 @@ fn format_translators(translators: Vec<Translator>, count: usize) -> String {
                 .map(|translator| translator.format_inline())
                 .collect::<Vec<String>>()
                 .join("\n");
-            format!("Переводчики:\n{formated_translators}\n")
+
+            let post_fix = if translators.len() > count { "\nи др." } else { "" };
+            format!("Переводчики:\n{formated_translators}{post_fix}\n")
         }
         false => "".to_string(),
     }
@@ -80,7 +84,9 @@ fn format_sequences(sequences: Vec<Sequence>, count: usize) -> String {
                 .map(|sequence| sequence.format(NO_LIMIT))
                 .collect::<Vec<String>>()
                 .join("\n");
-            format!("Серии:\n{formated_sequences}\n")
+
+            let post_fix = if sequences.len() > count { "\nи др." } else { "" };
+            format!("Серии:\n{formated_sequences}{post_fix}\n")
         }
         false => "".to_string(),
     }
@@ -94,7 +100,9 @@ fn format_genres(genres: Vec<BookGenre>, count: usize) -> String {
                 .map(|genre| genre.format())
                 .collect::<Vec<String>>()
                 .join("\n");
-            format!("Жанры:\n{formated_genres}\n")
+
+            let post_fix = if genres.len() > count { "\nи др." } else { "" };
+            format!("Жанры:\n{formated_genres}{post_fix}\n")
         }
         false => "".to_string(),
     }
