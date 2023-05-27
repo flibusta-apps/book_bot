@@ -45,6 +45,10 @@ impl FormatInline for Translator {
 }
 
 fn format_authors(authors: Vec<BookAuthor>, count: usize) -> String {
+    if count == 0 {
+        return "".to_string()
+    }
+
     match !authors.is_empty() {
         true => {
             let formated_authors = authors.clone()[..min(count, authors.len())]
@@ -61,6 +65,10 @@ fn format_authors(authors: Vec<BookAuthor>, count: usize) -> String {
 }
 
 fn format_translators(translators: Vec<Translator>, count: usize) -> String {
+    if count == 0 {
+        return "".to_string()
+    }
+
     match !translators.is_empty() {
         true => {
             let formated_translators = translators.clone()[..min(count, translators.len())]
@@ -77,6 +85,10 @@ fn format_translators(translators: Vec<Translator>, count: usize) -> String {
 }
 
 fn format_sequences(sequences: Vec<Sequence>, count: usize) -> String {
+    if count == 0 {
+        return "".to_string()
+    }
+
     match !sequences.is_empty() {
         true => {
             let formated_sequences: String = sequences.clone()[..min(count, sequences.len())]
@@ -93,6 +105,10 @@ fn format_sequences(sequences: Vec<Sequence>, count: usize) -> String {
 }
 
 fn format_genres(genres: Vec<BookGenre>, count: usize) -> String {
+    if count == 0 {
+        return "".to_string()
+    }
+
     match !genres.is_empty() {
         true => {
             let formated_genres: String = genres.clone()[..min(count, genres.len())]
@@ -180,17 +196,6 @@ impl FormatVectorsCounts {
     fn sub(self) -> Self {
         let Self {mut authors, mut translators, mut sequences, mut genres} = self;
 
-        if translators > 0 {
-            translators -= 1;
-
-            return Self {
-                authors,
-                translators,
-                sequences,
-                genres
-            }
-        }
-
         if genres > 0 {
             genres -= 1;
 
@@ -204,6 +209,17 @@ impl FormatVectorsCounts {
 
         if sequences > 0 {
             sequences -= 1;
+
+            return Self {
+                authors,
+                translators,
+                sequences,
+                genres
+            }
+        }
+
+        if translators > 0 {
+            translators -= 1;
 
             return Self {
                 authors,
