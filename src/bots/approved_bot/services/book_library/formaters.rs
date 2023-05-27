@@ -175,12 +175,13 @@ impl Format for Book {
     fn format(&self, max_size: u32) -> String {
         let book_title = {
             let Book { title, lang, .. } = self;
-            format!("📖 {title} | {lang}\n")
-        };
 
-        let pages_count = match self.pages {
-            Some(1) | None => "".to_string(),
-            Some(v) => format!("[ {v}с. ]\n\n"),
+            let pages_count = match self.pages {
+                Some(1) | None => "".to_string(),
+                Some(v) => format!(" [ {v}с. ]\n\n"),
+            };
+
+            format!("📖 {title} | {lang}{pages_count}\n")
         };
 
         let annotations = match self.annotation_exists {
