@@ -134,7 +134,7 @@ async fn settings_callback_handler(
     let allowed_langs = get_user_or_default_lang_codes(user.id, user_langs_cache.clone()).await;
 
     let mut allowed_langs_set: HashSet<String> = HashSet::new();
-    allowed_langs.clone().into_iter().for_each(|v| {
+    allowed_langs.into_iter().for_each(|v| {
         allowed_langs_set.insert(v);
     });
 

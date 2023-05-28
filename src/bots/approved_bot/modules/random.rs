@@ -198,7 +198,6 @@ async fn get_genre_metas_handler(cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>)
 
     let keyboard = InlineKeyboardMarkup {
         inline_keyboard: genre_metas
-            .clone()
             .into_iter()
             .enumerate()
             .map(|(index, genre_meta)| {

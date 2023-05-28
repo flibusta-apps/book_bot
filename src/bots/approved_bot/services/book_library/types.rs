@@ -84,15 +84,13 @@ where
         let item_size: usize = (max_size - separator_len * items_count) / items_count;
 
         let format_result: Vec<FormatResult> = self.items
-            .clone()
-            .into_iter()
+            .iter()
             .map(|item| item.format(item_size))
             .collect();
 
         let has_any_spliced = {
             format_result
-                .clone()
-                .into_iter()
+                .iter()
                 .any(|item| item.current_size != item.max_size)
         };
 
@@ -105,15 +103,13 @@ where
         }
 
         let mut free_symbols: usize = format_result
-            .clone()
-            .into_iter()
+            .iter()
             .filter(|item| item.current_size == item.max_size)
             .map(|item| item_size - item.current_size)
             .sum();
 
         self.items
-            .clone()
-            .into_iter()
+            .iter()
             .enumerate()
             .map(|(index, item)| {
                 let already_formated_result = &format_result[index];
