@@ -191,7 +191,7 @@ where
     let total_pages = items_page.total_pages;
     let footer = format!("\n\nСтраница {page}/{total_pages}");
 
-    let formated_items = items_page.format_items((4096 - footer.len()).try_into().unwrap());
+    let formated_items = items_page.format_items(4096 - footer.len());
 
     let message_text = format!("{formated_items}{footer}");
 

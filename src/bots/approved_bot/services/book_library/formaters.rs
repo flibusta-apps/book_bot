@@ -7,10 +7,18 @@ use super::types::{
     TranslatorBook,
 };
 
-const NO_LIMIT: u32 = 4096;
+const NO_LIMIT: usize = 4096;
+
+#[derive(Clone)]
+pub struct FormatResult {
+    pub result: String,
+
+    pub current_size: usize,
+    pub max_size: usize,
+}
 
 pub trait Format {
-    fn format(&self, max_size: u32) -> String;
+    fn format(&self, max_size: usize) -> FormatResult;
 }
 
 pub trait FormatInline {
@@ -51,8 +59,8 @@ fn format_authors(authors: Vec<BookAuthor>, count: usize) -> String {
 
     match !authors.is_empty() {
         true => {
-            let formated_authors = authors.clone()[..min(count, authors.len())]
-                .into_iter()
+            let formated_authors = authors[..min(count, authors.len())]
+                .iter()
                 .map(|author| author.format_inline())
                 .collect::<Vec<String>>()
                 .join("\n");
@@ -71,8 +79,8 @@ fn format_translators(translators: Vec<Translator>, count: usize) -> String {
 
     match !translators.is_empty() {
         true => {
-            let formated_translators = translators.clone()[..min(count, translators.len())]
-                .into_iter()
+            let formated_translators = translators[..min(count, translators.len())]
+                .iter()
                 .map(|translator| translator.format_inline())
                 .collect::<Vec<String>>()
                 .join("\n");
@@ -91,9 +99,9 @@ fn format_sequences(sequences: Vec<Sequence>, count: usize) -> String {
 
     match !sequences.is_empty() {
         true => {
-            let formated_sequences: String = sequences.clone()[..min(count, sequences.len())]
-                .into_iter()
-                .map(|sequence| sequence.format(NO_LIMIT))
+            let formated_sequences: String = sequences[..min(count, sequences.len())]
+                .iter()
+                .map(|sequence| sequence.format(NO_LIMIT).result)
                 .collect::<Vec<String>>()
                 .join("\n");
 
@@ -111,8 +119,8 @@ fn format_genres(genres: Vec<BookGenre>, count: usize) -> String {
 
     match !genres.is_empty() {
         true => {
-            let formated_genres: String = genres.clone()[..min(count, genres.len())]
-                .into_iter()
+            let formated_genres: String = genres[..min(count, genres.len())]
+                .iter()
                 .map(|genre| genre.format())
                 .collect::<Vec<String>>()
                 .join("\n");
@@ -125,7 +133,7 @@ fn format_genres(genres: Vec<BookGenre>, count: usize) -> String {
 }
 
 impl Format for Author {
-    fn format(&self, _max_size: u32) -> String {
+    fn format(&self, _max_size: usize) -> FormatResult {
         let Author {
             id,
             last_name,
@@ -141,23 +149,37 @@ impl Format for Author {
             false => "".to_string(),
         };
 
-        format!("{title}{link}{annotation}")
+        let result = format!("{title}{link}{annotation}");
+        let result_len = result.len();
+
+        FormatResult {
+            result,
+            current_size: result_len,
+            max_size: result_len
+        }
     }
 }
 
 impl Format for Sequence {
-    fn format(&self, _max_size: u32) -> String {
+    fn format(&self, _max_size: usize) -> FormatResult {
         let Sequence { id, name, .. } = self;
 
         let title = format!("📚 {name}");
         let link = format!("/s_{id}");
 
-        format!("{title} {link}")
+        let result = format!("{title} {link}");
+        let result_len = result.len();
+
+        FormatResult {
+            result,
+            current_size: result_len,
+            max_size: result_len
+        }
     }
 }
 
 impl Format for Translator {
-    fn format(&self, _max_size: u32) -> String {
+    fn format(&self, _max_size: usize) -> FormatResult {
         let Translator {
             id,
             last_name,
@@ -173,7 +195,14 @@ impl Format for Translator {
             false => "".to_string(),
         };
 
-        format!("{title}{link}{annotation}")
+        let result = format!("{title}{link}{annotation}");
+        let result_len = result.len();
+
+        FormatResult {
+            result,
+            current_size: result_len,
+            max_size: result_len
+        }
     }
 }
 
@@ -254,18 +283,30 @@ struct FormatVectorsResult {
     translators: String,
     sequences: String,
     genres: String,
+
+    max_result_size: usize,
 }
 
 impl FormatVectorsResult {
     fn len(&self) -> usize {
         self.authors.len() + self.translators.len() + self.sequences.len() + self.genres.len()
     }
+
+    fn with_max_result_size(self, max_result_size: usize) -> Self {
+        let Self { authors, translators, sequences, genres, .. } = self;
+
+        Self {
+            authors,
+            translators,
+            sequences,
+            genres,
+            max_result_size
+        }
+    }
 }
 
 impl Book {
-    fn format_vectors(&self, max_size: u32) -> FormatVectorsResult {
-        let max_size_u: usize = max_size.try_into().unwrap();
-
+    fn format_vectors(&self, max_size: usize) -> FormatVectorsResult {
         let mut counts = FormatVectorsCounts {
             authors: self.authors.len(),
             translators: self.translators.len(),
@@ -278,9 +319,12 @@ impl Book {
             translators: format_translators(self.translators.clone(), counts.translators),
             sequences: format_sequences(self.sequences.clone(), counts.sequences),
             genres: format_genres(self.genres.clone(), counts.genres),
+            max_result_size: 0
         };
 
-        while result.len() > max_size_u && counts.can_sub() {
+        let max_result_size = result.len();
+
+        while result.len() > max_size && counts.can_sub() {
             counts = counts.sub();
 
             result = FormatVectorsResult {
@@ -288,15 +332,16 @@ impl Book {
                 translators: format_translators(self.translators.clone(), counts.translators),
                 sequences: format_sequences(self.sequences.clone(), counts.sequences),
                 genres: format_genres(self.genres.clone(), counts.genres),
+                max_result_size: 0
             };
         }
 
-        result
+        result.with_max_result_size(max_result_size)
     }
 }
 
 impl Format for Book {
-    fn format(&self, max_size: u32) -> String {
+    fn format(&self, max_size: usize) -> FormatResult {
         let book_title = {
             let Book { title, lang, .. } = self;
 
@@ -319,29 +364,36 @@ impl Format for Book {
         let download_command = (StartDownloadData { id: self.id }).to_string();
         let download_links = format!("Скачать:\n📥{download_command}");
 
-        let required_data_len: u32 = format!("{book_title}{annotations}{download_links}").len().try_into().unwrap();
-        let FormatVectorsResult { authors, translators, sequences, genres } = self.format_vectors(
+        let required_data_len: usize = format!("{book_title}{annotations}{download_links}").len();
+        let FormatVectorsResult { authors, translators, sequences, genres, max_result_size } = self.format_vectors(
             max_size - required_data_len
         );
 
-        format!("{book_title}{annotations}{authors}{translators}{sequences}{genres}{download_links}")
+        let result = format!("{book_title}{annotations}{authors}{translators}{sequences}{genres}{download_links}");
+        let result_len = result.len();
+
+        FormatResult {
+            result,
+            current_size: result_len,
+            max_size: max_result_size + required_data_len
+        }
     }
 }
 
 impl Format for SearchBook {
-    fn format(&self, max_size: u32) -> String {
+    fn format(&self, max_size: usize) -> FormatResult {
         self.clone().as_book().format(max_size)
     }
 }
 
 impl Format for AuthorBook {
-    fn format(&self, max_size: u32) -> String {
+    fn format(&self, max_size: usize) -> FormatResult {
         self.clone().as_book().format(max_size)
     }
 }
 
 impl Format for TranslatorBook {
-    fn format(&self, max_size: u32) -> String {
+    fn format(&self, max_size: usize) -> FormatResult {
         self.clone().as_book().format(max_size)
     }
 }

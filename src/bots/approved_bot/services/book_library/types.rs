@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use super::formaters::Format;
+use super::formaters::{Format, FormatResult};
 
 
 #[derive(Deserialize, Debug, Clone)]
@@ -76,16 +76,63 @@ impl<T> Page<T>
 where
     T: Format + Clone,
 {
-    pub fn format_items(&self, max_size: u32) -> String {
-        let items_count: u32 = self.items.len().try_into().unwrap();
-        let item_size: u32 = (max_size - 3 * items_count) / items_count;
+    pub fn format_items(&self, max_size: usize) -> String {
+        let separator = "\n\n\n";
+        let separator_len: usize = separator.len();
+
+        let items_count: usize = self.items.len();
+        let item_size: usize = (max_size - separator_len * items_count) / items_count;
+
+        let format_result: Vec<FormatResult> = self.items
+            .clone()
+            .into_iter()
+            .map(|item| item.format(item_size))
+            .collect();
+
+        let has_any_spliced = {
+            format_result
+                .clone()
+                .into_iter()
+                .any(|item| item.current_size != item.max_size)
+        };
+
+        if !has_any_spliced {
+            return format_result
+                .into_iter()
+                .map(|item| item.result)
+                .collect::<Vec<String>>()
+                .join(separator);
+        }
+
+        let mut free_symbols: usize = format_result
+            .clone()
+            .into_iter()
+            .filter(|item| item.current_size == item.max_size)
+            .map(|item| item_size - item.current_size)
+            .collect::<Vec<usize>>()
+            .into_iter()
+            .sum();
 
         self.items
             .clone()
             .into_iter()
-            .map(|item| item.format(item_size))
+            .enumerate()
+            .map(|(index, item)| {
+                let already_formated_result = &format_result[index];
+
+                if already_formated_result.current_size == already_formated_result.max_size {
+                    already_formated_result.result.clone()
+                } else {
+                    let new_item_size = item_size + free_symbols;
+                    let new_formated_result = item.format(new_item_size);
+
+                    free_symbols = new_item_size - new_formated_result.current_size;
+
+                    new_formated_result.result
+                }
+            })
             .collect::<Vec<String>>()
-            .join("\n\n\n")
+            .join(separator)
     }
 }
 
@@ -106,7 +153,7 @@ pub struct AuthorAnnotation {
 }
 
 pub trait AsBook<T> {
-    fn as_book(self) -> T;
+    fn as_book(&self) -> T;
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -129,8 +176,8 @@ pub struct Book {
 }
 
 impl AsBook<Book> for Book {
-    fn as_book(self) -> Book {
-        self
+    fn as_book(&self) -> Self {
+        self.clone()
     }
 }
 
@@ -149,16 +196,16 @@ pub struct SearchBook {
 }
 
 impl AsBook<Book> for SearchBook {
-    fn as_book(self) -> Book {
+    fn as_book(&self) -> Book {
         Book {
             id: self.id,
-            title: self.title,
-            lang: self.lang,
-            available_types: self.available_types,
+            title: self.title.clone(),
+            lang: self.lang.clone(),
+            available_types: self.available_types.clone(),
             annotation_exists: self.annotation_exists,
-            authors: self.authors,
-            translators: self.translators,
-            sequences: self.sequences,
+            authors: self.authors.clone(),
+            translators: self.translators.clone(),
+            sequences: self.sequences.clone(),
             genres: vec![],
             pages: None
         }
@@ -179,16 +226,16 @@ pub struct AuthorBook {
 }
 
 impl AsBook<Book> for AuthorBook {
-    fn as_book(self) -> Book {
+    fn as_book(&self) -> Book {
         Book {
             id: self.id,
-            title: self.title,
-            lang: self.lang,
-            available_types: self.available_types,
+            title: self.title.clone(),
+            lang: self.lang.clone(),
+            available_types: self.available_types.clone(),
             annotation_exists: self.annotation_exists,
             authors: vec![],
-            translators: self.translators,
-            sequences: self.sequences,
+            translators: self.translators.clone(),
+            sequences: self.sequences.clone(),
             genres: vec![],
             pages: None
         }
@@ -209,16 +256,16 @@ pub struct TranslatorBook {
 }
 
 impl AsBook<Book> for TranslatorBook {
-    fn as_book(self) -> Book {
+    fn as_book(&self) -> Book {
         Book {
             id: self.id,
-            title: self.title,
-            lang: self.lang,
-            available_types: self.available_types,
+            title: self.title.clone(),
+            lang: self.lang.clone(),
+            available_types: self.available_types.clone(),
             annotation_exists: self.annotation_exists,
-            authors: self.authors,
+            authors: self.authors.clone(),
             translators: vec![],
-            sequences: self.sequences,
+            sequences: self.sequences.clone(),
             genres: vec![],
             pages: None
         }
