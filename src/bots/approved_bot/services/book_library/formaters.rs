@@ -347,7 +347,7 @@ impl Format for Book {
 
             let pages_count = match self.pages {
                 Some(1) | None => "".to_string(),
-                Some(v) => format!(" [ {v}с. ]\n\n"),
+                Some(v) => format!(" [ {v}с. ]\n"),
             };
 
             format!("📖 {title} | {lang}{pages_count}\n")
