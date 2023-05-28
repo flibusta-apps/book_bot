@@ -382,18 +382,18 @@ impl Format for Book {
 
 impl Format for SearchBook {
     fn format(&self, max_size: usize) -> FormatResult {
-        self.clone().as_book().format(max_size)
+        Into::<Book>::into(self.clone()).format(max_size)
     }
 }
 
 impl Format for AuthorBook {
     fn format(&self, max_size: usize) -> FormatResult {
-        self.clone().as_book().format(max_size)
+        Into::<Book>::into(self.clone()).format(max_size)
     }
 }
 
 impl Format for TranslatorBook {
     fn format(&self, max_size: usize) -> FormatResult {
-        self.clone().as_book().format(max_size)
+        Into::<Book>::into(self.clone()).format(max_size)
     }
 }

@@ -175,12 +175,6 @@ pub struct Book {
     pub pages: Option<u32>,
 }
 
-impl AsBook<Book> for Book {
-    fn as_book(&self) -> Self {
-        self.clone()
-    }
-}
-
 #[derive(Deserialize, Debug, Clone)]
 pub struct SearchBook {
     pub id: u32,
@@ -195,17 +189,17 @@ pub struct SearchBook {
     pub sequences: Vec<Sequence>,
 }
 
-impl AsBook<Book> for SearchBook {
-    fn as_book(&self) -> Book {
+impl From<SearchBook> for Book {
+    fn from(value: SearchBook) -> Self {
         Book {
-            id: self.id,
-            title: self.title.clone(),
-            lang: self.lang.clone(),
-            available_types: self.available_types.clone(),
-            annotation_exists: self.annotation_exists,
-            authors: self.authors.clone(),
-            translators: self.translators.clone(),
-            sequences: self.sequences.clone(),
+            id: value.id,
+            title: value.title.clone(),
+            lang: value.lang.clone(),
+            available_types: value.available_types.clone(),
+            annotation_exists: value.annotation_exists,
+            authors: value.authors.clone(),
+            translators: value.translators.clone(),
+            sequences: value.sequences.clone(),
             genres: vec![],
             pages: None
         }
@@ -225,17 +219,17 @@ pub struct AuthorBook {
     pub sequences: Vec<Sequence>,
 }
 
-impl AsBook<Book> for AuthorBook {
-    fn as_book(&self) -> Book {
+impl From<AuthorBook> for Book {
+    fn from(value: AuthorBook) -> Self {
         Book {
-            id: self.id,
-            title: self.title.clone(),
-            lang: self.lang.clone(),
-            available_types: self.available_types.clone(),
-            annotation_exists: self.annotation_exists,
+            id: value.id,
+            title: value.title.clone(),
+            lang: value.lang.clone(),
+            available_types: value.available_types.clone(),
+            annotation_exists: value.annotation_exists,
             authors: vec![],
-            translators: self.translators.clone(),
-            sequences: self.sequences.clone(),
+            translators: value.translators.clone(),
+            sequences: value.sequences.clone(),
             genres: vec![],
             pages: None
         }
@@ -255,17 +249,17 @@ pub struct TranslatorBook {
     pub sequences: Vec<Sequence>,
 }
 
-impl AsBook<Book> for TranslatorBook {
-    fn as_book(&self) -> Book {
+impl From<TranslatorBook> for Book {
+    fn from(value: TranslatorBook) -> Self {
         Book {
-            id: self.id,
-            title: self.title.clone(),
-            lang: self.lang.clone(),
-            available_types: self.available_types.clone(),
-            annotation_exists: self.annotation_exists,
-            authors: self.authors.clone(),
+            id: value.id,
+            title: value.title.clone(),
+            lang: value.lang.clone(),
+            available_types: value.available_types.clone(),
+            annotation_exists: value.annotation_exists,
+            authors: value.authors.clone(),
             translators: vec![],
-            sequences: self.sequences.clone(),
+            sequences: value.sequences.clone(),
             genres: vec![],
             pages: None
         }
