@@ -3,7 +3,7 @@ use std::cmp::min;
 use crate::bots::approved_bot::modules::download::StartDownloadData;
 
 use super::types::{
-    AsBook, Author, AuthorBook, Book, BookAuthor, BookGenre, SearchBook, Sequence, Translator,
+    Author, AuthorBook, Book, BookAuthor, BookGenre, SearchBook, Sequence, Translator,
     TranslatorBook,
 };
 

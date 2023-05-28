@@ -109,8 +109,6 @@ where
             .into_iter()
             .filter(|item| item.current_size == item.max_size)
             .map(|item| item_size - item.current_size)
-            .collect::<Vec<usize>>()
-            .into_iter()
             .sum();
 
         self.items
@@ -152,10 +150,6 @@ pub struct AuthorAnnotation {
     pub file: Option<String>,
 }
 
-pub trait AsBook<T> {
-    fn as_book(&self) -> T;
-}
-
 #[derive(Deserialize, Debug, Clone)]
 pub struct Book {
     pub id: u32,
@@ -193,13 +187,13 @@ impl From<SearchBook> for Book {
     fn from(value: SearchBook) -> Self {
         Book {
             id: value.id,
-            title: value.title.clone(),
-            lang: value.lang.clone(),
-            available_types: value.available_types.clone(),
+            title: value.title,
+            lang: value.lang,
+            available_types: value.available_types,
             annotation_exists: value.annotation_exists,
-            authors: value.authors.clone(),
-            translators: value.translators.clone(),
-            sequences: value.sequences.clone(),
+            authors: value.authors,
+            translators: value.translators,
+            sequences: value.sequences,
             genres: vec![],
             pages: None
         }
@@ -223,13 +217,13 @@ impl From<AuthorBook> for Book {
     fn from(value: AuthorBook) -> Self {
         Book {
             id: value.id,
-            title: value.title.clone(),
-            lang: value.lang.clone(),
-            available_types: value.available_types.clone(),
+            title: value.title,
+            lang: value.lang,
+            available_types: value.available_types,
             annotation_exists: value.annotation_exists,
             authors: vec![],
-            translators: value.translators.clone(),
-            sequences: value.sequences.clone(),
+            translators: value.translators,
+            sequences: value.sequences,
             genres: vec![],
             pages: None
         }
@@ -253,13 +247,13 @@ impl From<TranslatorBook> for Book {
     fn from(value: TranslatorBook) -> Self {
         Book {
             id: value.id,
-            title: value.title.clone(),
-            lang: value.lang.clone(),
-            available_types: value.available_types.clone(),
+            title: value.title,
+            lang: value.lang,
+            available_types: value.available_types,
             annotation_exists: value.annotation_exists,
-            authors: value.authors.clone(),
+            authors: value.authors,
             translators: vec![],
-            sequences: value.sequences.clone(),
+            sequences: value.sequences,
             genres: vec![],
             pages: None
         }
