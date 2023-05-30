@@ -183,7 +183,7 @@ pub async fn get_sequence_books(
     id: u32,
     page: u32,
     allowed_langs: Vec<String>,
-) -> Result<types::Page<types::SearchBook>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<types::Page<types::SequenceBook>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
     params.push(("page", page.to_string()));

@@ -255,3 +255,34 @@ impl From<TranslatorBook> for Book {
         }
     }
 }
+
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct SequenceBook {
+    pub id: u32,
+    pub title: String,
+    pub lang: String,
+    // file_type: String,
+    pub available_types: Vec<String>,
+    // uploaded: String,
+    pub authors: Vec<BookAuthor>,
+    pub translators: Vec<Translator>,
+    pub annotation_exists: bool,
+}
+
+impl From<SequenceBook> for Book {
+    fn from(value: SequenceBook) -> Self {
+        Book {
+            id: value.id,
+            title: value.title,
+            lang: value.lang,
+            available_types: value.available_types,
+            annotation_exists: value.annotation_exists,
+            authors: value.authors,
+            translators: value.translators,
+            sequences: vec![],
+            genres: vec![],
+            pages: None
+        }
+    }
+}

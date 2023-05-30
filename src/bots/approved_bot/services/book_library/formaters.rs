@@ -4,7 +4,7 @@ use crate::bots::approved_bot::modules::download::StartDownloadData;
 
 use super::types::{
     Author, AuthorBook, Book, BookAuthor, BookGenre, SearchBook, Sequence, Translator,
-    TranslatorBook,
+    TranslatorBook, SequenceBook,
 };
 
 const NO_LIMIT: usize = 4096;
@@ -393,6 +393,12 @@ impl Format for AuthorBook {
 }
 
 impl Format for TranslatorBook {
+    fn format(&self, max_size: usize) -> FormatResult {
+        Into::<Book>::into(self.clone()).format(max_size)
+    }
+}
+
+impl Format for SequenceBook {
     fn format(&self, max_size: usize) -> FormatResult {
         Into::<Book>::into(self.clone()).format(max_size)
     }
