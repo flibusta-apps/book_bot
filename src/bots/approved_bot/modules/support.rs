@@ -36,6 +36,7 @@ Paypal:
     bot
         .send_message(message.chat.id, message_text)
         .parse_mode(teloxide::types::ParseMode::Html)
+        .disable_web_page_preview(true)
         .await?;
 
     Ok(())
