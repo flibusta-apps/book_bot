@@ -28,6 +28,9 @@ pub async fn support_command_handler(
 
 Тинькофф/Сбербанк:
 <pre>+79534966556</pre>
+
+Paypal:
+<a href=\"https://www.paypal.me/kurbezz\">@kurbezz</a>
 ");
 
     bot
