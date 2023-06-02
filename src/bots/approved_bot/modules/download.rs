@@ -277,8 +277,7 @@ async fn get_download_keyboard_handler(
             .map(|item| -> Vec<InlineKeyboardButton> {
                 vec![InlineKeyboardButton {
                     text: {
-                        let label = item.clone();
-                        format!("📥 {label}")
+                        format!("📥 {item}")
                     },
                     kind: InlineKeyboardButtonKind::CallbackData(
                         (DownloadQueryData::DownloadData {

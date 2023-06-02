@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine};
 use reqwest::StatusCode;
 use std::fmt;
 
@@ -68,14 +69,23 @@ pub async fn download_file(
 
     let headers = response.headers();
 
-    let filename =
-        std::str::from_utf8(&base64::decode(headers.get("x-filename-b64").unwrap()).unwrap())
-            .unwrap()
-            .to_string();
-    let caption =
-        std::str::from_utf8(&base64::decode(headers.get("x-caption-b64").unwrap()).unwrap())
-            .unwrap()
-            .to_string();
+    let base64_encoder = general_purpose::STANDARD_NO_PAD;
+
+    let filename = std::str::from_utf8(
+        &base64_encoder
+            .decode(headers.get("x-filename-b64").unwrap())
+            .unwrap(),
+    )
+    .unwrap()
+    .to_string();
+
+    let caption = std::str::from_utf8(
+        &base64_encoder
+            .decode(headers.get("x-caption-b64").unwrap())
+            .unwrap(),
+    )
+    .unwrap()
+    .to_string();
 
     Ok(DownloadFile {
         response,
