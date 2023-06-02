@@ -4,7 +4,7 @@ use crate::bots::approved_bot::modules::download::StartDownloadData;
 
 use super::types::{
     Author, AuthorBook, Book, BookAuthor, BookGenre, SearchBook, Sequence, Translator,
-    TranslatorBook, SequenceBook,
+    TranslatorBook, SequenceBook, BookTranslator,
 };
 
 const NO_LIMIT: usize = 4096;
@@ -38,14 +38,13 @@ impl FormatInline for BookAuthor {
     }
 }
 
-impl FormatInline for Translator {
+impl FormatInline for BookTranslator {
     fn format_inline(&self) -> String {
-        let Translator {
+        let BookTranslator {
             id,
             first_name,
             last_name,
             middle_name,
-            ..
         } = self;
 
         format!("👤 {last_name} {first_name} {middle_name} /t_{id}")
@@ -72,7 +71,7 @@ fn format_authors(authors: Vec<BookAuthor>, count: usize) -> String {
     }
 }
 
-fn format_translators(translators: Vec<Translator>, count: usize) -> String {
+fn format_translators(translators: Vec<BookTranslator>, count: usize) -> String {
     if count == 0 {
         return "".to_string()
     }

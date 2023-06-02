@@ -12,6 +12,14 @@ pub struct BookAuthor {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+pub struct BookTranslator {
+    pub id: u32,
+    pub first_name: String,
+    pub last_name: String,
+    pub middle_name: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 pub struct BookGenre {
     pub id: u32,
     pub description: String,
@@ -156,7 +164,7 @@ pub struct Book {
     // uploaded: String,
     pub annotation_exists: bool,
     pub authors: Vec<BookAuthor>,
-    pub translators: Vec<Translator>,
+    pub translators: Vec<BookTranslator>,
     pub sequences: Vec<Sequence>,
     pub genres: Vec<BookGenre>,
     // source: Source,
@@ -175,7 +183,7 @@ pub struct SearchBook {
     // uploaded: String,
     pub annotation_exists: bool,
     pub authors: Vec<BookAuthor>,
-    pub translators: Vec<Translator>,
+    pub translators: Vec<BookTranslator>,
     pub sequences: Vec<Sequence>,
 }
 
@@ -205,7 +213,7 @@ pub struct AuthorBook {
     pub available_types: Vec<String>,
     // uploaded: String,
     pub annotation_exists: bool,
-    pub translators: Vec<Translator>,
+    pub translators: Vec<BookTranslator>,
     pub sequences: Vec<Sequence>,
 }
 
@@ -266,7 +274,7 @@ pub struct SequenceBook {
     pub available_types: Vec<String>,
     // uploaded: String,
     pub authors: Vec<BookAuthor>,
-    pub translators: Vec<Translator>,
+    pub translators: Vec<BookTranslator>,
     pub annotation_exists: bool,
 }
 
