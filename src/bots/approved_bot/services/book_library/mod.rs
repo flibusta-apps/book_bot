@@ -27,7 +27,13 @@ where
         .await?
         .error_for_status()?;
 
-    Ok(response.json::<T>().await.unwrap())
+    match response.json::<T>().await {
+        Ok(v) => Ok(v),
+        Err(err) => {
+            log::error!("Failed serialization: url={:?} err={:?}", url, err);
+            Err(Box::new(err))
+        },
+    }
 }
 
 pub async fn get_book(
