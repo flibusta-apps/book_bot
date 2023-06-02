@@ -69,7 +69,7 @@ pub async fn download_file(
 
     let headers = response.headers();
 
-    let base64_encoder = general_purpose::STANDARD_NO_PAD;
+    let base64_encoder = general_purpose::STANDARD;
 
     let filename = std::str::from_utf8(
         &base64_encoder
