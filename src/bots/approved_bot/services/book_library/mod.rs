@@ -27,7 +27,7 @@ where
         .await?
         .error_for_status()?;
 
-    Ok(response.json::<T>().await?)
+    Ok(response.json::<T>().await.unwrap())
 }
 
 pub async fn get_book(
