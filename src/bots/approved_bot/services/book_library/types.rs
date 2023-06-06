@@ -1,9 +1,9 @@
 use serde::Deserialize;
 
-use super::formaters::{Format, FormatResult};
+use super::formaters::{Format, FormatResult, FormatTitle};
 
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Default, Deserialize, Debug, Clone)]
 pub struct BookAuthor {
     pub id: u32,
     pub first_name: String,
@@ -11,7 +11,7 @@ pub struct BookAuthor {
     pub middle_name: String,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Default, Deserialize, Debug, Clone)]
 pub struct BookTranslator {
     pub id: u32,
     pub first_name: String,
@@ -55,7 +55,7 @@ pub struct Translator {
     pub annotation_exists: bool,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Default, Deserialize, Debug, Clone)]
 pub struct Sequence {
     pub id: u32,
     pub name: String,
@@ -71,8 +71,11 @@ pub struct Genre {
     pub meta: String,
 }
 
+#[derive(Default, Deserialize, Debug, Clone)]
+pub struct Empty {}
+
 #[derive(Deserialize, Debug, Clone)]
-pub struct Page<T> {
+pub struct Page<T, P> {
     pub items: Vec<T>,
     pub total: u32,
 
@@ -80,18 +83,36 @@ pub struct Page<T> {
 
     pub size: u32,
     pub pages: u32,
+
+    #[serde(default)]
+    pub parent_item: Option<P>
 }
 
-impl<T> Page<T>
+impl<T, P> Page<T, P>
 where
     T: Format + Clone,
+    P: FormatTitle + Clone
 {
     pub fn format_items(&self, max_size: usize) -> String {
+        let title: String = match &self.parent_item {
+            Some(parent_item) => {
+                let item_title = parent_item.format_title();
+
+                if item_title.is_empty() {
+                    return "".to_string();
+                }
+
+                format!("{item_title}\n\n\n")
+            },
+            None => "".to_string(),
+        };
+        let title_len: usize = title.len();
+
         let separator = "\n\n\n";
         let separator_len: usize = separator.len();
 
         let items_count: usize = self.items.len();
-        let item_size: usize = (max_size - separator_len * items_count) / items_count;
+        let item_size: usize = (max_size - title_len - separator_len * items_count) / items_count;
 
         let format_result: Vec<FormatResult> = self.items
             .iter()
@@ -118,7 +139,7 @@ where
             .map(|item| item_size - item.current_size)
             .sum();
 
-        self.items
+        let items_string = self.items
             .iter()
             .enumerate()
             .map(|(index, item)| {
@@ -136,7 +157,9 @@ where
                 }
             })
             .collect::<Vec<String>>()
-            .join(separator)
+            .join(separator);
+
+        format!("{title}{items_string}")
     }
 }
 

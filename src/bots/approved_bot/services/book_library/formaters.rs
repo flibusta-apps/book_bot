@@ -4,7 +4,7 @@ use crate::bots::approved_bot::modules::download::StartDownloadData;
 
 use super::types::{
     Author, AuthorBook, Book, BookAuthor, BookGenre, SearchBook, Sequence, Translator,
-    TranslatorBook, SequenceBook, BookTranslator,
+    TranslatorBook, SequenceBook, BookTranslator, Empty,
 };
 
 const NO_LIMIT: usize = 4096;
@@ -23,6 +23,62 @@ pub trait Format {
 
 pub trait FormatInline {
     fn format_inline(&self) -> String;
+}
+
+pub trait FormatTitle {
+    fn format_title(&self) -> String;
+}
+
+impl FormatTitle for Empty {
+    fn format_title(&self) -> String {
+        "".to_string()
+    }
+}
+
+impl FormatTitle for BookAuthor {
+    fn format_title(&self) -> String {
+        let BookAuthor {
+            id,
+            last_name,
+            first_name,
+            middle_name,
+        } = self;
+
+        if *id == 0 {
+            return "".to_string()
+        }
+
+        format!("👤 {last_name} {first_name} {middle_name}")
+    }
+}
+
+impl FormatTitle for BookTranslator {
+    fn format_title(&self) -> String {
+        let BookTranslator {
+            id,
+            first_name,
+            last_name,
+            middle_name,
+        } = self;
+
+        if *id == 0 {
+            return "".to_string()
+        }
+
+        format!("👤 {last_name} {first_name} {middle_name}")
+    }
+}
+
+impl FormatTitle for Sequence {
+    fn format_title(&self) -> String {
+        let Sequence { id, name } = self;
+
+        if *id == 0 {
+            return "".to_string()
+        }
+
+        format!("📚 {name}")
+    }
 }
 
 impl FormatInline for BookAuthor {

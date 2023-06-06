@@ -12,7 +12,7 @@ use crate::{bots::{
     approved_bot::{
         services::{
             book_library::{
-                formaters::Format, search_author, search_book, search_sequence, search_translator,
+                formaters::{Format, FormatTitle}, search_author, search_book, search_sequence, search_translator,
                 types::Page,
             },
             user_settings::get_user_or_default_lang_codes,
@@ -106,7 +106,7 @@ fn get_query(cq: CallbackQuery) -> Option<String> {
         .unwrap_or(None)
 }
 
-async fn generic_search_pagination_handler<T, Fut>(
+async fn generic_search_pagination_handler<T, P, Fut>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
     search_data: SearchCallbackData,
@@ -115,7 +115,8 @@ async fn generic_search_pagination_handler<T, Fut>(
 ) -> BotHandlerInternal
 where
     T: Format + Clone,
-    Fut: std::future::Future<Output = Result<Page<T>, Box<dyn std::error::Error + Send + Sync>>>,
+    P: FormatTitle + Clone,
+    Fut: std::future::Future<Output = Result<Page<T, P>, Box<dyn std::error::Error + Send + Sync>>>,
 {
     let chat_id = cq.chat_id();
     let user_id = cq.from.id;

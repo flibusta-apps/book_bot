@@ -7,7 +7,7 @@ use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, adaptors::{Thro
 use crate::{bots::approved_bot::{
     services::{
         book_library::{
-            formaters::Format, get_author_books, get_sequence_books, get_translator_books,
+            formaters::{Format, FormatTitle}, get_author_books, get_sequence_books, get_translator_books,
             types::Page,
         },
         user_settings::get_user_or_default_lang_codes,
@@ -113,7 +113,7 @@ impl GetPaginationCallbackData for BookCallbackData {
     }
 }
 
-async fn send_book_handler<T, Fut>(
+async fn send_book_handler<T, P, Fut>(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
     command: BookCommand,
@@ -122,7 +122,8 @@ async fn send_book_handler<T, Fut>(
 ) -> crate::bots::BotHandlerInternal
 where
     T: Format + Clone,
-    Fut: std::future::Future<Output = Result<Page<T>, Box<dyn std::error::Error + Send + Sync>>>,
+    P: FormatTitle + Clone,
+    Fut: std::future::Future<Output = Result<Page<T, P>, Box<dyn std::error::Error + Send + Sync>>>,
 {
     let id = match command {
         BookCommand::Author { id } => id,
@@ -189,7 +190,7 @@ where
     Ok(())
 }
 
-async fn send_pagination_book_handler<T, Fut>(
+async fn send_pagination_book_handler<T, P, Fut>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
     callback_data: BookCallbackData,
@@ -198,7 +199,8 @@ async fn send_pagination_book_handler<T, Fut>(
 ) -> crate::bots::BotHandlerInternal
 where
     T: Format + Clone,
-    Fut: std::future::Future<Output = Result<Page<T>, Box<dyn std::error::Error + Send + Sync>>>,
+    P: FormatTitle + Clone,
+    Fut: std::future::Future<Output = Result<Page<T, P>, Box<dyn std::error::Error + Send + Sync>>>,
 {
     let (id, page) = match callback_data {
         BookCallbackData::Author { id, page } => (id, page),

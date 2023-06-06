@@ -5,6 +5,8 @@ use serde::de::DeserializeOwned;
 
 use crate::config;
 
+use self::types::Empty;
+
 fn get_allowed_langs_params(allowed_langs: Vec<String>) -> Vec<(&'static str, String)> {
     allowed_langs
         .into_iter()
@@ -83,7 +85,7 @@ pub async fn get_genre_metas() -> Result<Vec<String>, Box<dyn std::error::Error 
 
 pub async fn get_genres(
     meta: String,
-) -> Result<types::Page<types::Genre>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<types::Page<types::Genre, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let params = vec![("meta", meta)];
 
     _make_request("/api/v1/genres/", params).await
@@ -95,7 +97,7 @@ pub async fn search_book(
     query: String,
     page: u32,
     allowed_langs: Vec<String>,
-) -> Result<types::Page<types::SearchBook>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<types::Page<types::SearchBook, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
     params.push(("page", page.to_string()));
@@ -108,7 +110,7 @@ pub async fn search_author(
     query: String,
     page: u32,
     allowed_langs: Vec<String>,
-) -> Result<types::Page<types::Author>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<types::Page<types::Author, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
     params.push(("page", page.to_string()));
@@ -121,7 +123,7 @@ pub async fn search_sequence(
     query: String,
     page: u32,
     allowed_langs: Vec<String>,
-) -> Result<types::Page<types::Sequence>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<types::Page<types::Sequence, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
     params.push(("page", page.to_string()));
@@ -134,7 +136,7 @@ pub async fn search_translator(
     query: String,
     page: u32,
     allowed_langs: Vec<String>,
-) -> Result<types::Page<types::Translator>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<types::Page<types::Translator, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
     params.push(("page", page.to_string()));
@@ -163,7 +165,7 @@ pub async fn get_author_books(
     id: u32,
     page: u32,
     allowed_langs: Vec<String>,
-) -> Result<types::Page<types::AuthorBook>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<types::Page<types::AuthorBook, types::BookAuthor>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
     params.push(("page", page.to_string()));
@@ -176,7 +178,7 @@ pub async fn get_translator_books(
     id: u32,
     page: u32,
     allowed_langs: Vec<String>,
-) -> Result<types::Page<types::TranslatorBook>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<types::Page<types::TranslatorBook, types::BookTranslator>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
     params.push(("page", page.to_string()));
@@ -189,7 +191,7 @@ pub async fn get_sequence_books(
     id: u32,
     page: u32,
     allowed_langs: Vec<String>,
-) -> Result<types::Page<types::SequenceBook>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<types::Page<types::SequenceBook, types::Sequence>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
     params.push(("page", page.to_string()));
@@ -202,7 +204,7 @@ pub async fn get_uploaded_books(
     page: u32,
     uploaded_gte: String,
     uploaded_lte: String,
-) -> Result<types::Page<types::SearchBook>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<types::Page<types::SearchBook, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let params = vec![
         ("page", page.to_string()),
         ("size", PAGE_SIZE.to_string()),
