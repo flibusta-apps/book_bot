@@ -75,9 +75,11 @@ pub struct Genre {
 pub struct Page<T> {
     pub items: Vec<T>,
     pub total: u32,
+
     pub page: u32,
+
     pub size: u32,
-    pub total_pages: u32,
+    pub pages: u32,
 }
 
 impl<T> Page<T>

@@ -157,7 +157,7 @@ async fn update_log_pagination_handler(
     )
     .await?;
 
-    if items_page.total_pages == 0 {
+    if items_page.pages == 0 {
         bot
             .send_message(message.chat.id, "Нет новых книг за этот период.")
             .send()
@@ -165,16 +165,16 @@ async fn update_log_pagination_handler(
         return Ok(());
     }
 
-    if update_callback_data.page > items_page.total_pages {
+    if update_callback_data.page > items_page.pages {
         items_page = get_uploaded_books(
-            items_page.total_pages,
+            items_page.pages,
             update_callback_data.from.format("%Y-%m-%d").to_string(),
             update_callback_data.to.format("%Y-%m-%d").to_string(),
         ).await?;
     }
 
     let page = update_callback_data.page;
-    let total_pages = items_page.total_pages;
+    let total_pages = items_page.pages;
     let footer = format!("\n\nСтраница {page}/{total_pages}");
 
     let formated_items = items_page.format_items(4096 - footer.len());

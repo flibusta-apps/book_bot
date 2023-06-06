@@ -160,12 +160,12 @@ where
         }
     };
 
-    if items_page.total_pages == 0 {
+    if items_page.pages == 0 {
         bot.send_message(chat_id, "Книги не найдены!").send().await?;
         return Ok(());
     };
 
-    let total_pages = items_page.total_pages;
+    let total_pages = items_page.pages;
     let footer = format!("\n\nСтраница 1/{total_pages}");
 
     let formated_items = items_page.format_items(4096 - footer.len());
@@ -238,13 +238,13 @@ where
         }
     };
 
-    if items_page.total_pages == 0 {
+    if items_page.pages == 0 {
         bot.send_message(chat_id, "Книги не найдены!").send().await?;
         return Ok(());
     };
 
-    if page > items_page.total_pages {
-        items_page = match books_getter(id, items_page.total_pages, allowed_langs.clone()).await {
+    if page > items_page.pages {
+        items_page = match books_getter(id, items_page.pages, allowed_langs.clone()).await {
             Ok(v) => v,
             Err(err) => {
                 bot
@@ -257,7 +257,7 @@ where
         };
     }
 
-    let total_pages = items_page.total_pages;
+    let total_pages = items_page.pages;
     let footer = format!("\n\nСтраница {page}/{total_pages}");
 
     let formated_items = items_page.format_items(4096 - footer.len());

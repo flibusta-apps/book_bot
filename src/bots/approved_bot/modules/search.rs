@@ -156,7 +156,7 @@ where
         }
     };
 
-    if items_page.total_pages == 0 {
+    if items_page.pages == 0 {
         let message_text = match search_data {
             SearchCallbackData::Book { .. } => "Книги не найдены!",
             SearchCallbackData::Authors { .. } => "Авторы не найдены!",
@@ -168,10 +168,10 @@ where
         return Ok(());
     };
 
-    if page > items_page.total_pages {
+    if page > items_page.pages {
         items_page = match items_getter(
             query.clone(),
-            items_page.total_pages,
+            items_page.pages,
             allowed_langs.clone(),
         )
         .await
@@ -188,7 +188,7 @@ where
         };
     }
 
-    let total_pages = items_page.total_pages;
+    let total_pages = items_page.pages;
     let footer = format!("\n\nСтраница {page}/{total_pages}");
 
     let formated_items = items_page.format_items(4096 - footer.len());
