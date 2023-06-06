@@ -94,9 +94,7 @@ where
     T: Format + Clone + Debug,
     P: FormatTitle + Clone + Debug
 {
-    pub fn format_items(&self, max_size: usize) -> String {
-        log::error!("format: {:?}", self);
-
+    pub fn format(&self, page: u32, max_size: usize) -> String {
         let title: String = match &self.parent_item {
             Some(parent_item) => {
                 let item_title = parent_item.format_title();
@@ -109,13 +107,21 @@ where
             },
             None => "".to_string(),
         };
-        let title_len: usize = title.len();
 
+        let total_pages = self.pages;
+        let footer = format!("\n\nСтраница {page}/{total_pages}");
+
+        let formated_items = self.format_items(max_size - title.len() - footer.len());
+
+        format!("{title}{formated_items}{footer}")
+    }
+
+    fn format_items(&self, max_size: usize) -> String {
         let separator = "\n\n\n";
         let separator_len: usize = separator.len();
 
         let items_count: usize = self.items.len();
-        let item_size: usize = (max_size - title_len - separator_len * items_count) / items_count;
+        let item_size: usize = (max_size - separator_len * items_count) / items_count;
 
         let format_result: Vec<FormatResult> = self.items
             .iter()
@@ -129,13 +135,11 @@ where
         };
 
         if !has_any_spliced {
-            let items_string = format_result
+            return format_result
                 .into_iter()
                 .map(|item| item.result)
                 .collect::<Vec<String>>()
                 .join(separator);
-
-            return format!("{title}{items_string}");
         }
 
         let mut free_symbols: usize = format_result
@@ -144,7 +148,7 @@ where
             .map(|item| item_size - item.current_size)
             .sum();
 
-        let items_string = self.items
+        self.items
             .iter()
             .enumerate()
             .map(|(index, item)| {
@@ -162,9 +166,7 @@ where
                 }
             })
             .collect::<Vec<String>>()
-            .join(separator);
-
-        format!("{title}{items_string}")
+            .join(separator)
     }
 }
 

@@ -167,12 +167,7 @@ where
         return Ok(());
     };
 
-    let total_pages = items_page.pages;
-    let footer = format!("\n\nСтраница 1/{total_pages}");
-
-    let formated_items = items_page.format_items(4096 - footer.len());
-
-    let message_text = format!("{formated_items}{footer}");
+    let formated_page = items_page.format(1, 4096);
 
     let callback_data = match command {
         BookCommand::Author { id } => BookCallbackData::Author { id, page: 1 },
@@ -180,10 +175,10 @@ where
         BookCommand::Sequence { id } => BookCallbackData::Sequence { id, page: 1 },
     };
 
-    let keyboard = generic_get_pagination_keyboard(1, total_pages, callback_data, true);
+    let keyboard = generic_get_pagination_keyboard(1, items_page.pages, callback_data, true);
 
     bot
-        .send_message(chat_id, message_text)
+        .send_message(chat_id, formated_page)
         .reply_markup(keyboard)
         .send()
         .await?;
@@ -260,17 +255,12 @@ where
         };
     }
 
-    let total_pages = items_page.pages;
-    let footer = format!("\n\nСтраница {page}/{total_pages}");
+    let formated_page = items_page.format(page, 4096);
 
-    let formated_items = items_page.format_items(4096 - footer.len());
-
-    let message_text = format!("{formated_items}{footer}");
-
-    let keyboard = generic_get_pagination_keyboard(page, total_pages, callback_data, true);
+    let keyboard = generic_get_pagination_keyboard(page, items_page.pages, callback_data, true);
 
     bot
-        .edit_message_text(chat_id, message_id, message_text)
+        .edit_message_text(chat_id, message_id, formated_page)
         .reply_markup(keyboard)
         .send()
         .await?;

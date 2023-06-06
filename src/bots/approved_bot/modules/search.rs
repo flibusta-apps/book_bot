@@ -190,17 +190,12 @@ where
         };
     }
 
-    let total_pages = items_page.pages;
-    let footer = format!("\n\nСтраница {page}/{total_pages}");
+    let formated_page = items_page.format(page, 4096);
 
-    let formated_items = items_page.format_items(4096 - footer.len());
-
-    let message_text = format!("{formated_items}{footer}");
-
-    let keyboard = generic_get_pagination_keyboard(page, total_pages, search_data, true);
+    let keyboard = generic_get_pagination_keyboard(page, items_page.pages, search_data, true);
 
     bot
-        .edit_message_text(chat_id, message_id, message_text)
+        .edit_message_text(chat_id, message_id, formated_page)
         .reply_markup(keyboard)
         .send()
         .await?;
