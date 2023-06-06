@@ -129,11 +129,13 @@ where
         };
 
         if !has_any_spliced {
-            return format_result
+            let items_string = format_result
                 .into_iter()
                 .map(|item| item.result)
                 .collect::<Vec<String>>()
                 .join(separator);
+
+            return format!("{title}{items_string}");
         }
 
         let mut free_symbols: usize = format_result
