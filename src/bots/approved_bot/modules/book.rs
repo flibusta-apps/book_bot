@@ -1,3 +1,4 @@
+use core::fmt::Debug;
 use std::str::FromStr;
 
 use moka::future::Cache;
@@ -121,8 +122,8 @@ async fn send_book_handler<T, P, Fut>(
     user_langs_cache: Cache<UserId, Vec<String>>,
 ) -> crate::bots::BotHandlerInternal
 where
-    T: Format + Clone,
-    P: FormatTitle + Clone,
+    T: Format + Clone + Debug,
+    P: FormatTitle + Clone + Debug,
     Fut: std::future::Future<Output = Result<Page<T, P>, Box<dyn std::error::Error + Send + Sync>>>,
 {
     let id = match command {
@@ -198,8 +199,8 @@ async fn send_pagination_book_handler<T, P, Fut>(
     user_langs_cache: Cache<UserId, Vec<String>>,
 ) -> crate::bots::BotHandlerInternal
 where
-    T: Format + Clone,
-    P: FormatTitle + Clone,
+    T: Format + Clone + Debug,
+    P: FormatTitle + Clone + Debug,
     Fut: std::future::Future<Output = Result<Page<T, P>, Box<dyn std::error::Error + Send + Sync>>>,
 {
     let (id, page) = match callback_data {

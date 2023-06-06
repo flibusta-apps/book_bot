@@ -1,3 +1,4 @@
+use core::fmt::Debug;
 use std::str::FromStr;
 
 use moka::future::Cache;
@@ -114,8 +115,8 @@ async fn generic_search_pagination_handler<T, P, Fut>(
     user_langs_cache: Cache<UserId, Vec<String>>,
 ) -> BotHandlerInternal
 where
-    T: Format + Clone,
-    P: FormatTitle + Clone,
+    T: Format + Clone + Debug,
+    P: FormatTitle + Clone + Debug,
     Fut: std::future::Future<Output = Result<Page<T, P>, Box<dyn std::error::Error + Send + Sync>>>,
 {
     let chat_id = cq.chat_id();

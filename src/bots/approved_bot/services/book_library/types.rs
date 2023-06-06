@@ -1,3 +1,4 @@
+use core::fmt::Debug;
 use serde::Deserialize;
 
 use super::formaters::{Format, FormatResult, FormatTitle};
@@ -90,16 +91,18 @@ pub struct Page<T, P> {
 
 impl<T, P> Page<T, P>
 where
-    T: Format + Clone,
-    P: FormatTitle + Clone
+    T: Format + Clone + Debug,
+    P: FormatTitle + Clone + Debug
 {
     pub fn format_items(&self, max_size: usize) -> String {
+        log::error!("format: {:?}", self);
+
         let title: String = match &self.parent_item {
             Some(parent_item) => {
                 let item_title = parent_item.format_title();
 
                 if item_title.is_empty() {
-                    return "".to_string();
+                    return item_title;
                 }
 
                 format!("{item_title}\n\n\n")
