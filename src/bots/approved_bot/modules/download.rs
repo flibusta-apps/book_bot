@@ -156,6 +156,32 @@ impl ToString for DownloadArchiveQueryData {
     }
 }
 
+impl FromStr for DownloadArchiveQueryData {
+    type Err = strum::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let re = Regex::new(r"^da_(?P<obj_type>[s|a|t])_(?P<id>\d+)_(?P<file_type>\w+)$").unwrap();
+
+        let caps = re.captures(s);
+        let caps = match caps {
+            Some(v) => v,
+            None => return Err(strum::ParseError::VariantNotFound),
+        };
+
+        let id: u32 = caps["book_id"].parse().unwrap();
+        let file_type: String = caps["file_type"].to_string();
+
+        Ok(
+            match caps["obj_type"].to_string().as_str() {
+                "s" => DownloadArchiveQueryData::Sequence { id, file_type },
+                "a" => DownloadArchiveQueryData::Author { id, file_type },
+                "t" => DownloadArchiveQueryData::Translator { id, file_type },
+                _ => return Err(strum::ParseError::VariantNotFound)
+            }
+        )
+    }
+}
+
 async fn _send_cached(
     message: &Message,
     bot: &CacheMe<Throttle<Bot>>,
