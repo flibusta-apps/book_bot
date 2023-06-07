@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use crate::bots::approved_bot::modules::download::StartDownloadData;
+use crate::bots::approved_bot::modules::download::StartDownloadCommand;
 
 use super::types::{
     Author, AuthorBook, Book, BookAuthor, BookGenre, SearchBook, Sequence, Translator,
@@ -416,7 +416,7 @@ impl Format for Book {
             false => "".to_string(),
         };
 
-        let download_command = (StartDownloadData { id: self.id }).to_string();
+        let download_command = (StartDownloadCommand { id: self.id }).to_string();
         let download_links = format!("Скачать:\n📥{download_command}");
 
         let required_data_len: usize = format!("{book_title}{annotations}{download_links}").len();

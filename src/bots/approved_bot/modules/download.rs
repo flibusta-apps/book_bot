@@ -34,12 +34,12 @@ use crate::{
 use super::utils::{filter_command, CommandParse};
 
 #[derive(Clone)]
-pub struct DownloadData {
+pub struct DownloadDataCommand {
     pub format: String,
     pub id: u32,
 }
 
-impl CommandParse<Self> for DownloadData {
+impl CommandParse<Self> for DownloadDataCommand {
     fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
         let re = Regex::new(r"^/d_(?P<file_format>[a-zA-Z0-9]+)_(?P<book_id>\d+)$").unwrap();
 
@@ -55,7 +55,7 @@ impl CommandParse<Self> for DownloadData {
         let file_format = &caps["file_format"];
         let book_id: u32 = caps["book_id"].parse().unwrap();
 
-        Ok(DownloadData {
+        Ok(DownloadDataCommand {
             format: file_format.to_string(),
             id: book_id,
         })
@@ -63,18 +63,18 @@ impl CommandParse<Self> for DownloadData {
 }
 
 #[derive(Clone)]
-pub struct StartDownloadData {
+pub struct StartDownloadCommand {
     pub id: u32,
 }
 
-impl ToString for StartDownloadData {
+impl ToString for StartDownloadCommand {
     fn to_string(&self) -> String {
-        let StartDownloadData { id } = self;
+        let StartDownloadCommand { id } = self;
         format!("/d_{id}")
     }
 }
 
-impl CommandParse<Self> for StartDownloadData {
+impl CommandParse<Self> for StartDownloadCommand {
     fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
         let re = Regex::new(r"^/d_(?P<book_id>\d+)$").unwrap();
 
@@ -89,7 +89,7 @@ impl CommandParse<Self> for StartDownloadData {
 
         let book_id: u32 = caps["book_id"].parse().unwrap();
 
-        Ok(StartDownloadData { id: book_id })
+        Ok(StartDownloadCommand { id: book_id })
     }
 }
 
@@ -127,6 +127,47 @@ impl FromStr for DownloadQueryData {
     }
 }
 
+#[derive(Clone, EnumIter)]
+pub enum DownloadArchiveCommands {
+    Sequence { id: u32, file_format: String },
+    Author { id: u32, file_format: String },
+    Translator { id: u32, file_format: String }
+}
+
+impl ToString for DownloadArchiveCommands {
+    fn to_string(&self) -> String {
+        match self {
+            DownloadArchiveCommands::Sequence { id, file_format } => format!("da_s_{id}_{file_format}"),
+            DownloadArchiveCommands::Author { id, file_format } => format!("da_a_{id}_{file_format}"),
+            DownloadArchiveCommands::Translator { id, file_format } => format!("da_t_{id}_{file_format}"),
+        }
+    }
+}
+
+impl FromStr for DownloadArchiveCommands {
+    type Err = strum::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let re = Regex::new(r"^/da_(?P<type>[s|a|t])_(?P<id>\d+)_(?P<file_type>\w+)$").unwrap();
+
+        let caps = re.captures(s);
+        let caps = match caps {
+            Some(v) => v,
+            None => return Err(strum::ParseError::VariantNotFound),
+        };
+
+        let obj_id: u32 = caps["id"].parse().unwrap();
+        let file_type: String = caps["file_type"].to_string();
+
+        match &caps["type"] {
+            "s" => Ok(DownloadArchiveCommands::Sequence { id: obj_id, file_format: file_type }),
+            "a" => Ok(DownloadArchiveCommands::Author { id: obj_id, file_format: file_type }),
+            "t" => Ok(DownloadArchiveCommands::Translator { id: obj_id, file_format: file_type }),
+            _ => Err(strum::ParseError::VariantNotFound)
+        }
+    }
+}
+
 async fn _send_cached(
     message: &Message,
     bot: &CacheMe<Throttle<Bot>>,
@@ -149,7 +190,7 @@ async fn _send_cached(
 async fn send_cached_message(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
-    download_data: DownloadData,
+    download_data: DownloadDataCommand,
     donation_notification_cache: Cache<ChatId, bool>,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
@@ -204,7 +245,7 @@ async fn _send_downloaded_file(
 async fn send_with_download_from_channel(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
-    download_data: DownloadData,
+    download_data: DownloadDataCommand,
     donation_notification_cache: Cache<ChatId, bool>,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
@@ -226,7 +267,7 @@ async fn download_handler(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
     cache: BotCache,
-    download_data: DownloadData,
+    download_data: DownloadDataCommand,
     donation_notification_cache: Cache<ChatId, bool>,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
@@ -257,7 +298,7 @@ async fn download_handler(
 async fn get_download_keyboard_handler(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
-    download_data: StartDownloadData,
+    download_data: StartDownloadCommand,
 ) -> BotHandlerInternal {
     let book = match get_book(download_data.id).await {
         Ok(v) => v,
@@ -304,12 +345,12 @@ pub fn get_download_hander() -> crate::bots::BotHandler {
     dptree::entry()
         .branch(
             Update::filter_message()
-                .chain(filter_command::<DownloadData>())
+                .chain(filter_command::<DownloadDataCommand>())
                 .endpoint(
                     |message: Message,
                      bot: CacheMe<Throttle<Bot>>,
                      cache: BotCache,
-                     download_data: DownloadData,
+                     download_data: DownloadDataCommand,
                      app_state: AppState| async move {
                         download_handler(
                             message,
@@ -325,11 +366,11 @@ pub fn get_download_hander() -> crate::bots::BotHandler {
         )
         .branch(
             Update::filter_message()
-                .chain(filter_command::<StartDownloadData>())
+                .chain(filter_command::<StartDownloadCommand>())
                 .endpoint(
                     |message: Message,
                      bot: CacheMe<Throttle<Bot>>,
-                     download_data: StartDownloadData| async move {
+                     download_data: StartDownloadCommand| async move {
                         get_download_keyboard_handler(message, bot, download_data).await
                     },
                 ),
@@ -349,7 +390,7 @@ pub fn get_download_hander() -> crate::bots::BotHandler {
                                     cq.message.unwrap(),
                                     bot,
                                     cache,
-                                    DownloadData {
+                                    DownloadDataCommand {
                                         format: file_type,
                                         id: book_id,
                                     },
