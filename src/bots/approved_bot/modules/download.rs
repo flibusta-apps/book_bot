@@ -148,7 +148,7 @@ impl FromStr for DownloadArchiveCommand {
     type Err = strum::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"^/da_(?P<type>[s|a|t])_(?P<id>\d+)_(?P<file_type>\w+)$").unwrap();
+        let re = Regex::new(r"^/da_(?P<type>[s|a|t])_(?P<id>\d+)$").unwrap();
 
         let caps = re.captures(s);
         let caps = match caps {
