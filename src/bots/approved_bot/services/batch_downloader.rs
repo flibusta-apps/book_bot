@@ -52,7 +52,7 @@ pub async fn create_task(
 pub async fn get_task(task_id: String) -> Result<Task, Box<dyn std::error::Error + Send + Sync>> {
     Ok(reqwest::Client::new()
         .get(format!(
-            "{}/api/check_archive/{task_id}/",
+            "{}/api/check_archive/{task_id}",
             &config::CONFIG.batch_downloader_url
         ))
         .header("Authorization", &config::CONFIG.batch_downloader_api_key)
