@@ -488,6 +488,18 @@ async fn download_archive(
         i = i - 1;
     }
 
+    if task.status != TaskStatus::Complete {
+        bot
+            .edit_message_text(message.chat.id, message.id, "Ошибка! Попробуйте позже :(")
+            .reply_markup(InlineKeyboardMarkup {
+                inline_keyboard: vec![],
+            })
+            .send()
+            .await?;
+
+        return Ok(());
+    }
+
     bot
         .send_document(
             message.chat.id,
