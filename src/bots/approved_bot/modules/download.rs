@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, time::Duration};
 
 use futures::TryStreamExt;
 use moka::future::Cache;
@@ -11,7 +11,9 @@ use teloxide::{
     prelude::*,
     types::*,
 };
+use tokio::time::sleep;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
+use url::Url;
 
 use crate::{
     bots::{
@@ -22,7 +24,9 @@ use crate::{
                     types::{CachedMessage, DownloadFile},
                 },
                 book_library::{get_book, get_author_books_available_types, get_translator_books_available_types, get_sequence_books_available_types},
-                donation_notificatioins::send_donation_notification, user_settings::get_user_or_default_lang_codes,
+                donation_notificatioins::send_donation_notification, user_settings::get_user_or_default_lang_codes, batch_downloader::{TaskObjectType, CreateTaskData},
+                batch_downloader::{create_task, get_task, TaskStatus}
+
             },
             tools::filter_callback_query,
         },
@@ -410,18 +414,93 @@ async fn get_download_archive_keyboard_handler(
     Ok(())
 }
 
+async fn download_archive(
+    cq: CallbackQuery,
+    download_archive_query_data: DownloadArchiveQueryData,
+    bot: CacheMe<Throttle<Bot>>,
+    app_state: AppState
+) -> BotHandlerInternal {
+    let allowed_langs = get_user_or_default_lang_codes(
+        cq.from.id,
+        app_state.user_langs_cache
+    ).await;
+
+    let (id, file_type, task_type) = match download_archive_query_data {
+        DownloadArchiveQueryData::Sequence { id, file_type } => (id, file_type, TaskObjectType::Sequence),
+        DownloadArchiveQueryData::Author { id, file_type } => (id, file_type, TaskObjectType::Author),
+        DownloadArchiveQueryData::Translator { id, file_type } => (id, file_type, TaskObjectType::Translator),
+    };
+
+    let message = cq.message.unwrap();
+
+    let task = create_task(CreateTaskData {
+        object_id: id,
+        object_type: task_type,
+        file_format: file_type,
+        allowed_langs
+    }).await;
+
+    let mut task = match task {
+        Ok(v) => v,
+        Err(err) => {
+            bot
+                .edit_message_text(message.chat.id, message.id, "Ошибка! Попробуйте позже :(")
+                .reply_markup(InlineKeyboardMarkup {
+                    inline_keyboard: vec![],
+                })
+                .send()
+                .await?;
+
+            return Err(err);
+        },
+    };
+
+    bot
+        .edit_message_text(message.chat.id, message.id, "Подготовка архива...")
+        .reply_markup(InlineKeyboardMarkup {
+            inline_keyboard: vec![],
+        })
+        .send()
+        .await?;
+
+    while task.status != TaskStatus::Complete {
+        task = match get_task(task.id).await {
+            Ok(v) => v,
+            Err(err) => {
+                bot
+                .edit_message_text(message.chat.id, message.id, "Ошибка! Попробуйте позже :(")
+                .reply_markup(InlineKeyboardMarkup {
+                    inline_keyboard: vec![],
+                })
+                .send()
+                .await?;
+
+                return Err(err);
+            },
+        };
+
+        sleep(Duration::from_secs(5)).await;
+    }
+
+    bot
+        .send_document(
+            message.chat.id,
+            InputFile::url(
+                Url::from_str(&task.result_link.unwrap()
+            ).unwrap())
+        )
+        .send()
+        .await?;
+
+    Ok(())
+}
+
 pub fn get_download_hander() -> crate::bots::BotHandler {
     dptree::entry()
         .branch(
             Update::filter_message()
                 .chain(filter_command::<StartDownloadCommand>())
-                .endpoint(
-                    |message: Message,
-                     bot: CacheMe<Throttle<Bot>>,
-                     download_data: StartDownloadCommand| async move {
-                        get_download_keyboard_handler(message, bot, download_data).await
-                    },
-                ),
+                .endpoint(get_download_keyboard_handler),
         )
         .branch(
             Update::filter_callback_query()
@@ -447,10 +526,11 @@ pub fn get_download_hander() -> crate::bots::BotHandler {
         .branch(
             Update::filter_message()
                 .chain(filter_command::<DownloadArchiveCommand>())
-                .endpoint(|
-                    message: Message, bot: CacheMe<Throttle<Bot>>, command: DownloadArchiveCommand, app_state: AppState
-                | async move {
-                    get_download_archive_keyboard_handler(message, bot, command, app_state.user_langs_cache).await
-                })
+                .endpoint(get_download_archive_keyboard_handler)
+        )
+        .branch(
+            Update::filter_callback_query()
+            .chain(filter_callback_query::<DownloadArchiveQueryData>())
+            .endpoint(download_archive)
         )
 }

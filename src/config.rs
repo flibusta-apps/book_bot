@@ -17,6 +17,9 @@ pub struct Config {
     pub cache_server_url: String,
     pub cache_server_api_key: String,
 
+    pub batch_downloader_url: String,
+    pub batch_downloader_api_key: String,
+
     pub sentry_dsn: String,
 }
 
@@ -47,6 +50,9 @@ impl Config {
 
             cache_server_url: get_env("CACHE_SERVER_URL"),
             cache_server_api_key: get_env("CACHE_SERVER_API_KEY"),
+
+            batch_downloader_url: get_env("BATCH_DOWNLOADER_URL"),
+            batch_downloader_api_key: get_env("BATCH_DOWNLOADER_API_KEY"),
 
             sentry_dsn: get_env("SENTRY_DSN"),
         }
