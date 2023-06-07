@@ -500,13 +500,17 @@ async fn download_archive(
             return Ok(());
         }
 
-        bot
+        let send_result = bot
             .send_document(
                 message.chat.id,
                 InputFile::url(task.result_link.unwrap().parse().unwrap())
             )
             .send()
-            .await?;
+            .await;
+
+        if let Err(err) = send_result {
+            log::error!("{:?}", err);
+        }
 
         Ok(())
     });
