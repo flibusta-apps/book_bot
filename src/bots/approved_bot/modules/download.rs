@@ -485,7 +485,7 @@ async fn download_archive(
 
             sleep(Duration::from_secs(5)).await;
 
-            i = i - 1;
+            i -= 1;
         }
 
         if task.status != TaskStatus::Complete {
