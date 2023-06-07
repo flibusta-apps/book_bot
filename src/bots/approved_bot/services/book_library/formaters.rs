@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use crate::bots::approved_bot::modules::download::StartDownloadCommand;
+use crate::bots::approved_bot::modules::download::{StartDownloadCommand, DownloadArchiveCommand};
 
 use super::types::{
     Author, AuthorBook, Book, BookAuthor, BookGenre, SearchBook, Sequence, Translator,
@@ -48,7 +48,9 @@ impl FormatTitle for BookAuthor {
             return "".to_string()
         }
 
-        format!("👤 {last_name} {first_name} {middle_name}")
+        let command = (DownloadArchiveCommand::Author { id: *id }).to_string();
+
+        format!("👤 {last_name} {first_name} {middle_name}\n{command}")
     }
 }
 
@@ -65,7 +67,9 @@ impl FormatTitle for BookTranslator {
             return "".to_string()
         }
 
-        format!("👤 {last_name} {first_name} {middle_name}")
+        let command = (DownloadArchiveCommand::Translator { id: *id }).to_string();
+
+        format!("👤 {last_name} {first_name} {middle_name}\n{command}")
     }
 }
 
@@ -77,7 +81,9 @@ impl FormatTitle for Sequence {
             return "".to_string()
         }
 
-        format!("📚 {name}")
+        let command = (DownloadArchiveCommand::Sequence { id: *id }).to_string();
+
+        format!("📚 {name}\n{command}")
     }
 }
 

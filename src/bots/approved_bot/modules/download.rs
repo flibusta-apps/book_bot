@@ -128,23 +128,23 @@ impl FromStr for DownloadQueryData {
 }
 
 #[derive(Clone, EnumIter)]
-pub enum DownloadArchiveCommands {
-    Sequence { id: u32, file_format: String },
-    Author { id: u32, file_format: String },
-    Translator { id: u32, file_format: String }
+pub enum DownloadArchiveCommand {
+    Sequence { id: u32},
+    Author { id: u32 },
+    Translator { id: u32 }
 }
 
-impl ToString for DownloadArchiveCommands {
+impl ToString for DownloadArchiveCommand {
     fn to_string(&self) -> String {
         match self {
-            DownloadArchiveCommands::Sequence { id, file_format } => format!("da_s_{id}_{file_format}"),
-            DownloadArchiveCommands::Author { id, file_format } => format!("da_a_{id}_{file_format}"),
-            DownloadArchiveCommands::Translator { id, file_format } => format!("da_t_{id}_{file_format}"),
+            DownloadArchiveCommand::Sequence { id } => format!("da_s_{id}"),
+            DownloadArchiveCommand::Author { id } => format!("da_a_{id}"),
+            DownloadArchiveCommand::Translator { id } => format!("da_t_{id}"),
         }
     }
 }
 
-impl FromStr for DownloadArchiveCommands {
+impl FromStr for DownloadArchiveCommand {
     type Err = strum::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -160,9 +160,9 @@ impl FromStr for DownloadArchiveCommands {
         let file_type: String = caps["file_type"].to_string();
 
         match &caps["type"] {
-            "s" => Ok(DownloadArchiveCommands::Sequence { id: obj_id, file_format: file_type }),
-            "a" => Ok(DownloadArchiveCommands::Author { id: obj_id, file_format: file_type }),
-            "t" => Ok(DownloadArchiveCommands::Translator { id: obj_id, file_format: file_type }),
+            "s" => Ok(DownloadArchiveCommand::Sequence { id: obj_id }),
+            "a" => Ok(DownloadArchiveCommand::Author { id: obj_id }),
+            "t" => Ok(DownloadArchiveCommand::Translator { id: obj_id }),
             _ => Err(strum::ParseError::VariantNotFound)
         }
     }
