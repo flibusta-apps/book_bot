@@ -363,8 +363,10 @@ async fn get_download_archive_keyboard_handler(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
     command: DownloadArchiveCommand,
-    user_langs_cache: Cache<UserId, Vec<String>>
+    app_state: AppState,
 ) -> BotHandlerInternal {
+    let user_langs_cache = app_state.user_langs_cache;
+
     let allowed_langs = get_user_or_default_lang_codes(
         message.from().unwrap().id,
         user_langs_cache
