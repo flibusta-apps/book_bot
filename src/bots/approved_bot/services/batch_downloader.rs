@@ -32,6 +32,7 @@ pub struct Task {
     pub object_id: u32,
     pub object_type: TaskObjectType,
     pub status: TaskStatus,
+    pub result_filename: Option<String>,
     pub result_link: Option<String>,
 }
 

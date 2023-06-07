@@ -20,7 +20,7 @@ use crate::{
             services::{
                 book_cache::{
                     download_file, get_cached_message,
-                    types::{CachedMessage, DownloadFile},
+                    types::{CachedMessage, DownloadFile}, download_file_by_link,
                 },
                 book_library::{get_book, get_author_books_available_types, get_translator_books_available_types, get_sequence_books_available_types},
                 donation_notificatioins::send_donation_notification, user_settings::get_user_or_default_lang_codes, batch_downloader::{TaskObjectType, CreateTaskData},
@@ -500,19 +500,33 @@ async fn download_archive(
             return Ok(());
         }
 
-        let send_result = bot
-            .send_document(
-                message.chat.id,
-                InputFile::url(task.result_link.unwrap().parse().unwrap())
-            )
-            .send()
-            .await;
+        let downloaded_data = match download_file_by_link(
+            task.result_filename.unwrap(),
+            task.result_link.unwrap()
+        ).await {
+            Ok(v) => v,
+            Err(err) => {
+                bot
+                    .edit_message_text(message.chat.id, message.id, "Ошибка! Попробуйте позже :(")
+                    .reply_markup(InlineKeyboardMarkup {
+                        inline_keyboard: vec![],
+                    })
+                    .send()
+                    .await?;
 
-        if let Err(err) = send_result {
-            log::error!("{:?}", err);
+                return Err(err);
+            },
+        };
+
+        match _send_downloaded_file(
+            &message,
+            bot,
+            downloaded_data,
+            app_state.chat_donation_notifications_cache
+        ).await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(err),
         }
-
-        Ok(())
     });
 
     Ok(())

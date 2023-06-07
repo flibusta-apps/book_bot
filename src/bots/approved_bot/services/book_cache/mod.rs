@@ -93,3 +93,27 @@ pub async fn download_file(
         caption,
     })
 }
+
+
+pub async fn download_file_by_link(
+    filename: String,
+    link: String
+) -> Result<DownloadFile, Box<dyn std::error::Error + Send + Sync>> {
+    let response = reqwest::Client::new()
+        .get(link)
+        .send()
+        .await?
+        .error_for_status()?;
+
+    if response.status() != StatusCode::OK {
+        return Err(Box::new(DownloadError {
+            status_code: response.status(),
+        }));
+    };
+
+    Ok(DownloadFile {
+        response,
+        filename,
+        caption: "".to_string(),
+    })
+}
