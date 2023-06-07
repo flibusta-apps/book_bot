@@ -408,7 +408,7 @@ async fn get_download_archive_keyboard_handler(
     };
 
     bot
-        .send_message(message.chat.id, "Функция в разработке")
+        .send_message(message.chat.id, "Выбери формат: \n (Функция тестируется и может работать нестабильно)")
         .reply_markup(keyboard)
         .reply_to_message_id(message.id)
         .await?;
