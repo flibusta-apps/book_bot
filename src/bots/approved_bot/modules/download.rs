@@ -384,7 +384,7 @@ async fn get_download_archive_keyboard_handler(
     let keyboard = InlineKeyboardMarkup {
         inline_keyboard:
             available_types.iter()
-            .filter(|file_type| !file_type.contains("fb2"))
+            .filter(|file_type| !file_type.contains("zip"))
             .map(|file_type| {
                 let callback_data: String = match command {
                     DownloadArchiveCommand::Sequence { id } => DownloadArchiveQueryData::Sequence {
