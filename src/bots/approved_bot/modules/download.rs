@@ -464,13 +464,32 @@ async fn download_archive(
         .send()
         .await?;
 
-    let mut i = 15 * 60 / 5;
+    tokio::spawn(async move {
+        let mut i = 15 * 60 / 5;
 
-    while task.status != TaskStatus::Complete && i >= 0 {
-        task = match get_task(task.id).await {
-            Ok(v) => v,
-            Err(err) => {
-                bot
+        while task.status != TaskStatus::Complete && i >= 0 {
+            task = match get_task(task.id).await {
+                Ok(v) => v,
+                Err(err) => {
+                    bot
+                    .edit_message_text(message.chat.id, message.id, "Ошибка! Попробуйте позже :(")
+                    .reply_markup(InlineKeyboardMarkup {
+                        inline_keyboard: vec![],
+                    })
+                    .send()
+                    .await?;
+
+                    return Err(err);
+                },
+            };
+
+            sleep(Duration::from_secs(5)).await;
+
+            i = i - 1;
+        }
+
+        if task.status != TaskStatus::Complete {
+            bot
                 .edit_message_text(message.chat.id, message.id, "Ошибка! Попробуйте позже :(")
                 .reply_markup(InlineKeyboardMarkup {
                     inline_keyboard: vec![],
@@ -478,34 +497,19 @@ async fn download_archive(
                 .send()
                 .await?;
 
-                return Err(err);
-            },
-        };
+            return Ok(());
+        }
 
-        sleep(Duration::from_secs(5)).await;
-
-        i = i - 1;
-    }
-
-    if task.status != TaskStatus::Complete {
         bot
-            .edit_message_text(message.chat.id, message.id, "Ошибка! Попробуйте позже :(")
-            .reply_markup(InlineKeyboardMarkup {
-                inline_keyboard: vec![],
-            })
+            .send_document(
+                message.chat.id,
+                InputFile::url(task.result_link.unwrap().parse().unwrap())
+            )
             .send()
             .await?;
 
-        return Ok(());
-    }
-
-    bot
-        .send_document(
-            message.chat.id,
-            InputFile::url(task.result_link.unwrap().parse().unwrap())
-        )
-        .send()
-        .await?;
+        Ok(())
+    });
 
     Ok(())
 }
