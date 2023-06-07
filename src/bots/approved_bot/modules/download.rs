@@ -465,7 +465,9 @@ async fn download_archive(
         .send()
         .await?;
 
-    while task.status != TaskStatus::Complete {
+    let mut i = 15 * 60 / 5;
+
+    while task.status != TaskStatus::Complete && i >= 0 {
         task = match get_task(task.id).await {
             Ok(v) => v,
             Err(err) => {
@@ -482,6 +484,8 @@ async fn download_archive(
         };
 
         sleep(Duration::from_secs(5)).await;
+
+        i = i - 1;
     }
 
     bot
