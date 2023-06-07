@@ -172,7 +172,7 @@ impl FromStr for DownloadArchiveQueryData {
             None => return Err(strum::ParseError::VariantNotFound),
         };
 
-        let id: u32 = caps["book_id"].parse().unwrap();
+        let id: u32 = caps["id"].parse().unwrap();
         let file_type: String = caps["file_type"].to_string();
 
         Ok(
