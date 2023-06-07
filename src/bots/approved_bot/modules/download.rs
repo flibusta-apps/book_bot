@@ -137,9 +137,9 @@ pub enum DownloadArchiveCommand {
 impl ToString for DownloadArchiveCommand {
     fn to_string(&self) -> String {
         match self {
-            DownloadArchiveCommand::Sequence { id } => format!("da_s_{id}"),
-            DownloadArchiveCommand::Author { id } => format!("da_a_{id}"),
-            DownloadArchiveCommand::Translator { id } => format!("da_t_{id}"),
+            DownloadArchiveCommand::Sequence { id } => format!("/da_s_{id}"),
+            DownloadArchiveCommand::Author { id } => format!("/da_a_{id}"),
+            DownloadArchiveCommand::Translator { id } => format!("/da_t_{id}"),
         }
     }
 }
