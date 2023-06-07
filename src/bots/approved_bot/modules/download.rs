@@ -13,7 +13,6 @@ use teloxide::{
 };
 use tokio::time::sleep;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
-use url::Url;
 
 use crate::{
     bots::{
@@ -503,9 +502,7 @@ async fn download_archive(
     bot
         .send_document(
             message.chat.id,
-            InputFile::url(
-                Url::from_str(&task.result_link.unwrap()
-            ).unwrap())
+            InputFile::url(task.result_link.unwrap().parse().unwrap())
         )
         .send()
         .await?;
