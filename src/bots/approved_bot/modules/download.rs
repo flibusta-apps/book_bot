@@ -1,6 +1,7 @@
 use std::{str::FromStr, time::Duration};
 
 use futures::TryStreamExt;
+use log::logger;
 use moka::future::Cache;
 use regex::Regex;
 use strum_macros::EnumIter;
@@ -514,6 +515,8 @@ async fn download_archive(
                     .send()
                     .await?;
 
+                log::error!("{:?}", err);
+
                 return Err(err);
             },
         };
@@ -525,7 +528,11 @@ async fn download_archive(
             app_state.chat_donation_notifications_cache
         ).await {
             Ok(_) => Ok(()),
-            Err(err) => Err(err),
+            Err(err) => {
+                log::error!("{:?}", err);
+
+                Err(err)
+            },
         }
     });
 
