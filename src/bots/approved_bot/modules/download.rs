@@ -157,7 +157,6 @@ impl FromStr for DownloadArchiveCommand {
         };
 
         let obj_id: u32 = caps["id"].parse().unwrap();
-        let file_type: String = caps["file_type"].to_string();
 
         match &caps["type"] {
             "s" => Ok(DownloadArchiveCommand::Sequence { id: obj_id }),
