@@ -216,7 +216,7 @@ pub async fn get_uploaded_books(
     _make_request("/api/v1/books/", params).await
 }
 
-pub async fn _get_author_books_available_types(
+pub async fn get_author_books_available_types(
     id: u32,
     allowed_langs: Vec<String>,
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
@@ -225,7 +225,7 @@ pub async fn _get_author_books_available_types(
     _make_request(format!("/api/v1/authors/{id}/available_types").as_str(), params).await
 }
 
-pub async fn _get_translator_books_available_types(
+pub async fn get_translator_books_available_types(
     id: u32,
     allowed_langs: Vec<String>,
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
@@ -234,7 +234,7 @@ pub async fn _get_translator_books_available_types(
     _make_request(format!("/api/v1/translators/{id}/available_types").as_str(), params).await
 }
 
-pub async fn _get_sequence_books_available_types(
+pub async fn get_sequence_books_available_types(
     id: u32,
     allowed_langs: Vec<String>
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {

@@ -21,8 +21,8 @@ use crate::{
                     download_file, get_cached_message,
                     types::{CachedMessage, DownloadFile},
                 },
-                book_library::get_book,
-                donation_notificatioins::send_donation_notification,
+                book_library::{get_book, get_author_books_available_types, get_translator_books_available_types, get_sequence_books_available_types},
+                donation_notificatioins::send_donation_notification, user_settings::get_user_or_default_lang_codes,
             },
             tools::filter_callback_query,
         },
@@ -132,6 +132,23 @@ impl CommandParse<Self> for DownloadArchiveCommand {
             "a" => Ok(DownloadArchiveCommand::Author { id: obj_id }),
             "t" => Ok(DownloadArchiveCommand::Translator { id: obj_id }),
             _ => Err(strum::ParseError::VariantNotFound)
+        }
+    }
+}
+
+#[derive(Clone, EnumIter)]
+pub enum DownloadArchiveQueryData {
+    Sequence { id: u32, file_type: String },
+    Author { id: u32, file_type: String },
+    Translator { id: u32, file_type: String }
+}
+
+impl ToString for DownloadArchiveQueryData {
+    fn to_string(&self) -> String {
+        match self {
+            DownloadArchiveQueryData::Sequence { id, file_type } => format!("da_s_{id}_{file_type}"),
+            DownloadArchiveQueryData::Author { id, file_type } => format!("da_a_{id}_{file_type}"),
+            DownloadArchiveQueryData::Translator { id, file_type } => format!("da_t_{id}_{file_type}"),
         }
     }
 }
@@ -310,10 +327,54 @@ async fn get_download_keyboard_handler(
 }
 
 async fn get_download_archive_keyboard_handler(
-    message: Message, bot: CacheMe<Throttle<Bot>>, _command: DownloadArchiveCommand
+    message: Message,
+    bot: CacheMe<Throttle<Bot>>,
+    command: DownloadArchiveCommand,
+    user_langs_cache: Cache<UserId, Vec<String>>
 ) -> BotHandlerInternal {
+    let allowed_langs = get_user_or_default_lang_codes(
+        message.from().unwrap().id,
+        user_langs_cache
+    ).await;
+
+    let available_types = match command {
+        DownloadArchiveCommand::Sequence { id } => get_sequence_books_available_types(id, allowed_langs).await,
+        DownloadArchiveCommand::Author { id } => get_author_books_available_types(id, allowed_langs).await,
+        DownloadArchiveCommand::Translator { id } => get_translator_books_available_types(id, allowed_langs).await,
+    };
+
+    let available_types = match available_types {
+        Ok(v) => v,
+        Err(err) => return Err(err),
+    };
+
+    let keyboard = InlineKeyboardMarkup {
+        inline_keyboard:
+            available_types.iter()
+            .filter(|file_type| !file_type.contains("fb2"))
+            .map(|file_type| {
+                let callback_data: String = match command {
+                    DownloadArchiveCommand::Sequence { id } => DownloadArchiveQueryData::Sequence {
+                        id, file_type: file_type.to_string()
+                    }.to_string(),
+                    DownloadArchiveCommand::Author { id } => DownloadArchiveQueryData::Author {
+                        id, file_type: file_type.to_string()
+                    }.to_string(),
+                    DownloadArchiveCommand::Translator { id } => DownloadArchiveQueryData::Translator {
+                        id, file_type: file_type.to_string()
+                    }.to_string(),
+                };
+
+                vec![InlineKeyboardButton {
+                    text: file_type.to_string(),
+                    kind: InlineKeyboardButtonKind::CallbackData(callback_data)
+                }]
+            }).collect()
+    };
+
     bot
         .send_message(message.chat.id, "Функция в разработке")
+        .reply_markup(keyboard)
         .reply_to_message_id(message.id)
         .await?;
 
@@ -358,9 +419,9 @@ pub fn get_download_hander() -> crate::bots::BotHandler {
             Update::filter_message()
                 .chain(filter_command::<DownloadArchiveCommand>())
                 .endpoint(|
-                    message: Message, bot: CacheMe<Throttle<Bot>>, command: DownloadArchiveCommand
+                    message: Message, bot: CacheMe<Throttle<Bot>>, command: DownloadArchiveCommand, app_state: AppState
                 | async move {
-                    get_download_archive_keyboard_handler(message, bot, command).await
+                    get_download_archive_keyboard_handler(message, bot, command, app_state.user_langs_cache).await
                 })
         )
 }
