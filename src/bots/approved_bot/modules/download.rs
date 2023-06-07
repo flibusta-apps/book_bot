@@ -34,35 +34,6 @@ use crate::{
 use super::utils::{filter_command, CommandParse};
 
 #[derive(Clone)]
-pub struct DownloadDataCommand {
-    pub format: String,
-    pub id: u32,
-}
-
-impl CommandParse<Self> for DownloadDataCommand {
-    fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
-        let re = Regex::new(r"^/d_(?P<file_format>[a-zA-Z0-9]+)_(?P<book_id>\d+)$").unwrap();
-
-        let full_bot_name = format!("@{bot_name}");
-        let after_replace = s.replace(&full_bot_name, "");
-
-        let caps = re.captures(&after_replace);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let file_format = &caps["file_format"];
-        let book_id: u32 = caps["book_id"].parse().unwrap();
-
-        Ok(DownloadDataCommand {
-            format: file_format.to_string(),
-            id: book_id,
-        })
-    }
-}
-
-#[derive(Clone)]
 pub struct StartDownloadCommand {
     pub id: u32,
 }
@@ -144,10 +115,8 @@ impl ToString for DownloadArchiveCommand {
     }
 }
 
-impl FromStr for DownloadArchiveCommand {
-    type Err = strum::ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl CommandParse<Self> for DownloadArchiveCommand {
+    fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
         let re = Regex::new(r"^/da_(?P<type>[s|a|t])_(?P<id>\d+)$").unwrap();
 
         let caps = re.captures(s);
@@ -189,7 +158,7 @@ async fn _send_cached(
 async fn send_cached_message(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
-    download_data: DownloadDataCommand,
+    download_data: DownloadQueryData,
     donation_notification_cache: Cache<ChatId, bool>,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
@@ -244,7 +213,7 @@ async fn _send_downloaded_file(
 async fn send_with_download_from_channel(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
-    download_data: DownloadDataCommand,
+    download_data: DownloadQueryData,
     donation_notification_cache: Cache<ChatId, bool>,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
@@ -266,7 +235,7 @@ async fn download_handler(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
     cache: BotCache,
-    download_data: DownloadDataCommand,
+    download_data: DownloadQueryData,
     donation_notification_cache: Cache<ChatId, bool>,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
@@ -340,29 +309,19 @@ async fn get_download_keyboard_handler(
     Ok(())
 }
 
+async fn get_download_archive_keyboard_handler(
+    message: Message, bot: CacheMe<Throttle<Bot>>, _command: DownloadArchiveCommand
+) -> BotHandlerInternal {
+    bot
+        .send_message(message.chat.id, "Функция в разработке")
+        .reply_to_message_id(message.id)
+        .await?;
+
+    Ok(())
+}
+
 pub fn get_download_hander() -> crate::bots::BotHandler {
     dptree::entry()
-        .branch(
-            Update::filter_message()
-                .chain(filter_command::<DownloadDataCommand>())
-                .endpoint(
-                    |message: Message,
-                     bot: CacheMe<Throttle<Bot>>,
-                     cache: BotCache,
-                     download_data: DownloadDataCommand,
-                     app_state: AppState| async move {
-                        download_handler(
-                            message,
-                            bot,
-                            cache,
-                            download_data,
-                            app_state.chat_donation_notifications_cache,
-                            false,
-                        )
-                        .await
-                    },
-                ),
-        )
         .branch(
             Update::filter_message()
                 .chain(filter_command::<StartDownloadCommand>())
@@ -383,23 +342,25 @@ pub fn get_download_hander() -> crate::bots::BotHandler {
                      bot: CacheMe<Throttle<Bot>>,
                      cache: BotCache,
                      app_state: AppState| async move {
-                        match download_query_data {
-                            DownloadQueryData::DownloadData { book_id, file_type } => {
-                                download_handler(
-                                    cq.message.unwrap(),
-                                    bot,
-                                    cache,
-                                    DownloadDataCommand {
-                                        format: file_type,
-                                        id: book_id,
-                                    },
-                                    app_state.chat_donation_notifications_cache,
-                                    true,
-                                )
-                                .await
-                            }
-                        }
+                        download_handler(
+                            cq.message.unwrap(),
+                            bot,
+                            cache,
+                            download_query_data,
+                            app_state.chat_donation_notifications_cache,
+                            true,
+                        )
+                        .await
                     },
                 ),
+        )
+        .branch(
+            Update::filter_message()
+                .chain(filter_command::<DownloadArchiveCommand>())
+                .endpoint(|
+                    message: Message, bot: CacheMe<Throttle<Bot>>, command: DownloadArchiveCommand
+                | async move {
+                    get_download_archive_keyboard_handler(message, bot, command).await
+                })
         )
 }

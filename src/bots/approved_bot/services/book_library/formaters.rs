@@ -50,7 +50,7 @@ impl FormatTitle for BookAuthor {
 
         let command = (DownloadArchiveCommand::Author { id: *id }).to_string();
 
-        format!("👤 {last_name} {first_name} {middle_name}\n{command}")
+        format!("👤 {last_name} {first_name} {middle_name}\nСкачать все книги архивом: {command}")
     }
 }
 
@@ -69,7 +69,7 @@ impl FormatTitle for BookTranslator {
 
         let command = (DownloadArchiveCommand::Translator { id: *id }).to_string();
 
-        format!("👤 {last_name} {first_name} {middle_name}\n{command}")
+        format!("👤 {last_name} {first_name} {middle_name}\nСкачать все книги архивом: {command}")
     }
 }
 
@@ -83,7 +83,7 @@ impl FormatTitle for Sequence {
 
         let command = (DownloadArchiveCommand::Sequence { id: *id }).to_string();
 
-        format!("📚 {name}\n{command}")
+        format!("📚 {name}\nСкачать все книги архивом: {command}")
     }
 }
 
