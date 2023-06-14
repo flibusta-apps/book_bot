@@ -1,7 +1,6 @@
 use std::{str::FromStr, time::Duration};
 
 use futures::TryStreamExt;
-use log::logger;
 use moka::future::Cache;
 use regex::Regex;
 use strum_macros::EnumIter;
