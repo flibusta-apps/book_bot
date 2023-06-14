@@ -33,7 +33,10 @@ pub async fn support_command_handler(
 
 Спасибо!
 
-Тинькофф/Сбербанк:
+Тинькофф:
+<pre>5536913820619688</pre>
+
+Сбербанк:
 <pre>+79534966556</pre>
 
 Paypal:
