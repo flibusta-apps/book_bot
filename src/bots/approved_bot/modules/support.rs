@@ -15,7 +15,14 @@ enum SupportCommand {
 pub async fn support_command_handler(
     message: Message,
     bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
-    let username = &message.from().unwrap().first_name;
+
+    let is_bot = message.from().unwrap().is_bot;
+
+    let username = if is_bot {
+        &message.reply_to_message().unwrap().from().unwrap().first_name
+    } else {
+        &message.from().unwrap().first_name
+    };
 
     let message_text = format!("
 Привет, {username}!
