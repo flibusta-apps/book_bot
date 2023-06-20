@@ -170,7 +170,10 @@ impl BotsManager {
                 self.bot_port_map.entry(bot_data.id)
             {
                 e.insert(self.next_port);
-                self.next_port += 1;
+
+                if !is_first_start {
+                    self.next_port += 1;
+                }
 
                 match self.start_bot(bot_data, is_first_start).await {
                     BotStartResult::Success => (),
