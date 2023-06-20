@@ -230,6 +230,8 @@ impl BotsManager {
                     .unwrap();
                 log::info!("Webserver shutdown...")
             });
+
+            return;
         }
     }
 
