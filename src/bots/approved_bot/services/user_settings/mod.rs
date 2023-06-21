@@ -1,6 +1,7 @@
 use moka::future::Cache;
 use serde::Deserialize;
 use serde_json::json;
+use smallvec::{SmallVec, smallvec};
 use teloxide::{types::{UserId, ChatId}};
 
 use crate::config;
@@ -41,17 +42,17 @@ pub async fn get_user_settings(
 
 pub async fn get_user_or_default_lang_codes(
     user_id: UserId,
-    cache: Cache<UserId, Vec<String>>
-) -> Vec<String> {
+    cache: Cache<UserId, SmallVec<[String; 3]>>
+) -> SmallVec<[String; 3]> {
     if let Some(cached_langs) = cache.get(&user_id) {
         return cached_langs;
     }
 
-    let default_lang_codes = vec![String::from("ru"), String::from("be"), String::from("uk")];
+    let default_lang_codes = smallvec![String::from("ru"), String::from("be"), String::from("uk")];
 
     match get_user_settings(user_id).await {
         Ok(v) => {
-            let langs: Vec<String> = v.allowed_langs.into_iter().map(|lang| lang.code).collect();
+            let langs: SmallVec<[String; 3]> = v.allowed_langs.into_iter().map(|lang| lang.code).collect();
             cache.insert(user_id, langs.clone()).await;
             langs
         },
@@ -65,8 +66,8 @@ pub async fn create_or_update_user_settings(
     first_name: String,
     username: String,
     source: String,
-    allowed_langs: Vec<String>,
-    cache: Cache<UserId, Vec<String>>
+    allowed_langs: SmallVec<[String; 3]>,
+    cache: Cache<UserId, SmallVec<[String; 3]>>
 ) -> Result<UserSettings, Box<dyn std::error::Error + Send + Sync>> {
     cache.invalidate(&user_id).await;
 
@@ -76,7 +77,7 @@ pub async fn create_or_update_user_settings(
         "first_name": first_name,
         "username": username,
         "source": source,
-        "allowed_langs": allowed_langs
+        "allowed_langs": allowed_langs.into_vec()
     });
 
     let response = reqwest::Client::new()

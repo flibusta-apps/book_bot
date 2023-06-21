@@ -1,4 +1,5 @@
 use moka::future::Cache;
+use smallvec::SmallVec;
 use strum_macros::{Display, EnumIter};
 use teloxide::{
     prelude::*,
@@ -168,8 +169,8 @@ where
 async fn get_random_item_handler<T, Fut>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
-    item_getter: fn(allowed_langs: Vec<String>) -> Fut,
-    user_langs_cache: Cache<UserId, Vec<String>>,
+    item_getter: fn(allowed_langs: SmallVec<[String; 3]>) -> Fut,
+    user_langs_cache: Cache<UserId, SmallVec<[String; 3]>>,
 ) -> BotHandlerInternal
 where
     T: Format,
@@ -293,7 +294,7 @@ async fn get_random_book_by_genre(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
     genre_id: u32,
-    user_langs_cache: Cache<UserId, Vec<String>>,
+    user_langs_cache: Cache<UserId, SmallVec<[String; 3]>>,
 ) -> BotHandlerInternal {
     let allowed_langs = get_user_or_default_lang_codes(cq.from.id, user_langs_cache).await;
 

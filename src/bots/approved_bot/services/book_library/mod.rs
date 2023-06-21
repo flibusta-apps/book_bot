@@ -2,12 +2,13 @@ pub mod formaters;
 pub mod types;
 
 use serde::de::DeserializeOwned;
+use smallvec::SmallVec;
 
 use crate::config;
 
 use self::types::Empty;
 
-fn get_allowed_langs_params(allowed_langs: Vec<String>) -> Vec<(&'static str, String)> {
+fn get_allowed_langs_params(allowed_langs: SmallVec<[String; 3]>) -> Vec<(&'static str, String)> {
     allowed_langs
         .into_iter()
         .map(|lang| ("allowed_langs", lang))
@@ -45,7 +46,7 @@ pub async fn get_book(
 }
 
 pub async fn get_random_book_by_genre(
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
     genre: Option<u32>,
 ) -> Result<types::Book, Box<dyn std::error::Error + Send + Sync>> {
     let mut params: Vec<(&str, String)> = get_allowed_langs_params(allowed_langs);
@@ -58,13 +59,13 @@ pub async fn get_random_book_by_genre(
 }
 
 pub async fn get_random_book(
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
 ) -> Result<types::Book, Box<dyn std::error::Error + Send + Sync>> {
     get_random_book_by_genre(allowed_langs, None).await
 }
 
 pub async fn get_random_author(
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
 ) -> Result<types::Author, Box<dyn std::error::Error + Send + Sync>> {
     let params: Vec<(&str, String)> = get_allowed_langs_params(allowed_langs);
 
@@ -72,7 +73,7 @@ pub async fn get_random_author(
 }
 
 pub async fn get_random_sequence(
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
 ) -> Result<types::Sequence, Box<dyn std::error::Error + Send + Sync>> {
     let params = get_allowed_langs_params(allowed_langs);
 
@@ -96,7 +97,7 @@ const PAGE_SIZE: &str = "5";
 pub async fn search_book(
     query: String,
     page: u32,
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
 ) -> Result<types::Page<types::SearchBook, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
@@ -109,7 +110,7 @@ pub async fn search_book(
 pub async fn search_author(
     query: String,
     page: u32,
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
 ) -> Result<types::Page<types::Author, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
@@ -122,7 +123,7 @@ pub async fn search_author(
 pub async fn search_sequence(
     query: String,
     page: u32,
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
 ) -> Result<types::Page<types::Sequence, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
@@ -135,7 +136,7 @@ pub async fn search_sequence(
 pub async fn search_translator(
     query: String,
     page: u32,
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
 ) -> Result<types::Page<types::Translator, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
@@ -164,7 +165,7 @@ pub async fn get_author_annotation(
 pub async fn get_author_books(
     id: u32,
     page: u32,
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
 ) -> Result<types::Page<types::AuthorBook, types::BookAuthor>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
@@ -177,7 +178,7 @@ pub async fn get_author_books(
 pub async fn get_translator_books(
     id: u32,
     page: u32,
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
 ) -> Result<types::Page<types::TranslatorBook, types::BookTranslator>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
@@ -190,7 +191,7 @@ pub async fn get_translator_books(
 pub async fn get_sequence_books(
     id: u32,
     page: u32,
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
 ) -> Result<types::Page<types::SequenceBook, types::Sequence>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
@@ -218,7 +219,7 @@ pub async fn get_uploaded_books(
 
 pub async fn get_author_books_available_types(
     id: u32,
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
     let params = get_allowed_langs_params(allowed_langs);
 
@@ -227,7 +228,7 @@ pub async fn get_author_books_available_types(
 
 pub async fn get_translator_books_available_types(
     id: u32,
-    allowed_langs: Vec<String>,
+    allowed_langs: SmallVec<[String; 3]>,
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
     let params = get_allowed_langs_params(allowed_langs);
 
@@ -236,7 +237,7 @@ pub async fn get_translator_books_available_types(
 
 pub async fn get_sequence_books_available_types(
     id: u32,
-    allowed_langs: Vec<String>
+    allowed_langs: SmallVec<[String; 3]>
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
     let params = get_allowed_langs_params(allowed_langs);
 

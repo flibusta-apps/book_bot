@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use axum::Router;
+use smallvec::SmallVec;
 use teloxide::adaptors::throttle::Limits;
 use teloxide::types::BotCommand;
 use tokio::time::{sleep, Duration};
@@ -25,7 +26,7 @@ use crate::config;
 #[derive(Clone)]
 pub struct AppState {
     pub user_activity_cache: Cache<UserId, ()>,
-    pub user_langs_cache: Cache<UserId, Vec<String>>,
+    pub user_langs_cache: Cache<UserId, SmallVec<[String; 3]>>,
     pub chat_donation_notifications_cache: Cache<ChatId, ()>,
 }
 

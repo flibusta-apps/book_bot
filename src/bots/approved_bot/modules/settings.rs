@@ -12,6 +12,7 @@ use crate::{bots::{
 
 use moka::future::Cache;
 use regex::Regex;
+use smallvec::SmallVec;
 use teloxide::{
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup, Me},
@@ -119,7 +120,7 @@ async fn settings_callback_handler(
     bot: CacheMe<Throttle<Bot>>,
     callback_data: SettingsCallbackData,
     me: Me,
-    user_langs_cache: Cache<UserId, Vec<String>>,
+    user_langs_cache: Cache<UserId, SmallVec<[String; 3]>>,
 ) -> BotHandlerInternal {
     let message = match cq.message {
         Some(v) => v,

@@ -3,6 +3,7 @@ pub mod services;
 mod tools;
 
 use moka::future::Cache;
+use smallvec::SmallVec;
 use teloxide::{prelude::*, types::BotCommand, adaptors::{Throttle, CacheMe}};
 
 use crate::{bots::approved_bot::services::user_settings::create_or_update_user_settings, bots_manager::AppState};
@@ -23,7 +24,7 @@ async fn _update_activity(
     me: teloxide::types::Me,
     user: teloxide::types::User,
     activity_cache: Cache<UserId, ()>,
-    user_langs_cache: Cache<UserId, Vec<String>>,
+    user_langs_cache: Cache<UserId, SmallVec<[String; 3]>>,
 ) -> Option<()> {
     if activity_cache.contains_key(&user.id) {
         return None;
