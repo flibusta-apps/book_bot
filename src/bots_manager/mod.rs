@@ -22,7 +22,7 @@ use url::Url;
 use moka::future::Cache;
 
 use self::bot_manager_client::get_bots;
-pub use self::bot_manager_client::{BotCache, BotData, BotStatus};
+pub use self::bot_manager_client::{BotCache, BotData};
 use crate::config;
 
 #[derive(Clone)]
@@ -87,9 +87,8 @@ impl BotsManager {
             .unwrap_or_else(|_| panic!("Can't parse webhook url!"));
 
         log::info!(
-            "Start bot(id={}) with {:?} handler, port {}",
+            "Start bot(id={}) port {}",
             bot_data.id,
-            bot_data.status,
             port
         );
 

@@ -4,16 +4,6 @@ use crate::config;
 
 
 #[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
-pub enum BotStatus {
-    #[serde(rename = "pending")]
-    Pending,
-    #[serde(rename = "approved")]
-    Approved,
-    #[serde(rename = "blocked")]
-    Blocked,
-}
-
-#[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum BotCache {
     #[serde(rename = "original")]
     Original,
@@ -25,7 +15,6 @@ pub enum BotCache {
 pub struct BotData {
     pub id: u32,
     pub token: String,
-    pub status: BotStatus,
     pub cache: BotCache,
 }
 
