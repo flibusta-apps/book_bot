@@ -26,7 +26,7 @@ use crate::config;
 pub struct AppState {
     pub user_activity_cache: Cache<UserId, bool>,
     pub user_langs_cache: Cache<UserId, Vec<String>>,
-    pub chat_donation_notifications_cache: Cache<ChatId, bool>,
+    pub chat_donation_notifications_cache: Cache<ChatId, ()>,
 }
 
 pub struct BotsManager {

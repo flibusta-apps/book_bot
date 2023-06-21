@@ -208,7 +208,7 @@ async fn send_cached_message(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadQueryData,
-    donation_notification_cache: Cache<ChatId, bool>,
+    donation_notification_cache: Cache<ChatId, ()>,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
     if let Ok(v) = get_cached_message(&download_data).await {
@@ -233,7 +233,7 @@ async fn _send_downloaded_file(
     message: &Message,
     bot: CacheMe<Throttle<Bot>>,
     downloaded_data: DownloadFile,
-    donation_notification_cache: Cache<ChatId, bool>,
+    donation_notification_cache: Cache<ChatId, ()>,
 ) -> BotHandlerInternal {
     let DownloadFile {
         response,
@@ -263,7 +263,7 @@ async fn send_with_download_from_channel(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadQueryData,
-    donation_notification_cache: Cache<ChatId, bool>,
+    donation_notification_cache: Cache<ChatId, ()>,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
     match download_file(&download_data).await {
@@ -285,7 +285,7 @@ async fn download_handler(
     bot: CacheMe<Throttle<Bot>>,
     cache: BotCache,
     download_data: DownloadQueryData,
-    donation_notification_cache: Cache<ChatId, bool>,
+    donation_notification_cache: Cache<ChatId, ()>,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
     match cache {
