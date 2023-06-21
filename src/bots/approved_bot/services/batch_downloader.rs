@@ -1,3 +1,6 @@
+use smallvec::SmallVec;
+use smartstring::alias::String as SmartString;
+
 use serde::{Deserialize, Serialize};
 
 use crate::config;
@@ -23,7 +26,7 @@ pub struct CreateTaskData {
     pub object_id: u32,
     pub object_type: TaskObjectType,
     pub file_format: String,
-    pub allowed_langs: Vec<String>,
+    pub allowed_langs: SmallVec<[SmartString; 3]>,
 }
 
 #[derive(Deserialize)]

@@ -1,6 +1,8 @@
 use core::fmt::Debug;
 use std::str::FromStr;
 
+use smartstring::alias::String as SmartString;
+
 use moka::future::Cache;
 use regex::Regex;
 use smallvec::SmallVec;
@@ -119,8 +121,8 @@ async fn send_book_handler<T, P, Fut>(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
     command: BookCommand,
-    books_getter: fn(id: u32, page: u32, allowed_langs: SmallVec<[String; 3]>) -> Fut,
-    user_langs_cache: Cache<UserId, SmallVec<[String; 3]>>,
+    books_getter: fn(id: u32, page: u32, allowed_langs: SmallVec<[SmartString; 3]>) -> Fut,
+    user_langs_cache: Cache<UserId, SmallVec<[SmartString; 3]>>,
 ) -> crate::bots::BotHandlerInternal
 where
     T: Format + Clone + Debug,
@@ -191,8 +193,8 @@ async fn send_pagination_book_handler<T, P, Fut>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
     callback_data: BookCallbackData,
-    books_getter: fn(id: u32, page: u32, allowed_langs: SmallVec<[String; 3]>) -> Fut,
-    user_langs_cache: Cache<UserId, SmallVec<[String; 3]>>,
+    books_getter: fn(id: u32, page: u32, allowed_langs: SmallVec<[SmartString; 3]>) -> Fut,
+    user_langs_cache: Cache<UserId, SmallVec<[SmartString; 3]>>,
 ) -> crate::bots::BotHandlerInternal
 where
     T: Format + Clone + Debug,

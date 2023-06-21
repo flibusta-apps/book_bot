@@ -152,8 +152,8 @@ async fn update_log_pagination_handler(
 
     let mut items_page = get_uploaded_books(
         update_callback_data.page,
-        update_callback_data.from.format("%Y-%m-%d").to_string(),
-        update_callback_data.to.format("%Y-%m-%d").to_string(),
+        update_callback_data.from.format("%Y-%m-%d").to_string().into(),
+        update_callback_data.to.format("%Y-%m-%d").to_string().into(),
     )
     .await?;
 
@@ -168,8 +168,8 @@ async fn update_log_pagination_handler(
     if update_callback_data.page > items_page.pages {
         items_page = get_uploaded_books(
             items_page.pages,
-            update_callback_data.from.format("%Y-%m-%d").to_string(),
-            update_callback_data.to.format("%Y-%m-%d").to_string(),
+            update_callback_data.from.format("%Y-%m-%d").to_string().into(),
+            update_callback_data.to.format("%Y-%m-%d").to_string().into(),
         ).await?;
     }
 

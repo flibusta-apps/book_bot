@@ -1,6 +1,8 @@
 use core::fmt::Debug;
 use std::str::FromStr;
 
+use smartstring::alias::String as SmartString;
+
 use moka::future::Cache;
 use regex::Regex;
 use smallvec::SmallVec;
@@ -112,8 +114,8 @@ async fn generic_search_pagination_handler<T, P, Fut>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
     search_data: SearchCallbackData,
-    items_getter: fn(query: String, page: u32, allowed_langs: SmallVec<[String; 3]>) -> Fut,
-    user_langs_cache: Cache<UserId, SmallVec<[String; 3]>>,
+    items_getter: fn(query: String, page: u32, allowed_langs: SmallVec<[SmartString; 3]>) -> Fut,
+    user_langs_cache: Cache<UserId, SmallVec<[SmartString; 3]>>,
 ) -> BotHandlerInternal
 where
     T: Format + Clone + Debug,

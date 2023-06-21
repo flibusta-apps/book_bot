@@ -1,4 +1,6 @@
-use std::{collections::HashSet, str::FromStr, vec};
+use std::{collections::HashSet, str::FromStr};
+
+use smartstring::alias::String as SmartString;
 
 use crate::{bots::{
     approved_bot::{
@@ -28,8 +30,8 @@ enum SettingsCommand {
 #[derive(Clone)]
 enum SettingsCallbackData {
     Settings,
-    On { code: String },
-    Off { code: String },
+    On { code: SmartString },
+    Off { code: SmartString },
 }
 
 impl FromStr for SettingsCallbackData {
@@ -52,8 +54,8 @@ impl FromStr for SettingsCallbackData {
         let code = caps["code"].to_string();
 
         match action {
-            "on" => Ok(SettingsCallbackData::On { code }),
-            "off" => Ok(SettingsCallbackData::Off { code }),
+            "on" => Ok(SettingsCallbackData::On { code: code.into() }),
+            "off" => Ok(SettingsCallbackData::Off { code: code.into() }),
             _ => Err(strum::ParseError::VariantNotFound),
         }
     }
@@ -88,7 +90,7 @@ async fn settings_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotH
     Ok(())
 }
 
-fn get_lang_keyboard(all_langs: Vec<Lang>, allowed_langs: HashSet<String>) -> InlineKeyboardMarkup {
+fn get_lang_keyboard(all_langs: Vec<Lang>, allowed_langs: HashSet<SmartString>) -> InlineKeyboardMarkup {
     let buttons = all_langs
         .into_iter()
         .map(|lang| {
@@ -120,7 +122,7 @@ async fn settings_callback_handler(
     bot: CacheMe<Throttle<Bot>>,
     callback_data: SettingsCallbackData,
     me: Me,
-    user_langs_cache: Cache<UserId, SmallVec<[String; 3]>>,
+    user_langs_cache: Cache<UserId, SmallVec<[SmartString; 3]>>,
 ) -> BotHandlerInternal {
     let message = match cq.message {
         Some(v) => v,
@@ -134,7 +136,7 @@ async fn settings_callback_handler(
 
     let allowed_langs = get_user_or_default_lang_codes(user.id, user_langs_cache.clone()).await;
 
-    let mut allowed_langs_set: HashSet<String> = HashSet::new();
+    let mut allowed_langs_set: HashSet<SmartString> = HashSet::new();
     allowed_langs.into_iter().for_each(|v| {
         allowed_langs_set.insert(v);
     });

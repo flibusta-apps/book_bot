@@ -438,7 +438,7 @@ async fn download_archive(
         object_id: id,
         object_type: task_type,
         file_format: file_type,
-        allowed_langs: allowed_langs.into_vec(),
+        allowed_langs,
     }).await;
 
     let mut task = match task {

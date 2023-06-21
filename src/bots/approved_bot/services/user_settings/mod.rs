@@ -2,24 +2,25 @@ use moka::future::Cache;
 use serde::Deserialize;
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
-use teloxide::{types::{UserId, ChatId}};
+use teloxide::types::{UserId, ChatId};
+use smartstring::alias::String as SmartString;
 
 use crate::config;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Lang {
     // pub id: u32,
-    pub label: String,
-    pub code: String,
+    pub label: SmartString,
+    pub code: SmartString,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct UserSettings {
     pub user_id: u64,
-    pub last_name: String,
-    pub first_name: String,
-    pub username: String,
-    pub source: String,
+    pub last_name: SmartString,
+    pub first_name: SmartString,
+    pub username: SmartString,
+    pub source: SmartString,
     pub allowed_langs: SmallVec<[Lang; 3]>,
 }
 
@@ -42,17 +43,21 @@ pub async fn get_user_settings(
 
 pub async fn get_user_or_default_lang_codes(
     user_id: UserId,
-    cache: Cache<UserId, SmallVec<[String; 3]>>
-) -> SmallVec<[String; 3]> {
+    cache: Cache<UserId, SmallVec<[SmartString; 3]>>
+) -> SmallVec<[SmartString; 3]> {
     if let Some(cached_langs) = cache.get(&user_id) {
         return cached_langs;
     }
 
-    let default_lang_codes = smallvec![String::from("ru"), String::from("be"), String::from("uk")];
+    let default_lang_codes = smallvec![
+        "ru".into(),
+        "be".into(),
+        "uk".into()
+    ];
 
     match get_user_settings(user_id).await {
         Ok(v) => {
-            let langs: SmallVec<[String; 3]> = v.allowed_langs.into_iter().map(|lang| lang.code).collect();
+            let langs: SmallVec<[SmartString; 3]> = v.allowed_langs.into_iter().map(|lang| lang.code).collect();
             cache.insert(user_id, langs.clone()).await;
             langs
         },
@@ -66,8 +71,8 @@ pub async fn create_or_update_user_settings(
     first_name: String,
     username: String,
     source: String,
-    allowed_langs: SmallVec<[String; 3]>,
-    cache: Cache<UserId, SmallVec<[String; 3]>>
+    allowed_langs: SmallVec<[SmartString; 3]>,
+    cache: Cache<UserId, SmallVec<[SmartString; 3]>>
 ) -> Result<UserSettings, Box<dyn std::error::Error + Send + Sync>> {
     cache.invalidate(&user_id).await;
 

@@ -2,6 +2,8 @@ pub mod modules;
 pub mod services;
 mod tools;
 
+use smartstring::alias::String as SmartString;
+
 use moka::future::Cache;
 use smallvec::SmallVec;
 use teloxide::{prelude::*, types::BotCommand, adaptors::{Throttle, CacheMe}};
@@ -24,7 +26,7 @@ async fn _update_activity(
     me: teloxide::types::Me,
     user: teloxide::types::User,
     activity_cache: Cache<UserId, ()>,
-    user_langs_cache: Cache<UserId, SmallVec<[String; 3]>>,
+    user_langs_cache: Cache<UserId, SmallVec<[SmartString; 3]>>,
 ) -> Option<()> {
     if activity_cache.contains_key(&user.id) {
         return None;

@@ -1,6 +1,8 @@
 pub mod formaters;
 pub mod types;
 
+use smartstring::alias::String as SmartString;
+
 use serde::de::DeserializeOwned;
 use smallvec::SmallVec;
 
@@ -8,7 +10,7 @@ use crate::config;
 
 use self::types::Empty;
 
-fn get_allowed_langs_params(allowed_langs: SmallVec<[String; 3]>) -> Vec<(&'static str, String)> {
+fn get_allowed_langs_params(allowed_langs: SmallVec<[SmartString; 3]>) -> Vec<(&'static str, SmartString)> {
     allowed_langs
         .into_iter()
         .map(|lang| ("allowed_langs", lang))
@@ -17,7 +19,7 @@ fn get_allowed_langs_params(allowed_langs: SmallVec<[String; 3]>) -> Vec<(&'stat
 
 async fn _make_request<T>(
     url: &str,
-    params: Vec<(&str, String)>,
+    params: Vec<(&str, SmartString)>,
 ) -> Result<T, Box<dyn std::error::Error + Send + Sync>>
 where
     T: DeserializeOwned,
@@ -46,34 +48,34 @@ pub async fn get_book(
 }
 
 pub async fn get_random_book_by_genre(
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
     genre: Option<u32>,
 ) -> Result<types::Book, Box<dyn std::error::Error + Send + Sync>> {
-    let mut params: Vec<(&str, String)> = get_allowed_langs_params(allowed_langs);
+    let mut params = get_allowed_langs_params(allowed_langs);
 
     if let Some(v) = genre {
-        params.push(("genre", v.to_string()));
+        params.push(("genre", v.to_string().into()));
     }
 
     _make_request("/api/v1/books/random", params).await
 }
 
 pub async fn get_random_book(
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> Result<types::Book, Box<dyn std::error::Error + Send + Sync>> {
     get_random_book_by_genre(allowed_langs, None).await
 }
 
 pub async fn get_random_author(
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> Result<types::Author, Box<dyn std::error::Error + Send + Sync>> {
-    let params: Vec<(&str, String)> = get_allowed_langs_params(allowed_langs);
+    let params = get_allowed_langs_params(allowed_langs);
 
     _make_request("/api/v1/authors/random", params).await
 }
 
 pub async fn get_random_sequence(
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> Result<types::Sequence, Box<dyn std::error::Error + Send + Sync>> {
     let params = get_allowed_langs_params(allowed_langs);
 
@@ -85,7 +87,7 @@ pub async fn get_genre_metas() -> Result<Vec<String>, Box<dyn std::error::Error 
 }
 
 pub async fn get_genres(
-    meta: String,
+    meta: SmartString,
 ) -> Result<types::Page<types::Genre, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let params = vec![("meta", meta)];
 
@@ -97,12 +99,12 @@ const PAGE_SIZE: &str = "5";
 pub async fn search_book(
     query: String,
     page: u32,
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> Result<types::Page<types::SearchBook, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
-    params.push(("page", page.to_string()));
-    params.push(("size", PAGE_SIZE.to_string()));
+    params.push(("page", page.to_string().into()));
+    params.push(("size", PAGE_SIZE.to_string().into()));
 
     _make_request(format!("/api/v1/books/search/{query}").as_str(), params).await
 }
@@ -110,12 +112,12 @@ pub async fn search_book(
 pub async fn search_author(
     query: String,
     page: u32,
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> Result<types::Page<types::Author, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
-    params.push(("page", page.to_string()));
-    params.push(("size", PAGE_SIZE.to_string()));
+    params.push(("page", page.to_string().into()));
+    params.push(("size", PAGE_SIZE.to_string().into()));
 
     _make_request(format!("/api/v1/authors/search/{query}").as_str(), params).await
 }
@@ -123,12 +125,12 @@ pub async fn search_author(
 pub async fn search_sequence(
     query: String,
     page: u32,
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> Result<types::Page<types::Sequence, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
-    params.push(("page", page.to_string()));
-    params.push(("size", PAGE_SIZE.to_string()));
+    params.push(("page", page.to_string().into()));
+    params.push(("size", PAGE_SIZE.to_string().into()));
 
     _make_request(format!("/api/v1/sequences/search/{query}").as_str(), params).await
 }
@@ -136,12 +138,12 @@ pub async fn search_sequence(
 pub async fn search_translator(
     query: String,
     page: u32,
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> Result<types::Page<types::Translator, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
-    params.push(("page", page.to_string()));
-    params.push(("size", PAGE_SIZE.to_string()));
+    params.push(("page", page.to_string().into()));
+    params.push(("size", PAGE_SIZE.to_string().into()));
 
     _make_request(
         format!("/api/v1/translators/search/{query}").as_str(),
@@ -165,12 +167,12 @@ pub async fn get_author_annotation(
 pub async fn get_author_books(
     id: u32,
     page: u32,
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> Result<types::Page<types::AuthorBook, types::BookAuthor>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
-    params.push(("page", page.to_string()));
-    params.push(("size", PAGE_SIZE.to_string()));
+    params.push(("page", page.to_string().into()));
+    params.push(("size", PAGE_SIZE.to_string().into()));
 
     _make_request(format!("/api/v1/authors/{id}/books").as_str(), params).await
 }
@@ -178,12 +180,12 @@ pub async fn get_author_books(
 pub async fn get_translator_books(
     id: u32,
     page: u32,
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> Result<types::Page<types::TranslatorBook, types::BookTranslator>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
-    params.push(("page", page.to_string()));
-    params.push(("size", PAGE_SIZE.to_string()));
+    params.push(("page", page.to_string().into()));
+    params.push(("size", PAGE_SIZE.to_string().into()));
 
     _make_request(format!("/api/v1/translators/{id}/books").as_str(), params).await
 }
@@ -191,27 +193,27 @@ pub async fn get_translator_books(
 pub async fn get_sequence_books(
     id: u32,
     page: u32,
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> Result<types::Page<types::SequenceBook, types::Sequence>, Box<dyn std::error::Error + Send + Sync>> {
     let mut params = get_allowed_langs_params(allowed_langs);
 
-    params.push(("page", page.to_string()));
-    params.push(("size", PAGE_SIZE.to_string()));
+    params.push(("page", page.to_string().into()));
+    params.push(("size", PAGE_SIZE.to_string().into()));
 
     _make_request(format!("/api/v1/sequences/{id}/books").as_str(), params).await
 }
 
 pub async fn get_uploaded_books(
     page: u32,
-    uploaded_gte: String,
-    uploaded_lte: String,
+    uploaded_gte: SmartString,
+    uploaded_lte: SmartString,
 ) -> Result<types::Page<types::SearchBook, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let params = vec![
-        ("page", page.to_string()),
-        ("size", PAGE_SIZE.to_string()),
+        ("page", page.to_string().into()),
+        ("size", PAGE_SIZE.to_string().into()),
         ("uploaded_gte", uploaded_gte),
         ("uploaded_lte", uploaded_lte),
-        ("is_deleted", "false".to_string()),
+        ("is_deleted", "false".into()),
     ];
 
     _make_request("/api/v1/books/", params).await
@@ -219,7 +221,7 @@ pub async fn get_uploaded_books(
 
 pub async fn get_author_books_available_types(
     id: u32,
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
     let params = get_allowed_langs_params(allowed_langs);
 
@@ -228,7 +230,7 @@ pub async fn get_author_books_available_types(
 
 pub async fn get_translator_books_available_types(
     id: u32,
-    allowed_langs: SmallVec<[String; 3]>,
+    allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
     let params = get_allowed_langs_params(allowed_langs);
 
@@ -237,7 +239,7 @@ pub async fn get_translator_books_available_types(
 
 pub async fn get_sequence_books_available_types(
     id: u32,
-    allowed_langs: SmallVec<[String; 3]>
+    allowed_langs: SmallVec<[SmartString; 3]>
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
     let params = get_allowed_langs_params(allowed_langs);
 

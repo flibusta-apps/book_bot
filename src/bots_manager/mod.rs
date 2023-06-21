@@ -1,5 +1,7 @@
 pub mod bot_manager_client;
 
+use smartstring::alias::String as SmartString;
+
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -26,7 +28,7 @@ use crate::config;
 #[derive(Clone)]
 pub struct AppState {
     pub user_activity_cache: Cache<UserId, ()>,
-    pub user_langs_cache: Cache<UserId, SmallVec<[String; 3]>>,
+    pub user_langs_cache: Cache<UserId, SmallVec<[SmartString; 3]>>,
     pub chat_donation_notifications_cache: Cache<ChatId, ()>,
 }
 
