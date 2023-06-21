@@ -22,7 +22,7 @@ use super::{ignore_channel_messages, BotCommands, BotHandler, bots_manager::get_
 async fn _update_activity(
     me: teloxide::types::Me,
     user: teloxide::types::User,
-    activity_cache: Cache<UserId, bool>,
+    activity_cache: Cache<UserId, ()>,
     user_langs_cache: Cache<UserId, Vec<String>>,
 ) -> Option<()> {
     if activity_cache.contains_key(&user.id) {
@@ -50,7 +50,7 @@ async fn _update_activity(
         }
 
         if update_result.is_ok() {
-            activity_cache.insert(user.id, true).await;
+            activity_cache.insert(user.id, ()).await;
         }
     });
 

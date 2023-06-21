@@ -212,6 +212,7 @@ dependencies = [
  "sentry",
  "serde",
  "serde_json",
+ "smallvec",
  "strum",
  "strum_macros",
  "teloxide",
