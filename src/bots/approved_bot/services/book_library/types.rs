@@ -1,5 +1,6 @@
 use core::fmt::Debug;
 use serde::Deserialize;
+use smallvec::SmallVec;
 
 use super::formaters::{Format, FormatResult, FormatTitle};
 
@@ -192,7 +193,7 @@ pub struct Book {
     pub title: String,
     pub lang: String,
     // file_type: String,
-    pub available_types: Vec<String>,
+    pub available_types: SmallVec<[String; 4]>,
     // uploaded: String,
     pub annotation_exists: bool,
     pub authors: Vec<BookAuthor>,
@@ -211,7 +212,7 @@ pub struct SearchBook {
     pub title: String,
     pub lang: String,
     // file_type: String,
-    pub available_types: Vec<String>,
+    pub available_types: SmallVec<[String; 4]>,
     // uploaded: String,
     pub annotation_exists: bool,
     pub authors: Vec<BookAuthor>,
@@ -242,7 +243,7 @@ pub struct AuthorBook {
     pub title: String,
     pub lang: String,
     // file_type: String,
-    pub available_types: Vec<String>,
+    pub available_types: SmallVec<[String; 4]>,
     // uploaded: String,
     pub annotation_exists: bool,
     pub translators: Vec<BookTranslator>,
@@ -272,7 +273,7 @@ pub struct TranslatorBook {
     pub title: String,
     pub lang: String,
     // file_type: String,
-    pub available_types: Vec<String>,
+    pub available_types: SmallVec<[String; 4]>,
     // uploaded: String,
     pub annotation_exists: bool,
     pub authors: Vec<BookAuthor>,
@@ -303,7 +304,7 @@ pub struct SequenceBook {
     pub title: String,
     pub lang: String,
     // file_type: String,
-    pub available_types: Vec<String>,
+    pub available_types: SmallVec<[String; 4]>,
     // uploaded: String,
     pub authors: Vec<BookAuthor>,
     pub translators: Vec<BookTranslator>,
