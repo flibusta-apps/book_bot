@@ -20,7 +20,7 @@ pub struct UserSettings {
     pub first_name: String,
     pub username: String,
     pub source: String,
-    pub allowed_langs: Vec<Lang>,
+    pub allowed_langs: SmallVec<[Lang; 3]>,
 }
 
 pub async fn get_user_settings(
