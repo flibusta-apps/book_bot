@@ -15,8 +15,8 @@ pretty_env_logger = "0.5.0"
 teloxide = { version = "0.12.2", features = ["macros", "webhooks-axum", "cache-me", "throttle"] }
 url = "2.3.1"
 ctrlc = { version = "3.4.0", features = ["termination"] }
-strum = "0.24.1"
-strum_macros = "0.24.3"
+strum = "0.25.0"
+strum_macros = "0.25.1"
 futures = "0.3.28"
 base64 = "0.21.2"
 tokio-util = { version = "0.7.8", features = ["compat"] }
