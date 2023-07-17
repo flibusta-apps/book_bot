@@ -51,15 +51,15 @@ impl BotsManager {
             app_state: AppState {
                 user_activity_cache: Cache::builder()
                     .time_to_live(Duration::from_secs(5 * 60))
-                    .max_capacity(16384)
+                    .max_capacity(2048)
                     .build(),
                 user_langs_cache: Cache::builder()
                     .time_to_live(Duration::from_secs(5 * 60))
-                    .max_capacity(16384)
+                    .max_capacity(2048)
                     .build(),
                 chat_donation_notifications_cache: Cache::builder()
                     .time_to_live(Duration::from_secs(24 * 60 * 60))
-                    .max_capacity(32768)
+                    .max_capacity(2048)
                     .build(),
             },
             next_port: 8000,
