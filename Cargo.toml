@@ -25,7 +25,6 @@ regex = "1.8.3"
 chrono = "0.4.25"
 dateparser = "0.2.0"
 sentry = "0.31.3"
-lazy_static = "1.4.0"
 moka = { version = "0.11.1", features = ["future"] }
 axum = "0.6.18"
 smallvec = { version = "1.10.0", features = ["serde"] }
@@ -33,3 +32,4 @@ smartstring = { version = "1.0.1", features = ["serde"] }
 tokio-stream = "0.1.14"
 tower = "0.4.13"
 tower-http = { version = "0.4.3", features = ["trace"] }
+once_cell = "1.18.0"

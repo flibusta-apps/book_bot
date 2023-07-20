@@ -1,3 +1,5 @@
+use once_cell::sync::Lazy;
+
 pub struct Config {
     pub telegram_bot_api: reqwest::Url,
 
@@ -59,6 +61,6 @@ impl Config {
     }
 }
 
-lazy_static! {
-    pub static ref CONFIG: Config = Config::load();
-}
+pub static CONFIG: Lazy<Config> = Lazy::new(|| {
+    Config::load()
+});
