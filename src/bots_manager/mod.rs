@@ -1,6 +1,6 @@
 pub mod bot_manager_client;
 
-use axum::extract::State;
+use axum::extract::{State, Path};
 use axum::response::IntoResponse;
 use axum::routing::post;
 use reqwest::StatusCode;
@@ -178,38 +178,10 @@ impl BotsManager {
         }
     }
 
-    // async fn start_axum_server(&mut self) {
-    //     loop {
-    //         let routers = match self.check(true).await {
-    //             Some(v) => v,
-    //             None => continue,
-    //         };
-
-    //         let mut app = Router::new();
-
-    //         for router in routers {
-    //             app = app.merge(router);
-    //         }
-
-    //         let addr = SocketAddr::from(([0, 0, 0, 0], self.next_port));
-    //         self.next_port += 1;
-
-    //         tokio::spawn(async move {
-    //             log::info!("Start webserver...");
-    //             axum::Server::bind(&addr)
-    //                 .serve(app.into_make_service())
-    //                 .await
-    //                 .unwrap();
-    //             log::info!("Webserver shutdown...")
-    //         });
-
-    //         return;
-    //     }
-    // }
-
     async fn start_axum_server(&mut self) {
         async fn telegram_request(
             State(ServerState { routers }): State<ServerState>,
+            Path(token): Path<String>,
             // secret_header: XTelegramBotApiSecretToken,
             input: String,
         ) -> impl IntoResponse {
@@ -219,7 +191,7 @@ impl BotsManager {
             // }
 
             let t1 = routers.read().unwrap();
-            let tx = t1.get("t");
+            let tx = t1.get(&token);
 
             let tx = match tx {
                 Some(tx) => {
