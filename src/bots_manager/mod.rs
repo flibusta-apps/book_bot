@@ -136,7 +136,7 @@ impl BotsManager {
         routers.insert(token.to_string(), tx);
 
         let host = format!("{}:{}", &config::CONFIG.webhook_base_url, self.port);
-        let url = Url::parse(&format!("{host}/{token}"))
+        let url = Url::parse(&format!("{host}/{token}/"))
             .unwrap_or_else(|_| panic!("Can't parse webhook url!"));
 
         match bot.set_webhook(url.clone()).await {
