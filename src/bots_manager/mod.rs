@@ -21,6 +21,7 @@ use smallvec::SmallVec;
 use teloxide::adaptors::throttle::Limits;
 use teloxide::types::{BotCommand, UpdateKind};
 use tokio::time::{sleep, Duration};
+use tower_http::trace::TraceLayer;
 
 use teloxide::prelude::*;
 
@@ -262,27 +263,29 @@ impl BotsManager {
             StatusCode::OK
         }
 
+        let stop_token = self.stop_data.0.clone();
         let stop_flag = self.stop_data.1.clone();
         let state = self.state.clone();
+        let port = self.port.clone();
 
         tokio::spawn(async move {
             log::info!("Start webserver...");
 
-            let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
+            let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
             let router = axum::Router::new()
                 .route("/:token/", post(telegram_request))
-                // .layer(TraceLayer::new_for_http())
+                .layer(TraceLayer::new_for_http())
                 .with_state(state);
 
             axum::Server::bind(&addr)
                 .serve(router.into_make_service())
                 .with_graceful_shutdown(stop_flag)
                 .await
-                // .map_err(|err| {
-                //     stop_token.stop();
-                //     err
-                // })
+                .map_err(|err| {
+                    stop_token.stop();
+                    err
+                })
                 .expect("Axum server error");
 
             log::info!("Webserver shutdown...");
