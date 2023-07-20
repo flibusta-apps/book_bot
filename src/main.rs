@@ -21,9 +21,5 @@ async fn main() {
     })
     .expect("Error setting Ctrl-C handler");
 
-    tokio::spawn(async move {
-        bots_manager::BotsManager::start(running).await;
-    })
-    .await
-    .unwrap();
+    bots_manager::BotsManager::start(running).await;
 }
