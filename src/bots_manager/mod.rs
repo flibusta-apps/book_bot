@@ -63,9 +63,12 @@ pub static CHAT_DONATION_NOTIFICATIONS_CACHE: Lazy<Cache<ChatId, ()>> = Lazy::ne
 });
 
 
+type Routes = Arc<RwLock<HashMap<String, UnboundedSender<Result<Update, std::convert::Infallible>>>>>;
+
+
 #[derive(Default, Clone)]
 struct ServerState {
-    routers: Arc<RwLock<HashMap<String, UnboundedSender<Result<Update, std::convert::Infallible>>>>>,
+    routers: Routes,
 }
 
 pub struct BotsManager {
@@ -100,7 +103,7 @@ impl BotsManager {
             },
         );
 
-        return (tx, listener);
+        (tx, listener)
     }
 
     async fn start_bot(&mut self, bot_data: &BotData) -> bool {
@@ -130,8 +133,10 @@ impl BotsManager {
 
         let (tx, listener) = self.get_listener();
 
-        let mut routers = self.state.routers.write().unwrap();
-        routers.insert(token.to_string(), tx);
+        {
+            let mut routers = self.state.routers.write().unwrap();
+            routers.insert(token.to_string(), tx);
+        }
 
         let host = format!("{}:{}", &config::CONFIG.webhook_base_url, self.port);
         let url = Url::parse(&format!("{host}/{token}/"))
@@ -151,7 +156,7 @@ impl BotsManager {
                 .await;
         });
 
-        return true;
+        true
     }
 
     async fn check(&mut self){
@@ -236,7 +241,7 @@ impl BotsManager {
         let stop_token = self.stop_data.0.clone();
         let stop_flag = self.stop_data.1.clone();
         let state = self.state.clone();
-        let port = self.port.clone();
+        let port = self.port;
 
         tokio::spawn(async move {
             log::info!("Start webserver...");
