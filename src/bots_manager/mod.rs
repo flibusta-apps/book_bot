@@ -43,21 +43,21 @@ fn tuple_first_mut<A, B>(tuple: &mut (A, B)) -> &mut A {
 
 pub static USER_ACTIVITY_CACHE: Lazy<Cache<UserId, ()>> = Lazy::new(|| {
     Cache::builder()
-        .time_to_live(Duration::from_secs(5 * 60))
+        .time_to_idle(Duration::from_secs(5 * 60))
         .max_capacity(2048)
         .build()
 });
 
 pub static USER_LANGS_CACHE: Lazy<Cache<UserId, SmallVec<[SmartString; 3]>>> = Lazy::new(|| {
     Cache::builder()
-        .time_to_live(Duration::from_secs(5 * 60))
+        .time_to_idle(Duration::from_secs(5 * 60))
         .max_capacity(2048)
         .build()
 });
 
 pub static CHAT_DONATION_NOTIFICATIONS_CACHE: Lazy<Cache<ChatId, ()>> = Lazy::new(|| {
     Cache::builder()
-        .time_to_live(Duration::from_secs(24 * 60 * 60))
+        .time_to_idle(Duration::from_secs(24 * 60 * 60))
         .max_capacity(2048)
         .build()
 });
