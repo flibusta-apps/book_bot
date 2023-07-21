@@ -193,8 +193,8 @@ impl BotsManager {
             //     return StatusCode::UNAUTHORIZED;
             // }
 
-            let t1 = routers.read().unwrap();
-            let tx = t1.get(&token);
+            let routes = routers.read().unwrap();
+            let tx = routes.get(&token);
 
             let tx = match tx {
                 Some(tx) => {
@@ -272,6 +272,8 @@ impl BotsManager {
 
         manager.start_axum_server().await;
 
+        let mut i = 0;
+
         loop {
             if !running.load(Ordering::SeqCst) {
                 manager.stop_data.0.stop();
@@ -281,9 +283,13 @@ impl BotsManager {
                 return;
             }
 
-            manager.check().await;
+            if i == 0 {
+                manager.check().await;
+            }
 
-            sleep(Duration::from_secs(30)).await;
+            sleep(Duration::from_secs(1)).await;
+
+            i = (i + 1) % 30;
         }
     }
 }
