@@ -270,6 +270,9 @@ impl BotsManager {
         loop {
             if !running.load(Ordering::SeqCst) {
                 manager.stop_data.0.stop();
+            };
+
+            if manager.stop_data.1.is_stopped() {
                 return;
             }
 
