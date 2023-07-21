@@ -2,7 +2,7 @@ use std::{collections::HashSet, str::FromStr};
 
 use smartstring::alias::String as SmartString;
 
-use crate::{bots::{
+use crate::bots::{
     approved_bot::{
         services::user_settings::{
             create_or_update_user_settings, get_langs, get_user_or_default_lang_codes, Lang,
@@ -10,11 +10,11 @@ use crate::{bots::{
         tools::filter_callback_query,
     },
     BotHandlerInternal,
-}, bots_manager::AppState};
+};
 
-use moka::future::Cache;
+
 use regex::Regex;
-use smallvec::SmallVec;
+
 use teloxide::{
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup, Me},
@@ -122,7 +122,6 @@ async fn settings_callback_handler(
     bot: CacheMe<Throttle<Bot>>,
     callback_data: SettingsCallbackData,
     me: Me,
-    user_langs_cache: Cache<UserId, SmallVec<[SmartString; 3]>>,
 ) -> BotHandlerInternal {
     let message = match cq.message {
         Some(v) => v,
@@ -134,7 +133,7 @@ async fn settings_callback_handler(
 
     let user = cq.from;
 
-    let allowed_langs = get_user_or_default_lang_codes(user.id, user_langs_cache.clone()).await;
+    let allowed_langs = get_user_or_default_lang_codes(user.id).await;
 
     let mut allowed_langs_set: HashSet<SmartString> = HashSet::new();
     allowed_langs.into_iter().for_each(|v| {
@@ -169,7 +168,6 @@ async fn settings_callback_handler(
         user.username.clone().unwrap_or("".to_string()),
         me.username.clone().unwrap(),
         allowed_langs_set.clone().into_iter().collect(),
-        user_langs_cache,
     )
     .await {
         bot.send_message(user.id, "Ошибка! Попробуйте заново(").send().await?;
@@ -211,9 +209,8 @@ pub fn get_settings_handler() -> crate::bots::BotHandler {
                     |cq: CallbackQuery,
                      bot: CacheMe<Throttle<Bot>>,
                      callback_data: SettingsCallbackData,
-                     me: Me,
-                     app_state: AppState| async move {
-                        settings_callback_handler(cq, bot, callback_data, me, app_state.user_langs_cache).await
+                     me: Me| async move {
+                        settings_callback_handler(cq, bot, callback_data, me).await
                     },
                 ),
         )

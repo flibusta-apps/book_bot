@@ -3,6 +3,7 @@ pub mod bot_manager_client;
 use axum::extract::{State, Path};
 use axum::response::IntoResponse;
 use axum::routing::post;
+use once_cell::sync::Lazy;
 use reqwest::StatusCode;
 use smartstring::alias::String as SmartString;
 use teloxide::stop::{mk_stop_token, StopToken, StopFlag};
@@ -40,12 +41,26 @@ fn tuple_first_mut<A, B>(tuple: &mut (A, B)) -> &mut A {
 }
 
 
-#[derive(Clone)]
-pub struct AppState {
-    pub user_activity_cache: Cache<UserId, ()>,
-    pub user_langs_cache: Cache<UserId, SmallVec<[SmartString; 3]>>,
-    pub chat_donation_notifications_cache: Cache<ChatId, ()>,
-}
+pub static USER_ACTIVITY_CACHE: Lazy<Cache<UserId, ()>> = Lazy::new(|| {
+    Cache::builder()
+        .time_to_live(Duration::from_secs(5 * 60))
+        .max_capacity(2048)
+        .build()
+});
+
+pub static USER_LANGS_CACHE: Lazy<Cache<UserId, SmallVec<[SmartString; 3]>>> = Lazy::new(|| {
+    Cache::builder()
+        .time_to_live(Duration::from_secs(5 * 60))
+        .max_capacity(2048)
+        .build()
+});
+
+pub static CHAT_DONATION_NOTIFICATIONS_CACHE: Lazy<Cache<ChatId, ()>> = Lazy::new(|| {
+    Cache::builder()
+        .time_to_live(Duration::from_secs(24 * 60 * 60))
+        .max_capacity(2048)
+        .build()
+});
 
 
 #[derive(Default, Clone)]
@@ -54,8 +69,6 @@ struct ServerState {
 }
 
 pub struct BotsManager {
-    app_state: AppState,
-
     port: u16,
     stop_data: (StopToken, StopFlag),
 
@@ -65,21 +78,6 @@ pub struct BotsManager {
 impl BotsManager {
     pub fn create() -> Self {
         BotsManager {
-            app_state: AppState {
-                user_activity_cache: Cache::builder()
-                    .time_to_live(Duration::from_secs(5 * 60))
-                    .max_capacity(2048)
-                    .build(),
-                user_langs_cache: Cache::builder()
-                    .time_to_live(Duration::from_secs(5 * 60))
-                    .max_capacity(2048)
-                    .build(),
-                chat_donation_notifications_cache: Cache::builder()
-                    .time_to_live(Duration::from_secs(24 * 60 * 60))
-                    .max_capacity(2048)
-                    .build(),
-            },
-
             port: 8000,
             stop_data: mk_stop_token(),
 
@@ -127,7 +125,7 @@ impl BotsManager {
         }
 
         let mut dispatcher = Dispatcher::builder(bot.clone(), handler)
-            .dependencies(dptree::deps![bot_data.cache, self.app_state.clone()])
+            .dependencies(dptree::deps![bot_data.cache])
             .build();
 
         let (tx, listener) = self.get_listener();

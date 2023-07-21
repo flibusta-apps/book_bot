@@ -1,7 +1,6 @@
-use moka::future::Cache;
-use teloxide::{types::{ChatId, Message}, adaptors::{CacheMe, Throttle}, Bot};
+use teloxide::{types::Message, adaptors::{CacheMe, Throttle}, Bot};
 
-use crate::bots::{BotHandlerInternal, approved_bot::modules::support::support_command_handler};
+use crate::{bots::{BotHandlerInternal, approved_bot::modules::support::support_command_handler}, bots_manager::CHAT_DONATION_NOTIFICATIONS_CACHE};
 
 use super::user_settings::{is_need_donate_notifications, mark_donate_notification_sended};
 
@@ -9,16 +8,15 @@ use super::user_settings::{is_need_donate_notifications, mark_donate_notificatio
 pub async fn send_donation_notification(
     bot: CacheMe<Throttle<Bot>>,
     message: Message,
-    donation_notification_cache: Cache<ChatId, ()>,
 ) -> BotHandlerInternal {
-    if donation_notification_cache.get(&message.chat.id).is_some() {
+    if CHAT_DONATION_NOTIFICATIONS_CACHE.get(&message.chat.id).is_some() {
         return Ok(());
     } else if !is_need_donate_notifications(message.chat.id).await? {
-        donation_notification_cache.insert(message.chat.id, ()).await;
+        CHAT_DONATION_NOTIFICATIONS_CACHE.insert(message.chat.id, ()).await;
         return Ok(());
     }
 
-    donation_notification_cache.insert(message.chat.id, ()).await;
+    CHAT_DONATION_NOTIFICATIONS_CACHE.insert(message.chat.id, ()).await;
     mark_donate_notification_sended(message.chat.id).await?;
 
     support_command_handler(message, bot).await?;

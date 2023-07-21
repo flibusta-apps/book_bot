@@ -1,11 +1,10 @@
-use moka::future::Cache;
 use serde::Deserialize;
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
 use teloxide::types::{UserId, ChatId};
 use smartstring::alias::String as SmartString;
 
-use crate::config;
+use crate::{config, bots_manager::USER_LANGS_CACHE};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Lang {
@@ -43,9 +42,8 @@ pub async fn get_user_settings(
 
 pub async fn get_user_or_default_lang_codes(
     user_id: UserId,
-    cache: Cache<UserId, SmallVec<[SmartString; 3]>>
 ) -> SmallVec<[SmartString; 3]> {
-    if let Some(cached_langs) = cache.get(&user_id) {
+    if let Some(cached_langs) = USER_LANGS_CACHE.get(&user_id) {
         return cached_langs;
     }
 
@@ -58,7 +56,7 @@ pub async fn get_user_or_default_lang_codes(
     match get_user_settings(user_id).await {
         Ok(v) => {
             let langs: SmallVec<[SmartString; 3]> = v.allowed_langs.into_iter().map(|lang| lang.code).collect();
-            cache.insert(user_id, langs.clone()).await;
+            USER_LANGS_CACHE.insert(user_id, langs.clone()).await;
             langs
         },
         Err(_) => default_lang_codes,
@@ -72,9 +70,8 @@ pub async fn create_or_update_user_settings(
     username: String,
     source: String,
     allowed_langs: SmallVec<[SmartString; 3]>,
-    cache: Cache<UserId, SmallVec<[SmartString; 3]>>
 ) -> Result<UserSettings, Box<dyn std::error::Error + Send + Sync>> {
-    cache.invalidate(&user_id).await;
+    USER_LANGS_CACHE.invalidate(&user_id).await;
 
     let body = json!({
         "user_id": user_id,

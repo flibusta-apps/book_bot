@@ -2,13 +2,9 @@ pub mod modules;
 pub mod services;
 mod tools;
 
-use smartstring::alias::String as SmartString;
-
-use moka::future::Cache;
-use smallvec::SmallVec;
 use teloxide::{prelude::*, types::BotCommand, adaptors::{Throttle, CacheMe}};
 
-use crate::{bots::approved_bot::services::user_settings::create_or_update_user_settings, bots_manager::AppState};
+use crate::{bots::approved_bot::services::user_settings::create_or_update_user_settings, bots_manager::USER_ACTIVITY_CACHE};
 
 use self::{
     modules::{
@@ -25,10 +21,8 @@ use super::{ignore_channel_messages, BotCommands, BotHandler, bots_manager::get_
 async fn _update_activity(
     me: teloxide::types::Me,
     user: teloxide::types::User,
-    activity_cache: Cache<UserId, ()>,
-    user_langs_cache: Cache<UserId, SmallVec<[SmartString; 3]>>,
 ) -> Option<()> {
-    if activity_cache.contains_key(&user.id) {
+    if USER_ACTIVITY_CACHE.contains_key(&user.id) {
         return None;
     }
 
@@ -36,7 +30,7 @@ async fn _update_activity(
         let mut update_result = update_user_activity(user.id).await;
 
         if update_result.is_err() {
-            let allowed_langs = get_user_or_default_lang_codes(user.id, user_langs_cache.clone()).await;
+            let allowed_langs = get_user_or_default_lang_codes(user.id).await;
 
             if create_or_update_user_settings(
                 user.id,
@@ -45,7 +39,6 @@ async fn _update_activity(
                 user.username.clone().unwrap_or("".to_string()),
                 me.username.clone().unwrap(),
                 allowed_langs,
-                user_langs_cache,
             ).await.is_ok()
             {
                 update_result = update_user_activity(user.id).await;
@@ -53,7 +46,7 @@ async fn _update_activity(
         }
 
         if update_result.is_ok() {
-            activity_cache.insert(user.id, ()).await;
+            USER_ACTIVITY_CACHE.insert(user.id, ()).await;
         }
     });
 
@@ -64,15 +57,15 @@ fn update_user_activity_handler() -> BotHandler {
     dptree::entry()
         .branch(
             Update::filter_callback_query().chain(dptree::filter_map_async(
-                |cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>, app_state: AppState| async move {
-                    _update_activity(bot.get_me().await.unwrap(), cq.from, app_state.user_activity_cache, app_state.user_langs_cache).await
+                |cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>| async move {
+                    _update_activity(bot.get_me().await.unwrap(), cq.from).await
                 },
             )),
         )
         .branch(Update::filter_message().chain(dptree::filter_map_async(
-            |message: Message, bot: CacheMe<Throttle<Bot>>, app_state: AppState| async move {
+            |message: Message, bot: CacheMe<Throttle<Bot>>| async move {
                 match message.from() {
-                    Some(user) => _update_activity(bot.get_me().await.unwrap(), user.clone(), app_state.user_activity_cache, app_state.user_langs_cache).await,
+                    Some(user) => _update_activity(bot.get_me().await.unwrap(), user.clone()).await,
                     None => None,
                 }
             },

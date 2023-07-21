@@ -1,7 +1,6 @@
 use std::{str::FromStr, time::Duration};
 
 use futures::TryStreamExt;
-use moka::future::Cache;
 use regex::Regex;
 use strum_macros::EnumIter;
 use teloxide::{
@@ -31,7 +30,7 @@ use crate::{
         },
         BotHandlerInternal,
     },
-    bots_manager::{AppState, BotCache},
+    bots_manager::BotCache,
 };
 
 use super::utils::{filter_command, CommandParse};
@@ -208,7 +207,6 @@ async fn send_cached_message(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadQueryData,
-    donation_notification_cache: Cache<ChatId, ()>,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
     if let Ok(v) = get_cached_message(&download_data).await {
@@ -217,13 +215,13 @@ async fn send_cached_message(
                 bot.delete_message(message.chat.id, message.id).await?;
             }
 
-            send_donation_notification(bot.clone(), message, donation_notification_cache).await?;
+            send_donation_notification(bot.clone(), message).await?;
 
             return Ok(());
         }
     };
 
-    send_with_download_from_channel(message, bot, download_data, donation_notification_cache, need_delete_message)
+    send_with_download_from_channel(message, bot, download_data, need_delete_message)
         .await?;
 
     Ok(())
@@ -233,7 +231,6 @@ async fn _send_downloaded_file(
     message: &Message,
     bot: CacheMe<Throttle<Bot>>,
     downloaded_data: DownloadFile,
-    donation_notification_cache: Cache<ChatId, ()>,
 ) -> BotHandlerInternal {
     let DownloadFile {
         response,
@@ -254,7 +251,7 @@ async fn _send_downloaded_file(
         .send()
         .await?;
 
-    send_donation_notification(bot, message.clone(), donation_notification_cache).await?;
+    send_donation_notification(bot, message.clone()).await?;
 
     Ok(())
 }
@@ -263,12 +260,11 @@ async fn send_with_download_from_channel(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadQueryData,
-    donation_notification_cache: Cache<ChatId, ()>,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
     match download_file(&download_data).await {
         Ok(v) => {
-            _send_downloaded_file(&message, bot.clone(), v, donation_notification_cache).await?;
+            _send_downloaded_file(&message, bot.clone(), v).await?;
 
             if need_delete_message {
                 bot.delete_message(message.chat.id, message.id).await?;
@@ -285,7 +281,6 @@ async fn download_handler(
     bot: CacheMe<Throttle<Bot>>,
     cache: BotCache,
     download_data: DownloadQueryData,
-    donation_notification_cache: Cache<ChatId, ()>,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
     match cache {
@@ -294,7 +289,6 @@ async fn download_handler(
                 message,
                 bot,
                 download_data,
-                donation_notification_cache,
                 need_delete_message,
             )
             .await
@@ -304,7 +298,6 @@ async fn download_handler(
                 message,
                 bot,
                 download_data,
-                donation_notification_cache,
                 need_delete_message,
             )
             .await
@@ -362,13 +355,9 @@ async fn get_download_archive_keyboard_handler(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
     command: DownloadArchiveCommand,
-    app_state: AppState,
 ) -> BotHandlerInternal {
-    let user_langs_cache = app_state.user_langs_cache;
-
     let allowed_langs = get_user_or_default_lang_codes(
         message.from().unwrap().id,
-        user_langs_cache
     ).await;
 
     let available_types = match command {
@@ -419,11 +408,9 @@ async fn download_archive(
     cq: CallbackQuery,
     download_archive_query_data: DownloadArchiveQueryData,
     bot: CacheMe<Throttle<Bot>>,
-    app_state: AppState
 ) -> BotHandlerInternal {
     let allowed_langs = get_user_or_default_lang_codes(
         cq.from.id,
-        app_state.user_langs_cache
     ).await;
 
     let (id, file_type, task_type) = match download_archive_query_data {
@@ -524,7 +511,6 @@ async fn download_archive(
             &message,
             bot,
             downloaded_data,
-            app_state.chat_donation_notifications_cache
         ).await {
             Ok(_) => Ok(()),
             Err(err) => {
@@ -552,14 +538,12 @@ pub fn get_download_hander() -> crate::bots::BotHandler {
                     |cq: CallbackQuery,
                      download_query_data: DownloadQueryData,
                      bot: CacheMe<Throttle<Bot>>,
-                     cache: BotCache,
-                     app_state: AppState| async move {
+                     cache: BotCache| async move {
                         download_handler(
                             cq.message.unwrap(),
                             bot,
                             cache,
                             download_query_data,
-                            app_state.chat_donation_notifications_cache,
                             true,
                         )
                         .await

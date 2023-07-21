@@ -3,7 +3,6 @@ use std::str::FromStr;
 
 use smartstring::alias::String as SmartString;
 
-use moka::future::Cache;
 use regex::Regex;
 use smallvec::SmallVec;
 use strum_macros::EnumIter;
@@ -12,7 +11,7 @@ use teloxide::{
     types::{InlineKeyboardButton, InlineKeyboardMarkup}, dispatching::dialogue::GetChatId, adaptors::{Throttle, CacheMe},
 };
 
-use crate::{bots::{
+use crate::bots::{
     approved_bot::{
         services::{
             book_library::{
@@ -24,7 +23,7 @@ use crate::{bots::{
         tools::filter_callback_query,
     },
     BotHandlerInternal,
-}, bots_manager::AppState};
+};
 
 use super::utils::{generic_get_pagination_keyboard, GetPaginationCallbackData};
 
@@ -115,7 +114,6 @@ async fn generic_search_pagination_handler<T, P, Fut>(
     bot: CacheMe<Throttle<Bot>>,
     search_data: SearchCallbackData,
     items_getter: fn(query: String, page: u32, allowed_langs: SmallVec<[SmartString; 3]>) -> Fut,
-    user_langs_cache: Cache<UserId, SmallVec<[SmartString; 3]>>,
 ) -> BotHandlerInternal
 where
     T: Format + Clone + Debug,
@@ -140,7 +138,7 @@ where
         }
     };
 
-    let allowed_langs = get_user_or_default_lang_codes(user_id, user_langs_cache).await;
+    let allowed_langs = get_user_or_default_lang_codes(user_id).await;
 
     let page = match search_data {
         SearchCallbackData::Book { page } => page,
@@ -255,12 +253,12 @@ pub fn get_search_handler() -> crate::bots::BotHandler {
     ).branch(
         Update::filter_callback_query()
             .chain(filter_callback_query::<SearchCallbackData>())
-            .endpoint(|cq: CallbackQuery, callback_data: SearchCallbackData, bot: CacheMe<Throttle<Bot>>, app_state: AppState| async move {
+            .endpoint(|cq: CallbackQuery, callback_data: SearchCallbackData, bot: CacheMe<Throttle<Bot>>| async move {
                 match callback_data {
-                    SearchCallbackData::Book { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_book, app_state.user_langs_cache).await,
-                    SearchCallbackData::Authors { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_author, app_state.user_langs_cache).await,
-                    SearchCallbackData::Sequences { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_sequence, app_state.user_langs_cache).await,
-                    SearchCallbackData::Translators { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_translator, app_state.user_langs_cache).await,
+                    SearchCallbackData::Book { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_book).await,
+                    SearchCallbackData::Authors { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_author).await,
+                    SearchCallbackData::Sequences { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_sequence).await,
+                    SearchCallbackData::Translators { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_translator).await,
                 }
             })
     )
