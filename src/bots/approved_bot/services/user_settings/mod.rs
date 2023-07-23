@@ -86,6 +86,7 @@ pub async fn create_or_update_user_settings(
         .post(format!("{}/users/", &config::CONFIG.user_settings_url))
         .body(body.to_string())
         .header("Authorization", &config::CONFIG.user_settings_api_key)
+        .header("Content-Type", "application/json")
         .send()
         .await?
         .error_for_status()?;
