@@ -41,6 +41,15 @@ pub async fn support_command_handler(
 
 Paypal:
 <a href=\"https://www.paypal.me/kurbezz\">@kurbezz</a>
+
+TRON (TRC20) - USDT:
+<pre>TYnWyK7mJhasjuCGYYyZxqQ1VUDxgZfuRi</pre>
+
+Bitcoin - BTC:
+<pre>12g9XY6oqLwaw7V9LJnLanxLNNKjJRbWUH</pre>
+
+The Open Network - TON:
+<pre>UQA4MySrq_60b_VMlR6UEmc_0u-neAUTXdtv8oKr_i6uhQNd</pre>
 ");
 
     bot
