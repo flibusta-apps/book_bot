@@ -73,16 +73,22 @@ struct ServerState {
 
 pub struct BotsManager {
     port: u16,
-    stop_data: (StopToken, StopFlag),
+
+    stop_token: StopToken,
+    stop_flag: StopFlag,
 
     state: ServerState
 }
 
 impl BotsManager {
     pub fn create() -> Self {
+        let (stop_token, stop_flag) = mk_stop_token();
+
         BotsManager {
             port: 8000,
-            stop_data: mk_stop_token(),
+
+            stop_token,
+            stop_flag,
 
             state: ServerState {
                 routers: Arc::new(RwLock::new(HashMap::new()))
@@ -96,7 +102,7 @@ impl BotsManager {
         let stream = UnboundedReceiverStream::new(rx);
 
         let listener = StatefulListener::new(
-            (stream, self.stop_data.0.clone()),
+            (stream, self.stop_token.clone()),
             tuple_first_mut,
             |state: &mut (_, StopToken)| {
                 state.1.clone()
@@ -238,20 +244,19 @@ impl BotsManager {
             StatusCode::OK
         }
 
-        let stop_token = self.stop_data.0.clone();
-        let stop_flag = self.stop_data.1.clone();
-        let state = self.state.clone();
+        let stop_token = self.stop_token.clone();
+        let stop_flag = self.stop_flag.clone();
         let port = self.port;
+
+        let router = axum::Router::new()
+            .route("/:token/", post(telegram_request))
+            .layer(TraceLayer::new_for_http())
+            .with_state(self.state.clone());
 
         tokio::spawn(async move {
             log::info!("Start webserver...");
 
             let addr = SocketAddr::from(([0, 0, 0, 0], port));
-
-            let router = axum::Router::new()
-                .route("/:token/", post(telegram_request))
-                .layer(TraceLayer::new_for_http())
-                .with_state(state);
 
             axum::Server::bind(&addr)
                 .serve(router.into_make_service())
@@ -276,10 +281,11 @@ impl BotsManager {
 
         loop {
             if !running.load(Ordering::SeqCst) {
-                manager.stop_data.0.stop();
+                manager.stop_token.stop();
+                return;
             };
 
-            if manager.stop_data.1.is_stopped() {
+            if manager.stop_flag.is_stopped() {
                 return;
             }
 
