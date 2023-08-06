@@ -404,6 +404,16 @@ async fn get_download_archive_keyboard_handler(
     Ok(())
 }
 
+async fn send_error_message(bot: CacheMe<Throttle<Bot>>, chat_id: ChatId, message_id: MessageId) {
+    let _ = bot
+        .edit_message_text(chat_id, message_id, "Ошибка! Попробуйте позже :(")
+        .reply_markup(InlineKeyboardMarkup {
+            inline_keyboard: vec![],
+        })
+        .send()
+        .await;
+}
+
 async fn download_archive(
     cq: CallbackQuery,
     download_archive_query_data: DownloadArchiveQueryData,
@@ -438,7 +448,7 @@ async fn download_archive(
                 })
                 .send()
                 .await?;
-
+            log::error!("{:?}", err);
             return Err(err);
         },
     };
@@ -458,14 +468,8 @@ async fn download_archive(
             task = match get_task(task.id).await {
                 Ok(v) => v,
                 Err(err) => {
-                    bot
-                    .edit_message_text(message.chat.id, message.id, "Ошибка! Попробуйте позже :(")
-                    .reply_markup(InlineKeyboardMarkup {
-                        inline_keyboard: vec![],
-                    })
-                    .send()
-                    .await?;
-
+                    send_error_message(bot, message.chat.id, message.id).await;
+                    log::error!("{:?}", err);
                     return Err(err);
                 },
             };
@@ -488,14 +492,7 @@ async fn download_archive(
         }
 
         if task.status != TaskStatus::Complete {
-            bot
-                .edit_message_text(message.chat.id, message.id, "Ошибка! Попробуйте позже :(")
-                .reply_markup(InlineKeyboardMarkup {
-                    inline_keyboard: vec![],
-                })
-                .send()
-                .await?;
-
+            send_error_message(bot, message.chat.id, message.id).await;
             return Ok(());
         }
 
@@ -505,36 +502,30 @@ async fn download_archive(
         ).await {
             Ok(v) => v,
             Err(err) => {
-                bot
-                    .edit_message_text(message.chat.id, message.id, "Ошибка! Попробуйте позже :(")
-                    .reply_markup(InlineKeyboardMarkup {
-                        inline_keyboard: vec![],
-                    })
-                    .send()
-                    .await?;
-
+                send_error_message(bot, message.chat.id, message.id).await;
                 log::error!("{:?}", err);
-
                 return Err(err);
             },
         };
+
+        match _send_downloaded_file(
+            &message,
+            bot.clone(),
+            downloaded_data,
+        ).await {
+            Ok(_) => (),
+            Err(err) => {
+                send_error_message(bot, message.chat.id, message.id).await;
+                log::error!("{:?}", err);
+                return Err(err);
+            },
+        }
 
         bot
             .delete_message(message.chat.id, message.id)
             .await?;
 
-        match _send_downloaded_file(
-            &message,
-            bot,
-            downloaded_data,
-        ).await {
-            Ok(_) => Ok(()),
-            Err(err) => {
-                log::error!("{:?}", err);
-
-                Err(err)
-            },
-        }
+        Ok(())
     });
 
     Ok(())
