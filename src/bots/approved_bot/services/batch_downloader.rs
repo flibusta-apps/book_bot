@@ -32,9 +32,9 @@ pub struct CreateTaskData {
 #[derive(Deserialize)]
 pub struct Task {
     pub id: String,
-    pub object_id: u32,
-    pub object_type: TaskObjectType,
     pub status: TaskStatus,
+    pub status_description: String,
+    pub error_message: Option<String>,
     pub result_filename: Option<String>,
     pub result_link: Option<String>,
 }
@@ -46,6 +46,7 @@ pub async fn create_task(
         .post(format!("{}/api/", &config::CONFIG.batch_downloader_url))
         .body(serde_json::to_string(&data).unwrap())
         .header("Authorization", &config::CONFIG.batch_downloader_api_key)
+        .header("Content-Type", "application/json")
         .send()
         .await?
         .error_for_status()?
