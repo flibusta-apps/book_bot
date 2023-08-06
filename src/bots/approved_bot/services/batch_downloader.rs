@@ -19,6 +19,7 @@ pub enum TaskStatus {
     InProgress,
     Archiving,
     Complete,
+    Failled
 }
 
 #[derive(Serialize)]

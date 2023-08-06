@@ -454,7 +454,7 @@ async fn download_archive(
     tokio::spawn(async move {
         let mut i = 15 * 60 / 5;
 
-        while task.status != TaskStatus::Complete && i >= 0 {
+        while task.status == TaskStatus::InProgress && i >= 0 {
             task = match get_task(task.id).await {
                 Ok(v) => v,
                 Err(err) => {
@@ -469,6 +469,18 @@ async fn download_archive(
                     return Err(err);
                 },
             };
+
+            bot
+                .edit_message_text(
+                    message.chat.id,
+                    message.id,
+                    format!("Подготовка архива: {}", task.status_description)
+                )
+                .reply_markup(InlineKeyboardMarkup {
+                    inline_keyboard: vec![],
+                })
+                .send()
+                .await?;
 
             sleep(Duration::from_secs(5)).await;
 
@@ -485,6 +497,10 @@ async fn download_archive(
                 .await?;
 
             return Ok(());
+        } else {
+            bot
+                .delete_message(message.chat.id, message.id)
+                .await?;
         }
 
         let downloaded_data = match download_file_by_link(
