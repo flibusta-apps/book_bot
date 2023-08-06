@@ -522,12 +522,19 @@ async fn download_archive(
         //     },
         // }
 
-        let _ = bot
+        match bot
             .send_document(
                 message.chat.id,
                 InputFile::url(Url::parse(&task.result_link.unwrap()).unwrap())
                     .file_name(task.result_filename.unwrap())
-            ).await;
+            ).await {
+                Ok(_) => (),
+                Err(err) => {
+                    send_error_message(bot, message.chat.id, message.id).await;
+                    log::error!("{:?}", err);
+                    return Err(Box::new(err));
+                },
+            }
 
         bot
             .delete_message(message.chat.id, message.id)
