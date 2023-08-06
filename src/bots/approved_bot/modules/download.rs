@@ -396,7 +396,7 @@ async fn get_download_archive_keyboard_handler(
     };
 
     bot
-        .send_message(message.chat.id, "Выбери формат: \n (Функция тестируется и может работать нестабильно)")
+        .send_message(message.chat.id, "Выбери формат:")
         .reply_markup(keyboard)
         .reply_to_message_id(message.id)
         .await?;
@@ -444,7 +444,7 @@ async fn download_archive(
     };
 
     bot
-        .edit_message_text(message.chat.id, message.id, "Подготовка архива...")
+        .edit_message_text(message.chat.id, message.id, "⏳ Подготовка архива...")
         .reply_markup(InlineKeyboardMarkup {
             inline_keyboard: vec![],
         })
@@ -474,7 +474,7 @@ async fn download_archive(
                 .edit_message_text(
                     message.chat.id,
                     message.id,
-                    format!("Подготовка архива: {}", task.status_description)
+                    format!("Статус: \n ⏳ {}", task.status_description)
                 )
                 .reply_markup(InlineKeyboardMarkup {
                     inline_keyboard: vec![],
