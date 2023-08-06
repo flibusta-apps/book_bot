@@ -497,10 +497,6 @@ async fn download_archive(
                 .await?;
 
             return Ok(());
-        } else {
-            bot
-                .delete_message(message.chat.id, message.id)
-                .await?;
         }
 
         let downloaded_data = match download_file_by_link(
@@ -522,6 +518,10 @@ async fn download_archive(
                 return Err(err);
             },
         };
+
+        bot
+            .delete_message(message.chat.id, message.id)
+            .await?;
 
         match _send_downloaded_file(
             &message,
