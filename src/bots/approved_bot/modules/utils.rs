@@ -93,7 +93,7 @@ where
                     &search_data,
                 ))
             }
-            if t_page < total_pages.into() {
+            if t_page + 5 < total_pages.into() {
                 five_page_row.push(generic_get_pagination_button(
                     page + 5,
                     PaginationDelta::FivePlus,
