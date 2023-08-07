@@ -25,8 +25,6 @@ async fn get_bot_username(token: &str) -> Option<String> {
 }
 
 async fn make_register_request(user_id: UserId, username: &str, token: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let user_id = &user_id.to_string();
-
     let body = json!({
         "token": token,
         "user": user_id,
