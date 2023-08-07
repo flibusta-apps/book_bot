@@ -461,45 +461,10 @@ async fn download_archive(
         .send()
         .await?;
 
-    tokio::spawn(async move {
-        let mut i = 15 * 60 / 5;
+    let mut i = 15 * 60 / 5;
 
-        while task.status == TaskStatus::InProgress && i >= 0 {
-            task = match get_task(task.id).await {
-                Ok(v) => v,
-                Err(err) => {
-                    send_error_message(bot, message.chat.id, message.id).await;
-                    log::error!("{:?}", err);
-                    return Err(err);
-                },
-            };
-
-            bot
-                .edit_message_text(
-                    message.chat.id,
-                    message.id,
-                    format!("Статус: \n ⏳ {}", task.status_description)
-                )
-                .reply_markup(InlineKeyboardMarkup {
-                    inline_keyboard: vec![],
-                })
-                .send()
-                .await?;
-
-            sleep(Duration::from_secs(5)).await;
-
-            i -= 1;
-        }
-
-        if task.status != TaskStatus::Complete {
-            send_error_message(bot, message.chat.id, message.id).await;
-            return Ok(());
-        }
-
-        let downloaded_data = match download_file_by_link(
-            task.result_filename.unwrap(),
-            task.result_link.clone().unwrap()
-        ).await {
+    while task.status == TaskStatus::InProgress && i >= 0 {
+        task = match get_task(task.id).await {
             Ok(v) => v,
             Err(err) => {
                 send_error_message(bot, message.chat.id, message.id).await;
@@ -508,40 +473,71 @@ async fn download_archive(
             },
         };
 
-        match _send_downloaded_file(
-            &message,
-            bot.clone(),
-            downloaded_data,
-        ).await {
-            Ok(_) => (),
-            Err(err) => {
-                // send_error_message(bot, message.chat.id, message.id).await;
-                let _ = bot
-                    .edit_message_text(
-                        message.chat.id,
-                        message.id,
-                        format!(
-                            "Файл не может быть загружен в чат! \nВы можете скачать его <a href=\"{}\">по ссылке</a> (работает 24 часа)",
-                            task.result_link.unwrap()
-                        )
-                    )
-                    .parse_mode(ParseMode::Html)
-                    .reply_markup(InlineKeyboardMarkup {
-                        inline_keyboard: vec![],
-                    })
-                    .send()
-                    .await;
-                log::error!("{:?}", err);
-                return Err(err);
-            },
-        }
-
         bot
-            .delete_message(message.chat.id, message.id)
+            .edit_message_text(
+                message.chat.id,
+                message.id,
+                format!("Статус: \n ⏳ {}", task.status_description)
+            )
+            .reply_markup(InlineKeyboardMarkup {
+                inline_keyboard: vec![],
+            })
+            .send()
             .await?;
 
-        Ok(())
-    });
+        sleep(Duration::from_secs(5)).await;
+
+        i -= 1;
+    }
+
+    if task.status != TaskStatus::Complete {
+        send_error_message(bot, message.chat.id, message.id).await;
+        return Ok(());
+    }
+
+    let downloaded_data = match download_file_by_link(
+        task.result_filename.unwrap(),
+        task.result_link.clone().unwrap()
+    ).await {
+        Ok(v) => v,
+        Err(err) => {
+            send_error_message(bot, message.chat.id, message.id).await;
+            log::error!("{:?}", err);
+            return Err(err);
+        },
+    };
+
+    match _send_downloaded_file(
+        &message,
+        bot.clone(),
+        downloaded_data,
+    ).await {
+        Ok(_) => (),
+        Err(err) => {
+            // send_error_message(bot, message.chat.id, message.id).await;
+            let _ = bot
+                .edit_message_text(
+                    message.chat.id,
+                    message.id,
+                    format!(
+                        "Файл не может быть загружен в чат! \nВы можете скачать его <a href=\"{}\">по ссылке</a> (работает 24 часа)",
+                        task.result_link.unwrap()
+                    )
+                )
+                .parse_mode(ParseMode::Html)
+                .reply_markup(InlineKeyboardMarkup {
+                    inline_keyboard: vec![],
+                })
+                .send()
+                .await;
+            log::error!("{:?}", err);
+            return Err(err);
+        },
+    }
+
+    bot
+        .delete_message(message.chat.id, message.id)
+        .await?;
 
     Ok(())
 }
