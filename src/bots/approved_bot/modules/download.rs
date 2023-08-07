@@ -532,7 +532,7 @@ async fn download_archive(
                     .send()
                     .await;
                 log::error!("{:?}", err);
-                return;
+                return Err(err);
             },
         }
 
