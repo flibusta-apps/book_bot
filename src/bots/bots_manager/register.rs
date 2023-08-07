@@ -2,6 +2,7 @@ use std::error::Error;
 
 use std::collections::HashMap;
 
+use serde_json::json;
 use teloxide::prelude::*;
 
 use crate::config;
@@ -28,19 +29,19 @@ async fn get_bot_username(token: &str) -> Option<String> {
 async fn make_register_request(user_id: UserId, username: &str, token: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
     let user_id = &user_id.to_string();
 
-    let data = HashMap::from([
-        ("token", token),
-        ("user", user_id),
-        ("username", username),
-        ("status", "approved"),
-        ("cache", "no_cache")
-    ]);
+    let body = json!({
+        "token": token,
+        "user": user_id,
+        "status": "approved",
+        "cache": "no_cache",
+        "username": username,
+    });
 
     reqwest::Client::new()
         .post(config::CONFIG.manager_url.clone())
+        .body(body.to_string())
         .header("Authorization", config::CONFIG.manager_api_key.clone())
         .header("Content-Type", "application/json")
-        .json(&data)
         .send()
         .await?
         .error_for_status()?;
