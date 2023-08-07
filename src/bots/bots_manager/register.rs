@@ -39,6 +39,7 @@ async fn make_register_request(user_id: UserId, username: &str, token: &str) -> 
     reqwest::Client::new()
         .post(config::CONFIG.manager_url.clone())
         .header("Authorization", config::CONFIG.manager_api_key.clone())
+        .header("Content-Type", "application/json")
         .json(&data)
         .send()
         .await?
