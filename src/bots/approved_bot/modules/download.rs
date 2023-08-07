@@ -12,7 +12,6 @@ use teloxide::{
 };
 use tokio::time::sleep;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
-use url::Url;
 
 use crate::{
     bots::{
