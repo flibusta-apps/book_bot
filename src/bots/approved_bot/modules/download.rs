@@ -497,44 +497,30 @@ async fn download_archive(
             return Ok(());
         }
 
-        // let downloaded_data = match download_file_by_link(
-        //     task.result_filename.unwrap(),
-        //     task.result_link.unwrap()
-        // ).await {
-        //     Ok(v) => v,
-        //     Err(err) => {
-        //         send_error_message(bot, message.chat.id, message.id).await;
-        //         log::error!("{:?}", err);
-        //         return Err(err);
-        //     },
-        // };
+        let downloaded_data = match download_file_by_link(
+            task.result_filename.unwrap(),
+            task.result_link.unwrap()
+        ).await {
+            Ok(v) => v,
+            Err(err) => {
+                send_error_message(bot, message.chat.id, message.id).await;
+                log::error!("{:?}", err);
+                return Err(err);
+            },
+        };
 
-        // match _send_downloaded_file(
-        //     &message,
-        //     bot.clone(),
-        //     downloaded_data,
-        // ).await {
-        //     Ok(_) => (),
-        //     Err(err) => {
-        //         send_error_message(bot, message.chat.id, message.id).await;
-        //         log::error!("{:?}", err);
-        //         return Err(err);
-        //     },
-        // }
-
-        match bot
-            .send_document(
-                message.chat.id,
-                InputFile::url(Url::parse(&task.result_link.unwrap()).unwrap())
-                    .file_name(task.result_filename.unwrap())
-            ).await {
-                Ok(_) => (),
-                Err(err) => {
-                    send_error_message(bot, message.chat.id, message.id).await;
-                    log::error!("{:?}", err);
-                    return Err(Box::new(err));
-                },
-            }
+        match _send_downloaded_file(
+            &message,
+            bot.clone(),
+            downloaded_data,
+        ).await {
+            Ok(_) => (),
+            Err(err) => {
+                send_error_message(bot, message.chat.id, message.id).await;
+                log::error!("{:?}", err);
+                return Err(err);
+            },
+        }
 
         bot
             .delete_message(message.chat.id, message.id)
