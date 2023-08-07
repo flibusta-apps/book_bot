@@ -521,7 +521,7 @@ async fn download_archive(
                         message.chat.id,
                         message.id,
                         format!(
-                            "Файл не может быть загружен в чат! \nВы можете скачать его <a href=\"{}\">по ссылке</a>",
+                            "Файл не может быть загружен в чат! \nВы можете скачать его <a href=\"{}\">по ссылке</a> (работает 24 часа)",
                             task.result_link.unwrap()
                         )
                     )
