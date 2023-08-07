@@ -498,7 +498,7 @@ async fn download_archive(
 
         let downloaded_data = match download_file_by_link(
             task.result_filename.unwrap(),
-            task.result_link.unwrap()
+            task.result_link.clone().unwrap()
         ).await {
             Ok(v) => v,
             Err(err) => {
@@ -515,9 +515,23 @@ async fn download_archive(
         ).await {
             Ok(_) => (),
             Err(err) => {
-                send_error_message(bot, message.chat.id, message.id).await;
+                // send_error_message(bot, message.chat.id, message.id).await;
+                let _ = bot
+                    .edit_message_text(
+                        message.chat.id,
+                        message.id,
+                        format!(
+                            "Файл не может быть загружен в чат! \nВы можете скачать его <a href=\"{}\">по ссылке</a>",
+                            task.result_link.unwrap()
+                        )
+                    )
+                    .parse_mode(ParseMode::Html)
+                    .reply_markup(InlineKeyboardMarkup {
+                        inline_keyboard: vec![],
+                    })
+                    .send()
+                    .await;
                 log::error!("{:?}", err);
-                return Err(err);
             },
         }
 
