@@ -582,7 +582,7 @@ async fn download_archive(
         .send()
         .await?;
 
-    tokio::spawn(wait_archive(bot, task.id, message));
+    let _ = wait_archive(bot, task.id, message).await;
 
     Ok(())
 }
