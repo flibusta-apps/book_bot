@@ -486,8 +486,7 @@ async fn wait_archive(
                 message.chat.id,
                 message.id,
                 format!(
-                    "Статус: \n ⏳ {} \n\n
-                     Обновлено в {now}",
+                    "Статус: \n ⏳ {} \n\nОбновлено в {now}",
                     task.status_description
                 )
             )
