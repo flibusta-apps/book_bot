@@ -184,6 +184,51 @@ impl FromStr for DownloadArchiveQueryData {
     }
 }
 
+
+#[derive(Clone)]
+pub struct CheckArchiveStatus {
+    pub task_id: String
+}
+
+impl ToString for CheckArchiveStatus {
+    fn to_string(&self) -> String {
+    format!("check_da_{}", self.task_id)
+    }
+}
+
+impl FromStr for CheckArchiveStatus {
+    type Err = strum::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let re = Regex::new(r"^check_da_(?P<task_id>\w+)$").unwrap();
+
+        let caps = re.captures(s);
+        let caps = match caps {
+            Some(v) => v,
+            None => return Err(strum::ParseError::VariantNotFound),
+        };
+
+        let task_id: String = caps["task_id"].parse().unwrap();
+
+        Ok(CheckArchiveStatus { task_id })
+    }
+}
+
+
+fn get_check_keyboard(task_id: String) -> InlineKeyboardMarkup {
+    InlineKeyboardMarkup {
+        inline_keyboard: vec![
+            vec![InlineKeyboardButton {
+                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
+                    (CheckArchiveStatus { task_id }).to_string(),
+                ),
+                text: String::from("Обновить статус"),
+            }],
+        ],
+    }
+}
+
+
 async fn _send_cached(
     message: &Message,
     bot: &CacheMe<Throttle<Bot>>,
@@ -414,57 +459,13 @@ async fn send_error_message(bot: CacheMe<Throttle<Bot>>, chat_id: ChatId, messag
         .await;
 }
 
-async fn download_archive(
-    cq: CallbackQuery,
-    download_archive_query_data: DownloadArchiveQueryData,
+async fn wait_archive(
     bot: CacheMe<Throttle<Bot>>,
+    task_id: String,
+    message: Message,
 ) -> BotHandlerInternal {
-    let allowed_langs = get_user_or_default_lang_codes(
-        cq.from.id,
-    ).await;
-
-    let (id, file_type, task_type) = match download_archive_query_data {
-        DownloadArchiveQueryData::Sequence { id, file_type } => (id, file_type, TaskObjectType::Sequence),
-        DownloadArchiveQueryData::Author { id, file_type } => (id, file_type, TaskObjectType::Author),
-        DownloadArchiveQueryData::Translator { id, file_type } => (id, file_type, TaskObjectType::Translator),
-    };
-
-    let message = cq.message.unwrap();
-
-    let task = create_task(CreateTaskData {
-        object_id: id,
-        object_type: task_type,
-        file_format: file_type,
-        allowed_langs,
-    }).await;
-
-    let mut task = match task {
-        Ok(v) => v,
-        Err(err) => {
-            bot
-                .edit_message_text(message.chat.id, message.id, "Ошибка! Попробуйте позже :(")
-                .reply_markup(InlineKeyboardMarkup {
-                    inline_keyboard: vec![],
-                })
-                .send()
-                .await?;
-            log::error!("{:?}", err);
-            return Err(err);
-        },
-    };
-
-    bot
-        .edit_message_text(message.chat.id, message.id, "⏳ Подготовка архива...")
-        .reply_markup(InlineKeyboardMarkup {
-            inline_keyboard: vec![],
-        })
-        .send()
-        .await?;
-
-    let mut i = 15 * 60 / 5;
-
-    while task.status == TaskStatus::InProgress && i >= 0 {
-        task = match get_task(task.id).await {
+    let task = loop {
+        let task = match get_task(task_id.clone()).await {
             Ok(v) => v,
             Err(err) => {
                 send_error_message(bot, message.chat.id, message.id).await;
@@ -473,22 +474,22 @@ async fn download_archive(
             },
         };
 
+        if task.status != TaskStatus::InProgress {
+            break task;
+        }
+
         bot
             .edit_message_text(
                 message.chat.id,
                 message.id,
                 format!("Статус: \n ⏳ {}", task.status_description)
             )
-            .reply_markup(InlineKeyboardMarkup {
-                inline_keyboard: vec![],
-            })
+            .reply_markup(get_check_keyboard(task.id))
             .send()
             .await?;
 
         sleep(Duration::from_secs(5)).await;
-
-        i -= 1;
-    }
+    };
 
     if task.status != TaskStatus::Complete {
         send_error_message(bot, message.chat.id, message.id).await;
@@ -514,7 +515,6 @@ async fn download_archive(
     ).await {
         Ok(_) => (),
         Err(err) => {
-            // send_error_message(bot, message.chat.id, message.id).await;
             let _ = bot
                 .edit_message_text(
                     message.chat.id,
@@ -538,6 +538,51 @@ async fn download_archive(
     bot
         .delete_message(message.chat.id, message.id)
         .await?;
+
+    Ok(())
+}
+
+
+async fn download_archive(
+    cq: CallbackQuery,
+    download_archive_query_data: DownloadArchiveQueryData,
+    bot: CacheMe<Throttle<Bot>>,
+) -> BotHandlerInternal {
+    let allowed_langs = get_user_or_default_lang_codes(
+        cq.from.id,
+    ).await;
+
+    let (id, file_type, task_type) = match download_archive_query_data {
+        DownloadArchiveQueryData::Sequence { id, file_type } => (id, file_type, TaskObjectType::Sequence),
+        DownloadArchiveQueryData::Author { id, file_type } => (id, file_type, TaskObjectType::Author),
+        DownloadArchiveQueryData::Translator { id, file_type } => (id, file_type, TaskObjectType::Translator),
+    };
+
+    let message = cq.message.unwrap();
+
+    let task = create_task(CreateTaskData {
+        object_id: id,
+        object_type: task_type,
+        file_format: file_type,
+        allowed_langs,
+    }).await;
+
+    let task = match task {
+        Ok(v) => v,
+        Err(err) => {
+            send_error_message(bot, message.chat.id, message.id).await;
+            log::error!("{:?}", err);
+            return Err(err);
+        },
+    };
+
+    bot
+        .edit_message_text(message.chat.id, message.id, "⏳ Подготовка архива...")
+        .reply_markup(get_check_keyboard(task.id.clone()))
+        .send()
+        .await?;
+
+    tokio::spawn(wait_archive(bot, task.id, message));
 
     Ok(())
 }
@@ -577,5 +622,12 @@ pub fn get_download_hander() -> crate::bots::BotHandler {
             Update::filter_callback_query()
             .chain(filter_callback_query::<DownloadArchiveQueryData>())
             .endpoint(download_archive)
+        )
+        .branch(
+            Update::filter_callback_query()
+            .chain(filter_callback_query::<CheckArchiveStatus>())
+            .endpoint(|cq: CallbackQuery, status: CheckArchiveStatus, bot: CacheMe<Throttle<Bot>>| async move {
+                wait_archive(bot, status.task_id, cq.message.unwrap()).await
+            })
         )
 }
