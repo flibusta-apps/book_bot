@@ -479,11 +479,17 @@ async fn wait_archive(
             break task;
         }
 
+        let now = Utc::now().format("%H:%M:%S UTC").to_string();
+
         bot
             .edit_message_text(
                 message.chat.id,
                 message.id,
-                format!("Статус: \n ⏳ {}", task.status_description)
+                format!(
+                    "Статус: \n ⏳ {} \n\n
+                     Обновлено в {now}",
+                    task.status_description
+                )
             )
             .reply_markup(get_check_keyboard(task.id))
             .send()
@@ -516,17 +522,14 @@ async fn wait_archive(
     ).await {
         Ok(_) => (),
         Err(err) => {
-            let now = Utc::now().format("%H:%M:%S UTC").to_string();
-
             let _ = bot
                 .edit_message_text(
                     message.chat.id,
                     message.id,
                     format!(
                         "Файл не может быть загружен в чат! \n \
-                         Вы можете скачать его <a href=\"{}\">по ссылке</a> (работает 3 часа)\n\n \
-                         Обновлено в {now}",
-                        task.result_link.unwrap()
+                         Вы можете скачать его <a href=\"{}\">по ссылке</a> (работает 3 часа)",
+                         task.result_link.unwrap()
                     )
                 )
                 .parse_mode(ParseMode::Html)
