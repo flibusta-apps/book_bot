@@ -1,5 +1,6 @@
 use std::{str::FromStr, time::Duration};
 
+use chrono::Utc;
 use futures::TryStreamExt;
 use regex::Regex;
 use strum_macros::EnumIter;
@@ -515,12 +516,16 @@ async fn wait_archive(
     ).await {
         Ok(_) => (),
         Err(err) => {
+            let now = Utc::now().format("%H:%M:%S UTC").to_string();
+
             let _ = bot
                 .edit_message_text(
                     message.chat.id,
                     message.id,
                     format!(
-                        "Файл не может быть загружен в чат! \nВы можете скачать его <a href=\"{}\">по ссылке</a> (работает 24 часа)",
+                        "Файл не может быть загружен в чат! \n \
+                         Вы можете скачать его <a href=\"{}\">по ссылке</a> (работает 3 часа)\n \
+                         Обновлено в {now}",
                         task.result_link.unwrap()
                     )
                 )
