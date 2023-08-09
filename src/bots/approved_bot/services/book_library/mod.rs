@@ -5,6 +5,7 @@ use smartstring::alias::String as SmartString;
 
 use serde::de::DeserializeOwned;
 use smallvec::SmallVec;
+use tracing::log;
 
 use crate::config;
 

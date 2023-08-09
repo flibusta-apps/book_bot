@@ -6,6 +6,7 @@ use smartstring::alias::String as SmartString;
 use regex::Regex;
 use smallvec::SmallVec;
 use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, adaptors::{Throttle, CacheMe}};
+use tracing::log;
 
 use crate::bots::approved_bot::{
     services::{

@@ -10,6 +10,7 @@ use teloxide::stop::{mk_stop_token, StopToken, StopFlag};
 use teloxide::update_listeners::{StatefulListener, UpdateListener};
 use tokio::sync::mpsc::{UnboundedSender, self};
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use tracing::log;
 use url::Url;
 
 use std::collections::HashMap;

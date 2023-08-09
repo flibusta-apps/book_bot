@@ -13,6 +13,7 @@ use teloxide::{
 };
 use tokio::time::sleep;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
+use tracing::log;
 
 use crate::{
     bots::{

@@ -2,6 +2,7 @@ use std::error::Error;
 
 use serde_json::json;
 use teloxide::prelude::*;
+use tracing::log;
 
 use crate::config;
 

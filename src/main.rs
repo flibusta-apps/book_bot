@@ -7,8 +7,12 @@ mod config;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .compact()
+        .init();
+
     let _guard = sentry::init(config::CONFIG.sentry_dsn.clone());
-    pretty_env_logger::init();
 
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
