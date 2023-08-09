@@ -239,8 +239,8 @@ async fn _send_cached(
     match bot
         .copy_message(
             message.chat.id,
-            Recipient::Id(ChatId(cached_message.data.chat_id)),
-            MessageId(cached_message.data.message_id),
+            Recipient::Id(ChatId(cached_message.chat_id)),
+            MessageId(cached_message.message_id),
         )
         .send()
         .await
