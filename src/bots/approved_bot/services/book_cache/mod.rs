@@ -29,7 +29,7 @@ pub async fn get_cached_message(
     let client = reqwest::Client::new();
     let response = client
         .get(format!(
-            "{}/api/v1/{id}/{format}",
+            "{}/api/v1/{id}/{format}/",
             &config::CONFIG.cache_server_url
         ))
         .header("Authorization", &config::CONFIG.cache_server_api_key)
@@ -53,7 +53,7 @@ pub async fn download_file(
 
     let response = reqwest::Client::new()
         .get(format!(
-            "{}/api/v1/download/{id}/{format}",
+            "{}/api/v1/download/{id}/{format}/",
             &config::CONFIG.cache_server_url
         ))
         .header("Authorization", &config::CONFIG.cache_server_api_key)
