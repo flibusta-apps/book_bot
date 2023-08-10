@@ -1,5 +1,10 @@
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+
+use sentry::ClientOptions;
+use sentry::integrations::debug_images::DebugImagesIntegration;
+use sentry::types::Dsn;
 
 mod bots;
 mod bots_manager;
@@ -12,7 +17,14 @@ async fn main() {
         .compact()
         .init();
 
-    let _guard = sentry::init(config::CONFIG.sentry_dsn.clone());
+    let options = ClientOptions {
+            dsn: Some(Dsn::from_str(&config::CONFIG.sentry_dsn).unwrap()),
+            default_integrations: false,
+            ..Default::default()
+        }
+        .add_integration(DebugImagesIntegration::new());
+
+    let _guard = sentry::init(options);
 
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
