@@ -92,7 +92,7 @@ pub async fn get_genres(
 ) -> Result<types::Page<types::Genre, Empty>, Box<dyn std::error::Error + Send + Sync>> {
     let params = vec![("meta", meta)];
 
-    _make_request("/api/v1/genres/", params).await
+    _make_request("/api/v1/genres", params).await
 }
 
 const PAGE_SIZE: &str = "5";
