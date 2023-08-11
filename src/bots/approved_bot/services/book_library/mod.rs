@@ -217,7 +217,7 @@ pub async fn get_uploaded_books(
         ("is_deleted", "false".into()),
     ];
 
-    _make_request("/api/v1/books/", params).await
+    _make_request("/api/v1/books", params).await
 }
 
 pub async fn get_author_books_available_types(
