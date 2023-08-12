@@ -86,9 +86,9 @@ impl<T> ClosableSender<T> {
         self.origin.read().unwrap().clone()
     }
 
-    fn close(&mut self) {
-        self.origin.write().unwrap().take();
-    }
+    // fn close(&mut self) {
+    //     self.origin.write().unwrap().take();
+    // }
 }
 
 
