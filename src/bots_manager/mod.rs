@@ -17,7 +17,9 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+
+use tokio::sync::RwLock;
 
 use smallvec::SmallVec;
 use teloxide::adaptors::throttle::Limits;
@@ -160,7 +162,7 @@ impl BotsManager {
         let (stop_token, _stop_flag, tx, listener) = self.get_listener();
 
         {
-            let mut routers = self.state.routers.write().unwrap();
+            let mut routers = self.state.routers.write().await;
             routers.insert(token.to_string(), (stop_token, ClosableSender::new(tx)));
         }
 
@@ -192,7 +194,7 @@ impl BotsManager {
             Ok(v) => {
                 for bot_data in v.iter() {
                     let need_start = {
-                        let routers = self.state.routers.read().unwrap();
+                        let routers = self.state.routers.read().await;
                         !routers.contains_key(&bot_data.token)
                     };
 
@@ -214,7 +216,7 @@ impl BotsManager {
             input: String,
         ) -> impl IntoResponse {
 
-            let routes = routers.read().unwrap();
+            let routes = routers.read().await;
             let tx = routes.get(&token);
 
             let (stop_token, r_tx) = match tx {
@@ -226,7 +228,7 @@ impl BotsManager {
                 Some(v) => v,
                 None => {
                     stop_token.stop();
-                    routers.write().unwrap().remove(&token);
+                    routers.write().await.remove(&token);
                     return StatusCode::SERVICE_UNAVAILABLE;
                 },
             };
@@ -240,7 +242,7 @@ impl BotsManager {
                     if let Err(err) = tx.send(Ok(update)) {
                         log::error!("{:?}", err);
                         stop_token.stop();
-                        routers.write().unwrap().remove(&token);
+                        routers.write().await.remove(&token);
                         return StatusCode::SERVICE_UNAVAILABLE;
                     }
                 }
@@ -280,7 +282,7 @@ impl BotsManager {
     }
 
     pub async fn stop_all(self) {
-        let routers = self.state.routers.read().unwrap();
+        let routers = self.state.routers.read().await;
 
         for (stop_token, _) in routers.values() {
             stop_token.stop();
