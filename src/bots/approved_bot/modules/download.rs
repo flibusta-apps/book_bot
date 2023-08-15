@@ -21,7 +21,7 @@ use crate::{
             services::{
                 book_cache::{
                     download_file, get_cached_message,
-                    types::{CachedMessage, DownloadFile}, download_file_by_link,
+                    types::{CachedMessage, DownloadFile}, download_file_by_link, get_download_link,
                 },
                 book_library::{get_book, get_author_books_available_types, get_translator_books_available_types, get_sequence_books_available_types},
                 donation_notificatioins::send_donation_notification, user_settings::get_user_or_default_lang_codes, batch_downloader::{TaskObjectType, CreateTaskData},
@@ -311,7 +311,14 @@ async fn send_with_download_from_channel(
 ) -> BotHandlerInternal {
     match download_file(&download_data).await {
         Ok(v) => {
-            _send_downloaded_file(&message, bot.clone(), v).await?;
+            match _send_downloaded_file(&message, bot.clone(), v).await {
+                Ok(_) => (),
+                Err(err) => {
+                    log::error!("{:?}", err);
+
+                    send_download_link(message.clone(), bot.clone(), download_data).await?;
+                },
+            };
 
             if need_delete_message {
                 bot.delete_message(message.chat.id, message.id).await?;
@@ -321,6 +328,33 @@ async fn send_with_download_from_channel(
         },
         Err(err) => Err(err),
     }
+}
+
+async fn send_download_link(
+    message: Message,
+    bot: CacheMe<Throttle<Bot>>,
+    download_data: DownloadQueryData,
+) -> BotHandlerInternal {
+    let link_data = get_download_link(&download_data).await?;
+
+    bot
+        .edit_message_text(
+            message.chat.id,
+            message.id,
+            format!(
+                "Файл не может быть загружен в чат! \n \
+                Вы можете скачать его <a href=\"{}\">по ссылке</a> (работает 3 часа)",
+                link_data.link
+            )
+        )
+        .parse_mode(ParseMode::Html)
+        .reply_markup(InlineKeyboardMarkup {
+            inline_keyboard: vec![],
+        })
+        .send()
+        .await?;
+
+    Ok(())
 }
 
 async fn download_handler(

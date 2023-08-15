@@ -4,7 +4,7 @@ use std::fmt;
 
 use crate::{config, bots::approved_bot::modules::download::DownloadQueryData};
 
-use self::types::{CachedMessage, DownloadFile};
+use self::types::{CachedMessage, DownloadFile, DownloadLink};
 
 pub mod types;
 
@@ -44,6 +44,31 @@ pub async fn get_cached_message(
     };
 
     Ok(response.json::<CachedMessage>().await?)
+}
+
+pub async fn get_download_link(
+    download_data: &DownloadQueryData
+) -> Result<DownloadLink, Box<dyn std::error::Error + Send + Sync>> {
+    let DownloadQueryData::DownloadData { book_id: id, file_type: format } = download_data;
+
+    let client = reqwest::Client::new();
+    let response = client
+        .get(format!(
+            "{}/api/v1/link/{id}/{format}/",
+            &config::CONFIG.cache_server_url
+        ))
+        .header("Authorization", &config::CONFIG.cache_server_api_key)
+        .send()
+        .await?
+        .error_for_status()?;
+
+    if response.status() != StatusCode::OK {
+        return Err(Box::new(DownloadError {
+            status_code: response.status(),
+        }));
+    };
+
+    Ok(response.json::<DownloadLink>().await?)
 }
 
 pub async fn download_file(

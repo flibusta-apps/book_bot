@@ -12,3 +12,8 @@ pub struct DownloadFile {
     pub filename: String,
     pub caption: String,
 }
+
+#[derive(Deserialize)]
+pub struct DownloadLink {
+    pub link: String
+}
