@@ -335,7 +335,13 @@ async fn send_download_link(
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadQueryData,
 ) -> BotHandlerInternal {
-    let link_data = get_download_link(&download_data).await?;
+    let link_data = match get_download_link(&download_data).await {
+        Ok(v) => v,
+        Err(err) => {
+            log::error!("{:?}", err);
+            return Err(err);
+        },
+    };
 
     bot
         .edit_message_text(
