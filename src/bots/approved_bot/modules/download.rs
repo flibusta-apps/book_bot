@@ -317,6 +317,7 @@ async fn send_with_download_from_channel(
                     log::error!("{:?}", err);
 
                     send_download_link(message.clone(), bot.clone(), download_data).await?;
+                    return Ok(());
                 },
             };
 
