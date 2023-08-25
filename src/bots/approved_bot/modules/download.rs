@@ -11,7 +11,7 @@ use teloxide::{
     prelude::*,
     types::*,
 };
-use tokio::time::sleep;
+use tokio::time::{self};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tracing::log;
 
@@ -507,7 +507,11 @@ async fn wait_archive(
     task_id: String,
     message: Message,
 ) -> BotHandlerInternal {
+    let mut interval = time::interval(Duration::from_secs(5));
+
     let task = loop {
+        interval.tick().await;
+
         let task = match get_task(task_id.clone()).await {
             Ok(v) => v,
             Err(err) => {
@@ -535,8 +539,6 @@ async fn wait_archive(
             .reply_markup(get_check_keyboard(task.id))
             .send()
             .await?;
-
-        sleep(Duration::from_secs(5)).await;
     };
 
     if task.status != TaskStatus::Complete {

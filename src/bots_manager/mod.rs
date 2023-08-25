@@ -24,7 +24,7 @@ use tokio::sync::RwLock;
 use smallvec::SmallVec;
 use teloxide::adaptors::throttle::Limits;
 use teloxide::types::{BotCommand, UpdateKind};
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, Duration, self};
 use tower_http::trace::TraceLayer;
 
 use teloxide::prelude::*;
@@ -300,21 +300,19 @@ impl BotsManager {
 
         manager.start_axum_server().await;
 
-        let mut i = 0;
+        let mut interval = time::interval(Duration::from_secs(5));
 
         loop {
-            if !running.load(Ordering::SeqCst) {
-                manager.stop_all().await;
-                return;
-            };
+            for _i in 0..30 {
+                interval.tick().await;
 
-            if i == 0 {
-                manager.check().await;
+                if !running.load(Ordering::SeqCst) {
+                    manager.stop_all().await;
+                    return;
+                };
             }
 
-            sleep(Duration::from_secs(1)).await;
-
-            i = (i + 1) % 30;
+            manager.check().await;
         }
     }
 }
