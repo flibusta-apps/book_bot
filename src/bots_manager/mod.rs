@@ -303,6 +303,8 @@ impl BotsManager {
         let mut interval = time::interval(Duration::from_secs(5));
 
         loop {
+            manager.check().await;
+
             for _i in 0..30 {
                 interval.tick().await;
 
@@ -311,8 +313,6 @@ impl BotsManager {
                     return;
                 };
             }
-
-            manager.check().await;
         }
     }
 }
