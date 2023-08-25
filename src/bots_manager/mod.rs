@@ -88,9 +88,9 @@ impl<T> ClosableSender<T> {
         self.origin.read().unwrap().clone()
     }
 
-    // fn close(&mut self) {
-    //     self.origin.write().unwrap().take();
-    // }
+    fn close(&mut self) {
+        self.origin.write().unwrap().take();
+    }
 }
 
 
@@ -228,7 +228,9 @@ impl BotsManager {
                 Some(v) => v,
                 None => {
                     stop_token.stop();
-                    routers.write().await.remove(&token);
+                    if let Some((_, mut sender)) = routers.write().await.remove(&token) {
+                        sender.close();
+                    };
                     return StatusCode::SERVICE_UNAVAILABLE;
                 },
             };
@@ -242,7 +244,9 @@ impl BotsManager {
                     if let Err(err) = tx.send(Ok(update)) {
                         log::error!("{:?}", err);
                         stop_token.stop();
-                        routers.write().await.remove(&token);
+                        if let Some((_, mut sender)) = routers.write().await.remove(&token) {
+                            sender.close();
+                        };
                         return StatusCode::SERVICE_UNAVAILABLE;
                     }
                 }
