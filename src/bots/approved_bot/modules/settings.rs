@@ -170,14 +170,14 @@ async fn settings_callback_handler(
         allowed_langs_set.clone().into_iter().collect(),
     )
     .await {
-        bot.send_message(user.id, "Ошибка! Попробуйте заново(").send().await?;
+        bot.send_message(message.chat.id, "Ошибка! Попробуйте заново(").send().await?;
         return Err(err);
     }
 
     let all_langs = match get_langs().await {
         Ok(v) => v,
         Err(err) => {
-            bot.send_message(user.id, "Ошибка! Попробуйте заново(").send().await?;
+            bot.send_message(message.chat.id, "Ошибка! Попробуйте заново(").send().await?;
             return Err(err)
         },
     };
