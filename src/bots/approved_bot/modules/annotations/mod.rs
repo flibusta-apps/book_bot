@@ -1,7 +1,12 @@
-use std::{convert::TryInto, str::FromStr};
+pub mod commands;
+pub mod callback_data;
+pub mod formater;
+pub mod errors;
+
+use std::convert::TryInto;
 
 use futures::TryStreamExt;
-use regex::Regex;
+
 use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, types::*, adaptors::{Throttle, CacheMe}};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 
@@ -10,137 +15,16 @@ use crate::bots::{
         modules::utils::generic_get_pagination_keyboard,
         services::book_library::{
             get_author_annotation, get_book_annotation,
-            types::{AuthorAnnotation, BookAnnotation},
         },
         tools::filter_callback_query,
     },
     BotHandlerInternal,
 };
 
-use super::utils::{filter_command, CommandParse, GetPaginationCallbackData, split_text_to_chunks};
+use self::{commands::AnnotationCommand, formater::AnnotationFormat, callback_data::AnnotationCallbackData, errors::AnnotationError};
 
-#[derive(Clone)]
-pub enum AnnotationCommand {
-    Book { id: u32 },
-    Author { id: u32 },
-}
+use super::utils::{filter_command, split_text_to_chunks};
 
-impl CommandParse<Self> for AnnotationCommand {
-    fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
-        let re = Regex::new(r"^/(?P<an_type>a|b)_an_(?P<id>\d+)$")
-            .unwrap_or_else(|_| panic!("Can't create AnnotationCommand regexp!"));
-
-        let full_bot_name = format!("@{bot_name}");
-        let after_replace = s.replace(&full_bot_name, "");
-
-        let caps = re.captures(&after_replace);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let annotation_type = &caps["an_type"];
-        let id: u32 = caps["id"]
-            .parse()
-            .unwrap_or_else(|_| panic!("Can't get id from AnnotationCommand!"));
-
-        match annotation_type {
-            "a" => Ok(AnnotationCommand::Author { id }),
-            "b" => Ok(AnnotationCommand::Book { id }),
-            _ => Err(strum::ParseError::VariantNotFound),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub enum AnnotationCallbackData {
-    Book { id: u32, page: u32 },
-    Author { id: u32, page: u32 },
-}
-
-impl FromStr for AnnotationCallbackData {
-    type Err = strum::ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"^(?P<an_type>a|b)_an_(?P<id>\d+)_(?P<page>\d+)$").unwrap();
-
-        let caps = re.captures(s);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let annotation_type = &caps["an_type"];
-        let id = caps["id"].parse::<u32>().unwrap();
-        let page = caps["page"].parse::<u32>().unwrap();
-
-        match annotation_type {
-            "a" => Ok(AnnotationCallbackData::Author { id, page }),
-            "b" => Ok(AnnotationCallbackData::Book { id, page }),
-            _ => Err(strum::ParseError::VariantNotFound),
-        }
-    }
-}
-
-impl ToString for AnnotationCallbackData {
-    fn to_string(&self) -> String {
-        match self {
-            AnnotationCallbackData::Book { id, page } => format!("b_an_{id}_{page}"),
-            AnnotationCallbackData::Author { id, page } => format!("a_an_{id}_{page}"),
-        }
-    }
-}
-
-pub trait AnnotationFormat {
-    fn get_file(&self) -> Option<&String>;
-    fn get_text(&self) -> &str;
-
-    fn is_normal_text(&self) -> bool;
-}
-
-impl AnnotationFormat for BookAnnotation {
-    fn get_file(&self) -> Option<&String> {
-        self.file.as_ref()
-    }
-
-    fn get_text(&self) -> &str {
-        self.text.as_str()
-    }
-
-    fn is_normal_text(&self) -> bool {
-        !self.text.replace(['\n', ' '], "").is_empty()
-    }
-}
-
-impl GetPaginationCallbackData for AnnotationCallbackData {
-    fn get_pagination_callback_data(&self, target_page: u32) -> String {
-        match self {
-            AnnotationCallbackData::Book { id, .. } => AnnotationCallbackData::Book {
-                id: *id,
-                page: target_page,
-            },
-            AnnotationCallbackData::Author { id, .. } => AnnotationCallbackData::Author {
-                id: *id,
-                page: target_page,
-            },
-        }
-        .to_string()
-    }
-}
-
-impl AnnotationFormat for AuthorAnnotation {
-    fn get_file(&self) -> Option<&String> {
-        self.file.as_ref()
-    }
-
-    fn get_text(&self) -> &str {
-        self.text.as_str()
-    }
-
-    fn is_normal_text(&self) -> bool {
-        !self.text.replace(['\n', ' '], "").is_empty()
-    }
-}
 
 async fn download_image(
     file: &String,
@@ -197,15 +81,12 @@ where
     };
 
     if !annotation.is_normal_text() {
-        return Ok(()); // TODO: error message
+        return Err(Box::new(AnnotationError { command, text: annotation.get_text().to_string() }));
     }
 
     let annotation_text = annotation.get_text();
     let chunked_text = split_text_to_chunks(annotation_text, 512);
-    let current_text = match chunked_text.get(0) {
-        Some(v) => v,
-        None => return Ok(()), // TODO: error message
-    };
+    let current_text =  chunked_text.get(0).unwrap();
 
     let callback_data = match command {
         AnnotationCommand::Book { id } => AnnotationCallbackData::Book { id, page: 1 },

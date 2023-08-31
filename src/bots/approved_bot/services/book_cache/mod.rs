@@ -8,6 +8,7 @@ use self::types::{CachedMessage, DownloadFile, DownloadLink};
 
 pub mod types;
 
+
 #[derive(Debug, Clone)]
 struct DownloadError {
     status_code: StatusCode,
