@@ -2,7 +2,7 @@ use base64::{engine::general_purpose, Engine};
 use reqwest::StatusCode;
 use std::fmt;
 
-use crate::{config, bots::approved_bot::modules::download::DownloadQueryData};
+use crate::{config, bots::approved_bot::modules::download::callback_data::DownloadQueryData};
 
 use self::types::{CachedMessage, DownloadFile, DownloadLink};
 

@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use crate::bots::approved_bot::modules::download::{StartDownloadCommand, DownloadArchiveCommand};
+use crate::bots::approved_bot::modules::download::commads::{StartDownloadCommand, DownloadArchiveCommand};
 
 use super::types::{
     Author, AuthorBook, Book, BookAuthor, BookGenre, SearchBook, Sequence, Translator,
