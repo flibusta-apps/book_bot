@@ -28,8 +28,15 @@ fn ignore_channel_messages() -> crate::bots::BotHandler {
 }
 
 fn ignore_chat_member_update() -> crate::bots::BotHandler {
-    Update::filter_chat_member()
-        .endpoint(|| async { Ok(()) })
+    dptree::entry()
+        .branch(
+            Update::filter_chat_member()
+            .endpoint(|| async { Ok(()) })
+        )
+        .branch(
+            Update::filter_my_chat_member()
+            .endpoint(|| async { Ok(()) })
+        )
 }
 
 pub fn get_bot_handler() -> (BotHandler, BotCommands) {

@@ -1,3 +1,6 @@
+pub mod commands;
+pub mod callback_data;
+
 use core::fmt::Debug;
 use std::str::FromStr;
 
@@ -19,103 +22,12 @@ use crate::bots::approved_bot::{
     tools::filter_callback_query,
 };
 
+use self::commands::BookCommand;
+
 use super::utils::{
-    filter_command, generic_get_pagination_keyboard, CommandParse, GetPaginationCallbackData,
+    filter_command, generic_get_pagination_keyboard, GetPaginationCallbackData,
 };
 
-#[derive(Clone)]
-pub enum BookCommand {
-    Author { id: u32 },
-    Translator { id: u32 },
-    Sequence { id: u32 },
-}
-
-impl CommandParse<Self> for BookCommand {
-    fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
-        let re = Regex::new(r"^/(?P<an_type>a|t|s)_(?P<id>\d+)$").unwrap();
-
-        let full_bot_name = format!("@{bot_name}");
-        let after_replace = s.replace(&full_bot_name, "");
-
-        let caps = re.captures(&after_replace);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let annotation_type = &caps["an_type"];
-        let id: u32 = caps["id"].parse().unwrap();
-
-        match annotation_type {
-            "a" => Ok(BookCommand::Author { id }),
-            "t" => Ok(BookCommand::Translator { id }),
-            "s" => Ok(BookCommand::Sequence { id }),
-            _ => Err(strum::ParseError::VariantNotFound),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub enum BookCallbackData {
-    Author { id: u32, page: u32 },
-    Translator { id: u32, page: u32 },
-    Sequence { id: u32, page: u32 },
-}
-
-impl FromStr for BookCallbackData {
-    type Err = strum::ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"^b(?P<an_type>a|t|s)_(?P<id>\d+)_(?P<page>\d+)$").unwrap();
-
-        let caps = re.captures(s);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let annotation_type = &caps["an_type"];
-        let id = caps["id"].parse::<u32>().unwrap();
-        let page = caps["page"].parse::<u32>().unwrap();
-
-        match annotation_type {
-            "a" => Ok(BookCallbackData::Author { id, page }),
-            "t" => Ok(BookCallbackData::Translator { id, page }),
-            "s" => Ok(BookCallbackData::Sequence { id, page }),
-            _ => Err(strum::ParseError::VariantNotFound),
-        }
-    }
-}
-
-impl ToString for BookCallbackData {
-    fn to_string(&self) -> String {
-        match self {
-            BookCallbackData::Author { id, page } => format!("ba_{id}_{page}"),
-            BookCallbackData::Translator { id, page } => format!("bt_{id}_{page}"),
-            BookCallbackData::Sequence { id, page } => format!("bs_{id}_{page}"),
-        }
-    }
-}
-
-impl GetPaginationCallbackData for BookCallbackData {
-    fn get_pagination_callback_data(&self, target_page: u32) -> String {
-        match self {
-            BookCallbackData::Author { id, .. } => BookCallbackData::Author {
-                id: *id,
-                page: target_page,
-            },
-            BookCallbackData::Translator { id, .. } => BookCallbackData::Translator {
-                id: *id,
-                page: target_page,
-            },
-            BookCallbackData::Sequence { id, .. } => BookCallbackData::Sequence {
-                id: *id,
-                page: target_page,
-            },
-        }
-        .to_string()
-    }
-}
 
 async fn send_book_handler<T, P, Fut>(
     message: Message,
