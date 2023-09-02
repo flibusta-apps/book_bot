@@ -1,3 +1,10 @@
+use std::str::FromStr;
+
+use regex::Regex;
+
+use crate::bots::approved_bot::modules::utils::GetPaginationCallbackData;
+
+
 #[derive(Clone)]
 pub enum BookCallbackData {
     Author { id: u32, page: u32 },

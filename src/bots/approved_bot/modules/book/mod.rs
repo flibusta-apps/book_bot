@@ -2,11 +2,9 @@ pub mod commands;
 pub mod callback_data;
 
 use core::fmt::Debug;
-use std::str::FromStr;
 
 use smartstring::alias::String as SmartString;
 
-use regex::Regex;
 use smallvec::SmallVec;
 use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, adaptors::{Throttle, CacheMe}};
 use tracing::log;
@@ -22,10 +20,10 @@ use crate::bots::approved_bot::{
     tools::filter_callback_query,
 };
 
-use self::commands::BookCommand;
+use self::{commands::BookCommand, callback_data::BookCallbackData};
 
 use super::utils::{
-    filter_command, generic_get_pagination_keyboard, GetPaginationCallbackData,
+    filter_command, generic_get_pagination_keyboard
 };
 
 
