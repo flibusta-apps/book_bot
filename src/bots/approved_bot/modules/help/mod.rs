@@ -1,13 +1,10 @@
+pub mod commands;
+
 use crate::bots::BotHandlerInternal;
 
-use teloxide::{prelude::*, utils::command::BotCommands, types::ParseMode, adaptors::{Throttle, CacheMe}};
+use teloxide::{prelude::*, types::ParseMode, adaptors::{Throttle, CacheMe}};
 
-#[derive(BotCommands, Clone)]
-#[command(rename_rule = "lowercase")]
-enum HelpCommand {
-    Start,
-    Help,
-}
+use self::commands::HelpCommand;
 
 
 pub async fn help_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {

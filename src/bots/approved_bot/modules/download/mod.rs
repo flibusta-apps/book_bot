@@ -137,14 +137,9 @@ async fn send_with_download_from_channel(
 ) -> BotHandlerInternal {
     match download_file(&download_data).await {
         Ok(v) => {
-            match _send_downloaded_file(&message, bot.clone(), v).await {
-                Ok(_) => (),
-                Err(err) => {
-                    log::error!("{:?}", err);
-
-                    send_download_link(message.clone(), bot.clone(), download_data).await?;
-                    return Ok(());
-                },
+            if let Err(_) = _send_downloaded_file(&message, bot.clone(), v).await {
+                send_download_link(message.clone(), bot.clone(), download_data).await?;
+                return Ok(());
             };
 
             if need_delete_message {
