@@ -1,11 +1,9 @@
-use core::fmt::Debug;
-use std::str::FromStr;
+pub mod callback_data;
 
+use core::fmt::Debug;
 use smartstring::alias::String as SmartString;
 
-use regex::Regex;
 use smallvec::SmallVec;
-use strum_macros::EnumIter;
 use teloxide::{
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup}, dispatching::dialogue::GetChatId, adaptors::{Throttle, CacheMe},
@@ -25,74 +23,10 @@ use crate::bots::{
     BotHandlerInternal,
 };
 
-use super::utils::{generic_get_pagination_keyboard, GetPaginationCallbackData};
+use self::callback_data::SearchCallbackData;
 
-#[derive(Clone, EnumIter)]
-pub enum SearchCallbackData {
-    Book { page: u32 },
-    Authors { page: u32 },
-    Sequences { page: u32 },
-    Translators { page: u32 },
-}
+use super::utils::generic_get_pagination_keyboard;
 
-impl ToString for SearchCallbackData {
-    fn to_string(&self) -> String {
-        match self {
-            SearchCallbackData::Book { page } => format!("sb_{page}"),
-            SearchCallbackData::Authors { page } => format!("sa_{page}"),
-            SearchCallbackData::Sequences { page } => format!("ss_{page}"),
-            SearchCallbackData::Translators { page } => format!("st_{page}"),
-        }
-    }
-}
-
-impl FromStr for SearchCallbackData {
-    type Err = strum::ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"^(?P<search_type>s[a|b|s|t])_(?P<page>\d+)$").unwrap();
-
-        let caps = re.captures(s);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let search_type = &caps["search_type"];
-        let page: u32 = caps["page"].parse::<u32>().unwrap();
-
-        // Fix for migrate from old bot implementation
-        let page: u32 = std::cmp::max(1, page);
-
-        match search_type {
-            "sb" => Ok(SearchCallbackData::Book { page }),
-            "sa" => Ok(SearchCallbackData::Authors { page }),
-            "ss" => Ok(SearchCallbackData::Sequences { page }),
-            "st" => Ok(SearchCallbackData::Translators { page }),
-            _ => Err(strum::ParseError::VariantNotFound),
-        }
-    }
-}
-
-impl GetPaginationCallbackData for SearchCallbackData {
-    fn get_pagination_callback_data(&self, target_page: u32) -> String {
-        match self {
-            SearchCallbackData::Book { .. } => {
-                SearchCallbackData::Book { page: target_page }
-            }
-            SearchCallbackData::Authors { .. } => {
-                SearchCallbackData::Authors { page: target_page }
-            }
-            SearchCallbackData::Sequences { .. } => {
-                SearchCallbackData::Sequences { page: target_page }
-            }
-            SearchCallbackData::Translators { .. } => {
-                SearchCallbackData::Translators { page: target_page }
-            }
-        }
-        .to_string()
-    }
-}
 
 fn get_query(cq: CallbackQuery) -> Option<String> {
     cq.message
@@ -108,6 +42,7 @@ fn get_query(cq: CallbackQuery) -> Option<String> {
         })
         .unwrap_or(None)
 }
+
 
 async fn generic_search_pagination_handler<T, P, Fut>(
     cq: CallbackQuery,
