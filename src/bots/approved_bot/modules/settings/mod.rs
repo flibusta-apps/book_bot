@@ -1,4 +1,7 @@
-use std::{collections::HashSet, str::FromStr};
+pub mod commands;
+pub mod callback_data;
+
+use std::collections::HashSet;
 
 use smartstring::alias::String as SmartString;
 
@@ -12,64 +15,13 @@ use crate::bots::{
     BotHandlerInternal,
 };
 
-
-use regex::Regex;
-
 use teloxide::{
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardMarkup, Me},
-    utils::command::BotCommands, adaptors::{Throttle, CacheMe},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup, Me}, adaptors::{Throttle, CacheMe},
 };
 
-#[derive(BotCommands, Clone)]
-#[command(rename_rule = "lowercase")]
-enum SettingsCommand {
-    Settings,
-}
+use self::{commands::SettingsCommand, callback_data::SettingsCallbackData};
 
-#[derive(Clone)]
-enum SettingsCallbackData {
-    Settings,
-    On { code: SmartString },
-    Off { code: SmartString },
-}
-
-impl FromStr for SettingsCallbackData {
-    type Err = strum::ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == SettingsCallbackData::Settings.to_string().as_str() {
-            return Ok(SettingsCallbackData::Settings);
-        }
-
-        let re = Regex::new(r"^lang_(?P<action>(off)|(on))_(?P<code>[a-zA-z]+)$").unwrap();
-
-        let caps = re.captures(s);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let action = &caps["action"];
-        let code = caps["code"].to_string();
-
-        match action {
-            "on" => Ok(SettingsCallbackData::On { code: code.into() }),
-            "off" => Ok(SettingsCallbackData::Off { code: code.into() }),
-            _ => Err(strum::ParseError::VariantNotFound),
-        }
-    }
-}
-
-impl ToString for SettingsCallbackData {
-    fn to_string(&self) -> String {
-        match self {
-            SettingsCallbackData::Settings => "lang_settings".to_string(),
-            SettingsCallbackData::On { code } => format!("lang_on_{code}"),
-            SettingsCallbackData::Off { code } => format!("lang_off_{code}"),
-        }
-    }
-}
 
 async fn settings_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let keyboard = InlineKeyboardMarkup {

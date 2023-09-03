@@ -64,9 +64,7 @@ The Open Network - TON:
 pub fn get_support_handler() -> crate::bots::BotHandler {
     dptree::entry().branch(
         Update::filter_message().branch(
-            dptree::entry().filter_command::<SupportCommand>().endpoint(
-                |message, bot| async move { support_command_handler(message, bot).await },
-            ),
+            dptree::entry().filter_command::<SupportCommand>().endpoint(support_command_handler),
         ),
     )
 }
