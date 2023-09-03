@@ -328,7 +328,7 @@ async fn wait_archive(
     task_id: String,
     message: Message,
 ) -> BotHandlerInternal {
-    let mut interval = time::interval(Duration::from_secs(5));
+    let mut interval = time::interval(Duration::from_secs(15));
 
     let task = loop {
         interval.tick().await;

@@ -1,10 +1,12 @@
+pub mod commands;
+pub mod callback_data;
+
 use smartstring::alias::String as SmartString;
 use smallvec::SmallVec;
-use strum_macros::{Display, EnumIter};
 use teloxide::{
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
-    utils::command::BotCommands, adaptors::{Throttle, CacheMe},
+    adaptors::{Throttle, CacheMe},
 };
 
 use crate::bots::{
@@ -13,69 +15,13 @@ use crate::bots::{
             book_library::{self, formaters::Format},
             user_settings::get_user_or_default_lang_codes,
         },
-        tools::filter_callback_query,
+        tools::filter_callback_query, modules::random::callback_data::RandomCallbackData,
     },
     BotHandlerInternal,
 };
 
-#[derive(BotCommands, Clone)]
-#[command(rename_rule = "lowercase")]
-enum RandomCommand {
-    Random,
-}
+use self::commands::RandomCommand;
 
-#[derive(Clone, Display, EnumIter)]
-#[strum(serialize_all = "snake_case")]
-enum RandomCallbackData {
-    RandomBook,
-    RandomAuthor,
-    RandomSequence,
-    RandomBookByGenreRequest,
-    Genres { index: u32 },
-    RandomBookByGenre { id: u32 },
-}
-
-impl std::str::FromStr for RandomCallbackData {
-    type Err = strum::ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let value = s.to_string();
-
-        for callback_data in <RandomCallbackData as strum::IntoEnumIterator>::iter() {
-            match callback_data {
-                RandomCallbackData::Genres { .. }
-                | RandomCallbackData::RandomBookByGenre { .. } => {
-                    let callback_prefix = callback_data.to_string();
-
-                    if value.starts_with(&callback_prefix) {
-                        let data: u32 = value
-                            .strip_prefix(&format!("{}_", &callback_prefix).to_string())
-                            .unwrap()
-                            .parse()
-                            .unwrap();
-
-                        match callback_data {
-                            RandomCallbackData::Genres { .. } => {
-                                return Ok(RandomCallbackData::Genres { index: data })
-                            }
-                            RandomCallbackData::RandomBookByGenre { .. } => {
-                                return Ok(RandomCallbackData::RandomBookByGenre { id: data })
-                            }
-                            _ => (),
-                        }
-                    }
-                }
-                _ => {
-                    if value == callback_data.to_string() {
-                        return Ok(callback_data);
-                    }
-                }
-            }
-        }
-
-        Err(strum::ParseError::VariantNotFound)
-    }
-}
 
 async fn random_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> crate::bots::BotHandlerInternal {
     const MESSAGE_TEXT: &str = "Что хотим получить?";
