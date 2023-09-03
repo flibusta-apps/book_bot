@@ -1,4 +1,5 @@
 pub mod callback_data;
+pub mod utils;
 
 use core::fmt::Debug;
 use smartstring::alias::String as SmartString;
@@ -23,25 +24,9 @@ use crate::bots::{
     BotHandlerInternal,
 };
 
-use self::callback_data::SearchCallbackData;
+use self::{callback_data::SearchCallbackData, utils::get_query};
 
 use super::utils::generic_get_pagination_keyboard;
-
-
-fn get_query(cq: CallbackQuery) -> Option<String> {
-    cq.message
-        .map(|message| {
-            message
-                .reply_to_message()
-                .map(|reply_to_message| {
-                    reply_to_message
-                        .text()
-                        .map(|text| text.replace(['/', '&', '?'], ""))
-                })
-                .unwrap_or(None)
-        })
-        .unwrap_or(None)
-}
 
 
 async fn generic_search_pagination_handler<T, P, Fut>(
