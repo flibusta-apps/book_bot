@@ -1,4 +1,4 @@
-pub mod formaters;
+pub mod formatters;
 pub mod types;
 
 use smartstring::alias::String as SmartString;

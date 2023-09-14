@@ -2,7 +2,7 @@ use core::fmt::Debug;
 use serde::Deserialize;
 use smallvec::SmallVec;
 
-use super::formaters::{Format, FormatResult, FormatTitle};
+use super::formatters::{Format, FormatResult, FormatTitle};
 
 
 #[derive(Default, Deserialize, Debug, Clone)]

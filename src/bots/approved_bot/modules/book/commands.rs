@@ -12,7 +12,7 @@ pub enum BookCommand {
 
 impl CommandParse<Self> for BookCommand {
     fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
-        let re = Regex::new(r"^/(?P<an_type>a|t|s)_(?P<id>\d+)$").unwrap();
+        let re = Regex::new(r"^/(?P<an_type>[ats])_(?P<id>\d+)$").unwrap();
 
         let full_bot_name = format!("@{bot_name}");
         let after_replace = s.replace(&full_bot_name, "");

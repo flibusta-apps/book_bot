@@ -1,4 +1,4 @@
-pub mod commads;
+pub mod commands;
 pub mod callback_data;
 
 use std::time::Duration;
@@ -27,7 +27,7 @@ use crate::{
                     types::{CachedMessage, DownloadFile}, download_file_by_link, get_download_link,
                 },
                 book_library::{get_book, get_author_books_available_types, get_translator_books_available_types, get_sequence_books_available_types},
-                donation_notificatioins::send_donation_notification, user_settings::get_user_or_default_lang_codes, batch_downloader::{TaskObjectType, CreateTaskData},
+                donation_notifications::send_donation_notification, user_settings::get_user_or_default_lang_codes, batch_downloader::{TaskObjectType, CreateTaskData},
                 batch_downloader::{create_task, get_task, TaskStatus}
 
             },
@@ -38,7 +38,7 @@ use crate::{
     bots_manager::BotCache,
 };
 
-use self::{callback_data::{CheckArchiveStatus, DownloadQueryData}, commads::{StartDownloadCommand, DownloadArchiveCommand}};
+use self::{callback_data::{CheckArchiveStatus, DownloadQueryData}, commands::{StartDownloadCommand, DownloadArchiveCommand}};
 
 use super::utils::filter_command;
 
@@ -179,7 +179,6 @@ async fn send_download_link(
         .reply_markup(InlineKeyboardMarkup {
             inline_keyboard: vec![],
         })
-        .send()
         .await?;
 
     Ok(())
@@ -400,7 +399,6 @@ async fn wait_archive(
                 .reply_markup(InlineKeyboardMarkup {
                     inline_keyboard: vec![],
                 })
-                .send()
                 .await;
             log::error!("{:?}", err);
             return Err(err);
@@ -459,7 +457,7 @@ async fn download_archive(
     Ok(())
 }
 
-pub fn get_download_hander() -> crate::bots::BotHandler {
+pub fn get_download_handler() -> crate::bots::BotHandler {
     dptree::entry()
         .branch(
             Update::filter_message()

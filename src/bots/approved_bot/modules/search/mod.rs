@@ -14,7 +14,7 @@ use crate::bots::{
     approved_bot::{
         services::{
             book_library::{
-                formaters::{Format, FormatTitle}, search_author, search_book, search_sequence, search_translator,
+                formatters::{Format, FormatTitle}, search_author, search_book, search_sequence, search_translator,
                 types::Page,
             },
             user_settings::get_user_or_default_lang_codes,

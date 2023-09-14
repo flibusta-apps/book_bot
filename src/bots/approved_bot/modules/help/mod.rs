@@ -32,7 +32,6 @@ pub async fn help_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotH
             ),
         )
         .parse_mode(ParseMode::Html)
-        .send()
         .await
     {
         Ok(_) => Ok(()),

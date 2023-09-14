@@ -16,7 +16,7 @@ impl FromStr for BookCallbackData {
     type Err = strum::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"^b(?P<an_type>a|t|s)_(?P<id>\d+)_(?P<page>\d+)$").unwrap();
+        let re = Regex::new(r"^b(?P<an_type>[ats])_(?P<id>\d+)_(?P<page>\d+)$").unwrap();
 
         let caps = re.captures(s);
         let caps = match caps {

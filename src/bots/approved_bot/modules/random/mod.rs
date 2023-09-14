@@ -12,7 +12,7 @@ use teloxide::{
 use crate::bots::{
     approved_bot::{
         services::{
-            book_library::{self, formaters::Format},
+            book_library::{self, formatters::Format},
             user_settings::get_user_or_default_lang_codes,
         },
         tools::filter_callback_query, modules::random::callback_data::RandomCallbackData,
@@ -247,7 +247,7 @@ async fn get_random_book_by_genre(
     get_random_item_handler_internal(cq, bot, item).await
 }
 
-pub fn get_random_hander() -> crate::bots::BotHandler {
+pub fn get_random_handler() -> crate::bots::BotHandler {
     dptree::entry()
         .branch(
             Update::filter_message()

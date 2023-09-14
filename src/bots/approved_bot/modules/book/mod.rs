@@ -12,7 +12,7 @@ use tracing::log;
 use crate::bots::approved_bot::{
     services::{
         book_library::{
-            formaters::{Format, FormatTitle}, get_author_books, get_sequence_books, get_translator_books,
+            formatters::{Format, FormatTitle}, get_author_books, get_sequence_books, get_translator_books,
             types::Page,
         },
         user_settings::get_user_or_default_lang_codes,
@@ -79,7 +79,7 @@ where
         return Ok(());
     };
 
-    let formated_page = items_page.format(1, 4096);
+    let formatted_page = items_page.format(1, 4096);
 
     let callback_data = match command {
         BookCommand::Author { id } => BookCallbackData::Author { id, page: 1 },
@@ -90,7 +90,7 @@ where
     let keyboard = generic_get_pagination_keyboard(1, items_page.pages, callback_data, true);
 
     bot
-        .send_message(chat_id, formated_page)
+        .send_message(chat_id, formatted_page)
         .reply_markup(keyboard)
         .send()
         .await?;
@@ -166,12 +166,12 @@ where
         };
     }
 
-    let formated_page = items_page.format(page, 4096);
+    let formatted_page = items_page.format(page, 4096);
 
     let keyboard = generic_get_pagination_keyboard(page, items_page.pages, callback_data, true);
 
     bot
-        .edit_message_text(chat_id, message_id, formated_page)
+        .edit_message_text(chat_id, message_id, formatted_page)
         .reply_markup(keyboard)
         .send()
         .await?;

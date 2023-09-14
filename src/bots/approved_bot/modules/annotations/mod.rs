@@ -1,6 +1,6 @@
 pub mod commands;
 pub mod callback_data;
-pub mod formater;
+pub mod formatter;
 pub mod errors;
 
 use std::convert::TryInto;
@@ -21,7 +21,7 @@ use crate::bots::{
     BotHandlerInternal,
 };
 
-use self::{commands::AnnotationCommand, formater::AnnotationFormat, callback_data::AnnotationCallbackData, errors::AnnotationError};
+use self::{commands::AnnotationCommand, formatter::AnnotationFormat, callback_data::AnnotationCallbackData, errors::AnnotationError};
 
 use super::utils::{filter_command, split_text_to_chunks};
 

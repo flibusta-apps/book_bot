@@ -54,7 +54,7 @@ impl ToString for DownloadArchiveCommand {
 
 impl CommandParse<Self> for DownloadArchiveCommand {
     fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
-        let re = Regex::new(r"^/da_(?P<type>[s|a|t])_(?P<id>\d+)$").unwrap();
+        let re = Regex::new(r"^/da_(?P<type>[sat])_(?P<id>\d+)$").unwrap();
 
         let full_bot_name = format!("@{bot_name}");
         let after_replace = s.replace(&full_bot_name, "");

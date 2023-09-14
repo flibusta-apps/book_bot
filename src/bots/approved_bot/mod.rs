@@ -9,7 +9,7 @@ use crate::{bots::approved_bot::services::user_settings::create_or_update_user_s
 use self::{
     modules::{
         annotations::get_annotations_handler, book::get_book_handler,
-        download::get_download_hander, help::get_help_handler, random::get_random_hander,
+        download::get_download_handler, help::get_help_handler, random::get_random_handler,
         search::get_search_handler, settings::get_settings_handler, support::get_support_handler,
         update_history::get_update_log_handler,
     },
@@ -81,8 +81,8 @@ pub fn get_approved_handler() -> (BotHandler, BotCommands) {
             .branch(get_help_handler())
             .branch(get_settings_handler())
             .branch(get_support_handler())
-            .branch(get_random_hander())
-            .branch(get_download_hander())
+            .branch(get_random_handler())
+            .branch(get_download_handler())
             .branch(get_annotations_handler())
             .branch(get_book_handler())
             .branch(get_update_log_handler())

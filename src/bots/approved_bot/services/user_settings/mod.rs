@@ -129,7 +129,7 @@ pub async fn is_need_donate_notifications(chat_id: ChatId) -> Result<bool, Box<d
     Ok(response.json::<bool>().await?)
 }
 
-pub async fn mark_donate_notification_sended(chat_id: ChatId) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn mark_donate_notification_sent(chat_id: ChatId) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     reqwest::Client::new()
         .post(format!("{}/donate_notifications/{chat_id}", &config::CONFIG.user_settings_url))
         .header("Authorization", &config::CONFIG.user_settings_api_key)

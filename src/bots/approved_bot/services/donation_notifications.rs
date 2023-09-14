@@ -2,7 +2,7 @@ use teloxide::{types::Message, adaptors::{CacheMe, Throttle}, Bot};
 
 use crate::{bots::{BotHandlerInternal, approved_bot::modules::support::support_command_handler}, bots_manager::CHAT_DONATION_NOTIFICATIONS_CACHE};
 
-use super::user_settings::{is_need_donate_notifications, mark_donate_notification_sended};
+use super::user_settings::{is_need_donate_notifications, mark_donate_notification_sent};
 
 
 pub async fn send_donation_notification(
@@ -17,7 +17,7 @@ pub async fn send_donation_notification(
     }
 
     CHAT_DONATION_NOTIFICATIONS_CACHE.insert(message.chat.id, ()).await;
-    mark_donate_notification_sended(message.chat.id).await?;
+    mark_donate_notification_sent(message.chat.id).await?;
 
     support_command_handler(message, bot).await?;
 

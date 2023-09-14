@@ -118,9 +118,9 @@ async fn update_log_pagination_handler(
     let page = update_callback_data.page;
     let total_pages = items_page.pages;
 
-    let formated_page = items_page.format(page, 4096);
+    let formatted_page = items_page.format(page, 4096);
 
-    let message_text = format!("{header}{formated_page}");
+    let message_text = format!("{header}{formatted_page}");
 
     let keyboard = generic_get_pagination_keyboard(page, total_pages, update_callback_data, true);
     bot

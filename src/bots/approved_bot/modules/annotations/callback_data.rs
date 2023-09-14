@@ -15,23 +15,21 @@ impl FromStr for AnnotationCallbackData {
     type Err = strum::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"^(?P<an_type>a|b)_an_(?P<id>\d+)_(?P<page>\d+)$").unwrap();
-
-        let caps = re.captures(s);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let annotation_type = &caps["an_type"];
-        let id = caps["id"].parse::<u32>().unwrap();
-        let page = caps["page"].parse::<u32>().unwrap();
-
-        match annotation_type {
-            "a" => Ok(AnnotationCallbackData::Author { id, page }),
-            "b" => Ok(AnnotationCallbackData::Book { id, page }),
-            _ => Err(strum::ParseError::VariantNotFound),
-        }
+        Regex::new(r"^(?P<an_type>[ab])_an_(?P<id>\d+)_(?P<page>\d+)$")
+            .unwrap_or_else(|_| panic!("Broken AnnotationCallbackData regex pattern!"))
+            .captures(s)
+            .ok_or(strum::ParseError::VariantNotFound)
+            .map(|caps| (
+                caps["an_type"].to_string(),
+                caps["id"].parse::<u32>().unwrap(),
+                caps["page"].parse::<u32>().unwrap()
+            ))
+            .map(|(annotation_type, id, page)|
+                match annotation_type.as_str() {
+                    "a" => AnnotationCallbackData::Author { id, page },
+                    "b" => AnnotationCallbackData::Book { id, page },
+                    _ => panic!("Unknown AnnotationCallbackData type: {}!", annotation_type),
+                })
     }
 }
 

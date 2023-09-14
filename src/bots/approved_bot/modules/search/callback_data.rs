@@ -29,7 +29,7 @@ impl FromStr for SearchCallbackData {
     type Err = strum::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"^(?P<search_type>s[a|b|s|t])_(?P<page>\d+)$").unwrap();
+        let re = Regex::new(r"^(?P<search_type>s[abst])_(?P<page>\d+)$").unwrap();
 
         let caps = re.captures(s);
         let caps = match caps {
