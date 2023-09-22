@@ -9,7 +9,7 @@ pub async fn send_donation_notification(
     bot: CacheMe<Throttle<Bot>>,
     message: Message,
 ) -> BotHandlerInternal {
-    if CHAT_DONATION_NOTIFICATIONS_CACHE.get(&message.chat.id).is_some() {
+    if CHAT_DONATION_NOTIFICATIONS_CACHE.get(&message.chat.id).await.is_some() {
         return Ok(());
     } else if !is_need_donate_notifications(message.chat.id).await? {
         CHAT_DONATION_NOTIFICATIONS_CACHE.insert(message.chat.id, ()).await;

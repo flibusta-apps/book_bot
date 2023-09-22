@@ -43,7 +43,7 @@ pub async fn get_user_settings(
 pub async fn get_user_or_default_lang_codes(
     user_id: UserId,
 ) -> SmallVec<[SmartString; 3]> {
-    if let Some(cached_langs) = USER_LANGS_CACHE.get(&user_id) {
+    if let Some(cached_langs) = USER_LANGS_CACHE.get(&user_id).await {
         return cached_langs;
     }
 
