@@ -40,7 +40,7 @@ use crate::{
 
 use self::{callback_data::{CheckArchiveStatus, DownloadQueryData}, commands::{StartDownloadCommand, DownloadArchiveCommand}};
 
-use super::utils::filter_command;
+use super::utils::filter_command::filter_command;
 
 
 fn get_check_keyboard(task_id: String) -> InlineKeyboardMarkup {
@@ -137,7 +137,7 @@ async fn send_with_download_from_channel(
 ) -> BotHandlerInternal {
     match download_file(&download_data).await {
         Ok(v) => {
-            if let Err(_) = _send_downloaded_file(&message, bot.clone(), v).await {
+            if _send_downloaded_file(&message, bot.clone(), v).await.is_err() {
                 send_download_link(message.clone(), bot.clone(), download_data).await?;
                 return Ok(());
             };

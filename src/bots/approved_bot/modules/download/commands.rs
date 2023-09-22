@@ -1,7 +1,7 @@
 use regex::Regex;
 use strum_macros::EnumIter;
 
-use crate::bots::approved_bot::modules::utils::CommandParse;
+use crate::bots::approved_bot::modules::utils::{filter_command::CommandParse, errors::CommandParseError};
 
 
 #[derive(Clone)]
@@ -17,7 +17,7 @@ impl ToString for StartDownloadCommand {
 }
 
 impl CommandParse<Self> for StartDownloadCommand {
-    fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
+    fn parse(s: &str, bot_name: &str) -> Result<Self, CommandParseError> {
         let re = Regex::new(r"^/d_(?P<book_id>\d+)$").unwrap();
 
         let full_bot_name = format!("@{bot_name}");
@@ -26,7 +26,7 @@ impl CommandParse<Self> for StartDownloadCommand {
         let caps = re.captures(&after_replace);
         let caps = match caps {
             Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
+            None => return Err(CommandParseError),
         };
 
         let book_id: u32 = caps["book_id"].parse().unwrap();
@@ -53,7 +53,7 @@ impl ToString for DownloadArchiveCommand {
 }
 
 impl CommandParse<Self> for DownloadArchiveCommand {
-    fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
+    fn parse(s: &str, bot_name: &str) -> Result<Self, CommandParseError> {
         let re = Regex::new(r"^/da_(?P<type>[sat])_(?P<id>\d+)$").unwrap();
 
         let full_bot_name = format!("@{bot_name}");
@@ -62,7 +62,7 @@ impl CommandParse<Self> for DownloadArchiveCommand {
         let caps = re.captures(&after_replace);
         let caps = match caps {
             Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
+            None => return Err(CommandParseError),
         };
 
         let obj_id: u32 = caps["id"].parse().unwrap();
@@ -71,7 +71,7 @@ impl CommandParse<Self> for DownloadArchiveCommand {
             "s" => Ok(DownloadArchiveCommand::Sequence { id: obj_id }),
             "a" => Ok(DownloadArchiveCommand::Author { id: obj_id }),
             "t" => Ok(DownloadArchiveCommand::Translator { id: obj_id }),
-            _ => Err(strum::ParseError::VariantNotFound)
+            _ => Err(CommandParseError)
         }
     }
 }

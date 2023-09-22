@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use crate::bots::approved_bot::modules::utils::CommandParse;
+use crate::bots::approved_bot::modules::utils::{filter_command::CommandParse, errors::CommandParseError};
 
 
 #[derive(Clone)]
@@ -11,7 +11,7 @@ pub enum BookCommand {
 }
 
 impl CommandParse<Self> for BookCommand {
-    fn parse(s: &str, bot_name: &str) -> Result<Self, strum::ParseError> {
+    fn parse(s: &str, bot_name: &str) -> Result<Self, CommandParseError> {
         let re = Regex::new(r"^/(?P<an_type>[ats])_(?P<id>\d+)$").unwrap();
 
         let full_bot_name = format!("@{bot_name}");
@@ -20,7 +20,7 @@ impl CommandParse<Self> for BookCommand {
         let caps = re.captures(&after_replace);
         let caps = match caps {
             Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
+            None => return Err(CommandParseError),
         };
 
         let annotation_type = &caps["an_type"];
@@ -30,7 +30,7 @@ impl CommandParse<Self> for BookCommand {
             "a" => Ok(BookCommand::Author { id }),
             "t" => Ok(BookCommand::Translator { id }),
             "s" => Ok(BookCommand::Sequence { id }),
-            _ => Err(strum::ParseError::VariantNotFound),
+            _ => Err(CommandParseError),
         }
     }
 }

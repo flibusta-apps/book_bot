@@ -16,7 +16,7 @@ use teloxide::{
 
 use self::{commands::UpdateLogCommand, callback_data::UpdateLogCallbackData};
 
-use super::utils::generic_get_pagination_keyboard;
+use super::utils::pagination::generic_get_pagination_keyboard;
 
 
 async fn update_log_command(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {

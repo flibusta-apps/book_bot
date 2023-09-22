@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use regex::Regex;
 
-use crate::bots::approved_bot::modules::utils::GetPaginationCallbackData;
+use crate::bots::approved_bot::modules::utils::{pagination::GetPaginationCallbackData, errors::CallbackQueryParseError};
 
 
 #[derive(Debug, Clone)]
@@ -12,13 +12,13 @@ pub enum AnnotationCallbackData {
 }
 
 impl FromStr for AnnotationCallbackData {
-    type Err = strum::ParseError;
+    type Err = CallbackQueryParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Regex::new(r"^(?P<an_type>[ab])_an_(?P<id>\d+)_(?P<page>\d+)$")
             .unwrap_or_else(|_| panic!("Broken AnnotationCallbackData regex pattern!"))
             .captures(s)
-            .ok_or(strum::ParseError::VariantNotFound)
+            .ok_or(CallbackQueryParseError)
             .map(|caps| (
                 caps["an_type"].to_string(),
                 caps["id"].parse::<u32>().unwrap(),

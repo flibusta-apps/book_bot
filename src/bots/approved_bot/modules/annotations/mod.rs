@@ -12,7 +12,7 @@ use tokio_util::compat::FuturesAsyncReadCompatExt;
 
 use crate::bots::{
     approved_bot::{
-        modules::utils::generic_get_pagination_keyboard,
+        modules::utils::pagination::generic_get_pagination_keyboard,
         services::book_library::{
             get_author_annotation, get_book_annotation,
         },
@@ -21,9 +21,9 @@ use crate::bots::{
     BotHandlerInternal,
 };
 
-use self::{commands::AnnotationCommand, formatter::AnnotationFormat, callback_data::AnnotationCallbackData, errors::AnnotationError};
+use self::{commands::AnnotationCommand, formatter::AnnotationFormat, callback_data::AnnotationCallbackData, errors::AnnotationFormatError};
 
-use super::utils::{filter_command, split_text_to_chunks};
+use super::utils::{split_text::split_text_to_chunks, filter_command::filter_command};
 
 
 async fn download_image(
@@ -81,7 +81,7 @@ where
     };
 
     if !annotation.is_normal_text() {
-        return Err(Box::new(AnnotationError { command, text: annotation.get_text().to_string() }));
+        return Err(Box::new(AnnotationFormatError { command, text: annotation.get_text().to_string() }));
     }
 
     let annotation_text = annotation.get_text();

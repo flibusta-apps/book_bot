@@ -22,9 +22,7 @@ use crate::bots::approved_bot::{
 
 use self::{commands::BookCommand, callback_data::BookCallbackData};
 
-use super::utils::{
-    filter_command, generic_get_pagination_keyboard
-};
+use super::utils::{filter_command::filter_command, pagination::generic_get_pagination_keyboard};
 
 
 async fn send_book_handler<T, P, Fut>(

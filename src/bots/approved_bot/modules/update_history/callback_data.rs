@@ -4,7 +4,7 @@ use chrono::NaiveDate;
 use dateparser::parse;
 use regex::Regex;
 
-use crate::bots::approved_bot::modules::utils::GetPaginationCallbackData;
+use crate::bots::approved_bot::modules::utils::pagination::GetPaginationCallbackData;
 
 
 #[derive(Clone, Copy)]

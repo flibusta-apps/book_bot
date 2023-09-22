@@ -4,15 +4,15 @@ use super::commands::AnnotationCommand;
 
 
 #[derive(Debug)]
-pub struct AnnotationError {
+pub struct AnnotationFormatError {
     pub command: AnnotationCommand,
     pub text: String
 }
 
-impl fmt::Display for AnnotationError {
+impl fmt::Display for AnnotationFormatError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-impl std::error::Error for AnnotationError {}
+impl std::error::Error for AnnotationFormatError {}

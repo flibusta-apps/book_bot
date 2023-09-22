@@ -26,7 +26,7 @@ use crate::bots::{
 
 use self::{callback_data::SearchCallbackData, utils::get_query};
 
-use super::utils::generic_get_pagination_keyboard;
+use super::utils::pagination::generic_get_pagination_keyboard;
 
 
 async fn generic_search_pagination_handler<T, P, Fut>(

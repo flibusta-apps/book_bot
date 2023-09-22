@@ -3,7 +3,7 @@ use std::str::FromStr;
 use regex::Regex;
 use strum_macros::EnumIter;
 
-use crate::bots::approved_bot::modules::utils::GetPaginationCallbackData;
+use crate::bots::approved_bot::modules::utils::pagination::GetPaginationCallbackData;
 
 
 #[derive(Clone, EnumIter)]
