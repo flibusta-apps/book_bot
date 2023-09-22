@@ -13,7 +13,7 @@ pub enum TaskObjectType {
     Translator,
 }
 
-#[derive(Deserialize, PartialEq)]
+#[derive(Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskStatus {
     InProgress,
@@ -30,7 +30,7 @@ pub struct CreateTaskData {
     pub allowed_langs: SmallVec<[SmartString; 3]>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Task {
     pub id: String,
     pub status: TaskStatus,
@@ -38,6 +38,7 @@ pub struct Task {
     pub error_message: Option<String>,
     pub result_filename: Option<String>,
     pub result_link: Option<String>,
+    pub content_size: Option<u64>
 }
 
 pub async fn create_task(

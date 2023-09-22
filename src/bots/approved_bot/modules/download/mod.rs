@@ -28,7 +28,7 @@ use crate::{
                 },
                 book_library::{get_book, get_author_books_available_types, get_translator_books_available_types, get_sequence_books_available_types},
                 donation_notifications::send_donation_notification, user_settings::get_user_or_default_lang_codes, batch_downloader::{TaskObjectType, CreateTaskData},
-                batch_downloader::{create_task, get_task, TaskStatus}
+                batch_downloader::{create_task, get_task, TaskStatus, Task}
 
             },
             tools::filter_callback_query, modules::download::callback_data::DownloadArchiveQueryData,
@@ -322,6 +322,30 @@ async fn send_error_message(bot: CacheMe<Throttle<Bot>>, chat_id: ChatId, messag
         .await;
 }
 
+async fn send_archive_link(
+    bot: CacheMe<Throttle<Bot>>,
+    message: Message,
+    task: Task,
+) -> BotHandlerInternal {
+    bot
+        .edit_message_text(
+            message.chat.id,
+            message.id,
+            format!(
+                "Файл не может быть загружен в чат! \n \
+                    Вы можете скачать его <a href=\"{}\">по ссылке</a> (работает 3 часа)",
+                    task.result_link.unwrap()
+            )
+        )
+        .parse_mode(ParseMode::Html)
+        .reply_markup(InlineKeyboardMarkup {
+            inline_keyboard: vec![],
+        })
+        .await?;
+
+    Ok(())
+}
+
 async fn wait_archive(
     bot: CacheMe<Throttle<Bot>>,
     task_id: String,
@@ -366,8 +390,15 @@ async fn wait_archive(
         return Ok(());
     }
 
+    let content_size = task.content_size.unwrap();
+
+    if content_size > 20 * 1024 * 1024 {
+        send_archive_link(bot.clone(), message.clone(), task.clone()).await?;
+        return Ok(())
+    }
+
     let downloaded_data = match download_file_by_link(
-        task.result_filename.unwrap(),
+        task.clone().result_filename.unwrap(),
         task.result_link.clone().unwrap()
     ).await {
         Ok(v) => v,
@@ -384,24 +415,8 @@ async fn wait_archive(
         downloaded_data,
     ).await {
         Ok(_) => (),
-        Err(err) => {
-            let _ = bot
-                .edit_message_text(
-                    message.chat.id,
-                    message.id,
-                    format!(
-                        "Файл не может быть загружен в чат! \n \
-                         Вы можете скачать его <a href=\"{}\">по ссылке</a> (работает 3 часа)",
-                         task.result_link.unwrap()
-                    )
-                )
-                .parse_mode(ParseMode::Html)
-                .reply_markup(InlineKeyboardMarkup {
-                    inline_keyboard: vec![],
-                })
-                .await;
-            log::error!("{:?}", err);
-            return Err(err);
+        Err(_) => {
+            send_archive_link(bot.clone(), message.clone(), task).await?;
         },
     }
 
