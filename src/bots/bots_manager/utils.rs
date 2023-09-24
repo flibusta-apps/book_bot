@@ -1,15 +1,13 @@
 use regex::Regex;
 
-
 pub fn get_token(message_text: &str) -> Option<&str> {
     let re = Regex::new("(?P<token>[0-9]+:[0-9a-zA-Z-_]+)").unwrap();
 
     match re.find(message_text) {
         Some(v) => Some(v.as_str()),
-        None => None
+        None => None,
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -42,7 +40,10 @@ mod tests {
 
         let result = get_token(message);
 
-        assert_eq!(result.unwrap(), "5555555555:AAF-AAAAAAAA1239AA2AAsvy13Axp23RAa");
+        assert_eq!(
+            result.unwrap(),
+            "5555555555:AAF-AAAAAAAA1239AA2AAsvy13Axp23RAa"
+        );
     }
 
     #[test]

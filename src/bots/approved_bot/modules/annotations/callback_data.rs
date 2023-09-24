@@ -2,8 +2,9 @@ use std::str::FromStr;
 
 use regex::Regex;
 
-use crate::bots::approved_bot::modules::utils::{pagination::GetPaginationCallbackData, errors::CallbackQueryParseError};
-
+use crate::bots::approved_bot::modules::utils::{
+    errors::CallbackQueryParseError, pagination::GetPaginationCallbackData,
+};
 
 #[derive(Debug, Clone)]
 pub enum AnnotationCallbackData {
@@ -19,17 +20,20 @@ impl FromStr for AnnotationCallbackData {
             .unwrap_or_else(|_| panic!("Broken AnnotationCallbackData regex pattern!"))
             .captures(s)
             .ok_or(CallbackQueryParseError)
-            .map(|caps| (
-                caps["an_type"].to_string(),
-                caps["id"].parse::<u32>().unwrap(),
-                caps["page"].parse::<u32>().unwrap()
-            ))
-            .map(|(annotation_type, id, page)|
-                match annotation_type.as_str() {
+            .map(|caps| {
+                (
+                    caps["an_type"].to_string(),
+                    caps["id"].parse::<u32>().unwrap(),
+                    caps["page"].parse::<u32>().unwrap(),
+                )
+            })
+            .map(
+                |(annotation_type, id, page)| match annotation_type.as_str() {
                     "a" => AnnotationCallbackData::Author { id, page },
                     "b" => AnnotationCallbackData::Book { id, page },
                     _ => panic!("Unknown AnnotationCallbackData type: {}!", annotation_type),
-                })
+                },
+            )
     }
 }
 

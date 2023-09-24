@@ -1,8 +1,9 @@
 use regex::Regex;
 use strum_macros::EnumIter;
 
-use crate::bots::approved_bot::modules::utils::{filter_command::CommandParse, errors::CommandParseError};
-
+use crate::bots::approved_bot::modules::utils::{
+    errors::CommandParseError, filter_command::CommandParse,
+};
 
 #[derive(Clone)]
 pub struct StartDownloadCommand {
@@ -37,9 +38,9 @@ impl CommandParse<Self> for StartDownloadCommand {
 
 #[derive(Clone, EnumIter)]
 pub enum DownloadArchiveCommand {
-    Sequence { id: u32},
+    Sequence { id: u32 },
     Author { id: u32 },
-    Translator { id: u32 }
+    Translator { id: u32 },
 }
 
 impl ToString for DownloadArchiveCommand {
@@ -71,7 +72,7 @@ impl CommandParse<Self> for DownloadArchiveCommand {
             "s" => Ok(DownloadArchiveCommand::Sequence { id: obj_id }),
             "a" => Ok(DownloadArchiveCommand::Author { id: obj_id }),
             "t" => Ok(DownloadArchiveCommand::Translator { id: obj_id }),
-            _ => Err(CommandParseError)
+            _ => Err(CommandParseError),
         }
     }
 }

@@ -1,18 +1,24 @@
-pub mod commands;
 pub mod callback_data;
+pub mod commands;
 
 use core::fmt::Debug;
 
 use smartstring::alias::String as SmartString;
 
 use smallvec::SmallVec;
-use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, adaptors::{Throttle, CacheMe}};
+use teloxide::{
+    adaptors::{CacheMe, Throttle},
+    dispatching::UpdateFilterExt,
+    dptree,
+    prelude::*,
+};
 use tracing::log;
 
 use crate::bots::approved_bot::{
     services::{
         book_library::{
-            formatters::{Format, FormatTitle}, get_author_books, get_sequence_books, get_translator_books,
+            formatters::{Format, FormatTitle},
+            get_author_books, get_sequence_books, get_translator_books,
             types::Page,
         },
         user_settings::get_user_or_default_lang_codes,
@@ -20,10 +26,9 @@ use crate::bots::approved_bot::{
     tools::filter_callback_query,
 };
 
-use self::{commands::BookCommand, callback_data::BookCallbackData};
+use self::{callback_data::BookCallbackData, commands::BookCommand};
 
 use super::utils::{filter_command::filter_command, pagination::generic_get_pagination_keyboard};
-
 
 async fn send_book_handler<T, P, Fut>(
     message: Message,
@@ -64,8 +69,7 @@ where
     let items_page = match books_getter(id, 1, allowed_langs.clone()).await {
         Ok(v) => v,
         Err(err) => {
-            bot
-                .send_message(chat_id, "Ошибка! Попробуйте позже :(")
+            bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
                 .send()
                 .await?;
             return Err(err);
@@ -73,7 +77,9 @@ where
     };
 
     if items_page.pages == 0 {
-        bot.send_message(chat_id, "Книги не найдены!").send().await?;
+        bot.send_message(chat_id, "Книги не найдены!")
+            .send()
+            .await?;
         return Ok(());
     };
 
@@ -87,8 +93,7 @@ where
 
     let keyboard = generic_get_pagination_keyboard(1, items_page.pages, callback_data, true);
 
-    bot
-        .send_message(chat_id, formatted_page)
+    bot.send_message(chat_id, formatted_page)
         .reply_markup(keyboard)
         .send()
         .await?;
@@ -120,9 +125,11 @@ where
     let (chat_id, message_id) = match (chat_id, message_id) {
         (Some(chat_id), Some(message_id)) => (chat_id, message_id),
         (Some(chat_id), None) => {
-            bot.send_message(chat_id, "Повторите поиск сначала").send().await?;
+            bot.send_message(chat_id, "Повторите поиск сначала")
+                .send()
+                .await?;
             return Ok(());
-        },
+        }
         _ => {
             return Ok(());
         }
@@ -146,7 +153,9 @@ where
     };
 
     if items_page.pages == 0 {
-        bot.send_message(chat_id, "Книги не найдены!").send().await?;
+        bot.send_message(chat_id, "Книги не найдены!")
+            .send()
+            .await?;
         return Ok(());
     };
 
@@ -154,8 +163,7 @@ where
         items_page = match books_getter(id, items_page.pages, allowed_langs.clone()).await {
             Ok(v) => v,
             Err(err) => {
-                bot
-                    .send_message(chat_id, "Ошибка! Попробуйте позже :(")
+                bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
                     .send()
                     .await?;
 
@@ -168,8 +176,7 @@ where
 
     let keyboard = generic_get_pagination_keyboard(page, items_page.pages, callback_data, true);
 
-    bot
-        .edit_message_text(chat_id, message_id, formatted_page)
+    bot.edit_message_text(chat_id, message_id, formatted_page)
         .reply_markup(keyboard)
         .send()
         .await?;

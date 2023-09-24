@@ -2,11 +2,10 @@ use std::fmt;
 
 use super::commands::AnnotationCommand;
 
-
 #[derive(Debug)]
 pub struct AnnotationFormatError {
     pub command: AnnotationCommand,
-    pub text: String
+    pub text: String,
 }
 
 impl fmt::Display for AnnotationFormatError {

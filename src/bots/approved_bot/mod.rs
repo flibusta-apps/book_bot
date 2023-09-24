@@ -2,9 +2,16 @@ pub mod modules;
 pub mod services;
 mod tools;
 
-use teloxide::{prelude::*, types::BotCommand, adaptors::{Throttle, CacheMe}};
+use teloxide::{
+    adaptors::{CacheMe, Throttle},
+    prelude::*,
+    types::BotCommand,
+};
 
-use crate::{bots::approved_bot::services::user_settings::create_or_update_user_settings, bots_manager::USER_ACTIVITY_CACHE};
+use crate::{
+    bots::approved_bot::services::user_settings::create_or_update_user_settings,
+    bots_manager::USER_ACTIVITY_CACHE,
+};
 
 use self::{
     modules::{
@@ -16,12 +23,12 @@ use self::{
     services::user_settings::{get_user_or_default_lang_codes, update_user_activity},
 };
 
-use super::{ignore_channel_messages, BotCommands, BotHandler, bots_manager::get_manager_handler, ignore_chat_member_update};
+use super::{
+    bots_manager::get_manager_handler, ignore_channel_messages, ignore_chat_member_update,
+    BotCommands, BotHandler,
+};
 
-async fn _update_activity(
-    me: teloxide::types::Me,
-    user: teloxide::types::User,
-) -> Option<()> {
+async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) -> Option<()> {
     if USER_ACTIVITY_CACHE.contains_key(&user.id) {
         return None;
     }
@@ -39,7 +46,9 @@ async fn _update_activity(
                 user.username.clone().unwrap_or("".to_string()),
                 me.username.clone().unwrap(),
                 allowed_langs,
-            ).await.is_ok()
+            )
+            .await
+            .is_ok()
             {
                 update_result = update_user_activity(user.id).await;
             }

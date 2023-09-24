@@ -1,6 +1,5 @@
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
-
 pub enum PaginationDelta {
     OneMinus,
     OnePlus,
@@ -11,7 +10,6 @@ pub enum PaginationDelta {
 pub trait GetPaginationCallbackData {
     fn get_pagination_callback_data(&self, target_page: u32) -> String;
 }
-
 
 pub fn generic_get_pagination_button<T>(
     target_page: u32,
@@ -35,7 +33,6 @@ where
         kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(callback_data),
     }
 }
-
 
 pub fn generic_get_pagination_keyboard<T>(
     page: u32,

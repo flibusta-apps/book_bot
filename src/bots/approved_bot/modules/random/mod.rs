@@ -1,29 +1,32 @@
-pub mod commands;
 pub mod callback_data;
+pub mod commands;
 
-use smartstring::alias::String as SmartString;
 use smallvec::SmallVec;
+use smartstring::alias::String as SmartString;
 use teloxide::{
+    adaptors::{CacheMe, Throttle},
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
-    adaptors::{Throttle, CacheMe},
 };
 
 use crate::bots::{
     approved_bot::{
+        modules::random::callback_data::RandomCallbackData,
         services::{
             book_library::{self, formatters::Format},
             user_settings::get_user_or_default_lang_codes,
         },
-        tools::filter_callback_query, modules::random::callback_data::RandomCallbackData,
+        tools::filter_callback_query,
     },
     BotHandlerInternal,
 };
 
 use self::commands::RandomCommand;
 
-
-async fn random_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> crate::bots::BotHandlerInternal {
+async fn random_handler(
+    message: Message,
+    bot: CacheMe<Throttle<Bot>>,
+) -> crate::bots::BotHandlerInternal {
     const MESSAGE_TEXT: &str = "Что хотим получить?";
 
     let keyboard = InlineKeyboardMarkup {
@@ -55,8 +58,7 @@ async fn random_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> crate:
         ],
     };
 
-    bot
-        .send_message(message.chat.id, MESSAGE_TEXT)
+    bot.send_message(message.chat.id, MESSAGE_TEXT)
         .reply_to_message_id(message.id)
         .reply_markup(keyboard)
         .send()
@@ -76,12 +78,11 @@ where
     let item = match item {
         Ok(v) => v,
         Err(err) => {
-            bot
-                .send_message(cq.from.id, "Ошибка! Попробуйте позже :(")
+            bot.send_message(cq.from.id, "Ошибка! Попробуйте позже :(")
                 .send()
                 .await?;
             return Err(err);
-        },
+        }
     };
 
     let item_message = item.format(4096).result;
@@ -89,9 +90,7 @@ where
     bot.send_message(cq.from.id, item_message)
         .reply_markup(InlineKeyboardMarkup {
             inline_keyboard: vec![vec![InlineKeyboardButton {
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    cq.data.unwrap(),
-                ),
+                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(cq.data.unwrap()),
                 text: String::from("Повторить?"),
             }]],
         })
@@ -101,13 +100,13 @@ where
     match cq.message {
         Some(message) => {
             bot.edit_message_reply_markup(message.chat.id, message.id)
-            .reply_markup(InlineKeyboardMarkup {
-                inline_keyboard: vec![],
-            })
-            .send()
-            .await?;
+                .reply_markup(InlineKeyboardMarkup {
+                    inline_keyboard: vec![],
+                })
+                .send()
+                .await?;
             Ok(())
-        },
+        }
         None => Ok(()),
     }
 }
@@ -128,18 +127,20 @@ where
     get_random_item_handler_internal(cq, bot, item).await
 }
 
-async fn get_genre_metas_handler(cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
+async fn get_genre_metas_handler(
+    cq: CallbackQuery,
+    bot: CacheMe<Throttle<Bot>>,
+) -> BotHandlerInternal {
     let genre_metas = book_library::get_genre_metas().await?;
 
     let message = match cq.message {
         Some(v) => v,
         None => {
-            bot
-            .send_message(cq.from.id, "Ошибка! Начните заново :(")
-            .send()
-            .await?;
-        return Ok(());
-        },
+            bot.send_message(cq.from.id, "Ошибка! Начните заново :(")
+                .send()
+                .await?;
+            return Ok(());
+        }
     };
 
     let keyboard = InlineKeyboardMarkup {
@@ -160,8 +161,7 @@ async fn get_genre_metas_handler(cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>)
             .collect(),
     };
 
-    bot
-        .edit_message_reply_markup(message.chat.id, message.id)
+    bot.edit_message_reply_markup(message.chat.id, message.id)
         .reply_markup(keyboard)
         .send()
         .await?;
@@ -179,8 +179,7 @@ async fn get_genres_by_meta_handler(
     let meta = match genre_metas.get(genre_index as usize) {
         Some(v) => v,
         None => {
-            bot
-                .send_message(cq.from.id, "Ошибка! Попробуйте позже :(")
+            bot.send_message(cq.from.id, "Ошибка! Попробуйте позже :(")
                 .send()
                 .await?;
 
@@ -188,7 +187,8 @@ async fn get_genres_by_meta_handler(
         }
     };
 
-    let mut buttons: Vec<Vec<InlineKeyboardButton>> = book_library::get_genres(meta.into()).await?
+    let mut buttons: Vec<Vec<InlineKeyboardButton>> = book_library::get_genres(meta.into())
+        .await?
         .items
         .into_iter()
         .map(|genre| {
@@ -217,8 +217,7 @@ async fn get_genres_by_meta_handler(
     let message = match cq.message {
         Some(message) => message,
         None => {
-            bot
-                .send_message(cq.from.id, "Ошибка! Начните заново :(")
+            bot.send_message(cq.from.id, "Ошибка! Начните заново :(")
                 .send()
                 .await?;
 
@@ -226,8 +225,7 @@ async fn get_genres_by_meta_handler(
         }
     };
 
-    bot
-        .edit_message_reply_markup(message.chat.id, message.id)
+    bot.edit_message_reply_markup(message.chat.id, message.id)
         .reply_markup(keyboard)
         .send()
         .await?;
@@ -249,30 +247,46 @@ async fn get_random_book_by_genre(
 
 pub fn get_random_handler() -> crate::bots::BotHandler {
     dptree::entry()
-        .branch(
-            Update::filter_message()
-                .branch(
-                    dptree::entry()
-                        .filter_command::<RandomCommand>()
-                        .endpoint(|message, command, bot| async {
-                            match command {
-                                RandomCommand::Random => random_handler(message, bot).await,
-                            }
-                        })
-                )
-        )
+        .branch(Update::filter_message().branch(
+            dptree::entry().filter_command::<RandomCommand>().endpoint(
+                |message, command, bot| async {
+                    match command {
+                        RandomCommand::Random => random_handler(message, bot).await,
+                    }
+                },
+            ),
+        ))
         .branch(
             Update::filter_callback_query()
                 .chain(filter_callback_query::<RandomCallbackData>())
-                .endpoint(|cq: CallbackQuery, callback_data: RandomCallbackData, bot: CacheMe<Throttle<Bot>>| async move {
-                    match callback_data {
-                        RandomCallbackData::RandomBook => get_random_item_handler(cq, bot, book_library::get_random_book).await,
-                        RandomCallbackData::RandomAuthor => get_random_item_handler(cq, bot, book_library::get_random_author).await,
-                        RandomCallbackData::RandomSequence => get_random_item_handler(cq, bot, book_library::get_random_sequence).await,
-                        RandomCallbackData::RandomBookByGenreRequest => get_genre_metas_handler(cq, bot).await,
-                        RandomCallbackData::Genres { index } => get_genres_by_meta_handler(cq, bot, index).await,
-                        RandomCallbackData::RandomBookByGenre { id } => get_random_book_by_genre(cq, bot, id).await,
-                    }
-                })
+                .endpoint(
+                    |cq: CallbackQuery,
+                     callback_data: RandomCallbackData,
+                     bot: CacheMe<Throttle<Bot>>| async move {
+                        match callback_data {
+                            RandomCallbackData::RandomBook => {
+                                get_random_item_handler(cq, bot, book_library::get_random_book)
+                                    .await
+                            }
+                            RandomCallbackData::RandomAuthor => {
+                                get_random_item_handler(cq, bot, book_library::get_random_author)
+                                    .await
+                            }
+                            RandomCallbackData::RandomSequence => {
+                                get_random_item_handler(cq, bot, book_library::get_random_sequence)
+                                    .await
+                            }
+                            RandomCallbackData::RandomBookByGenreRequest => {
+                                get_genre_metas_handler(cq, bot).await
+                            }
+                            RandomCallbackData::Genres { index } => {
+                                get_genres_by_meta_handler(cq, bot, index).await
+                            }
+                            RandomCallbackData::RandomBookByGenre { id } => {
+                                get_random_book_by_genre(cq, bot, id).await
+                            }
+                        }
+                    },
+                ),
         )
 }

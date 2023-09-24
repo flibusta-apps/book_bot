@@ -26,7 +26,6 @@ pub fn split_text_to_chunks(text: &str, width: usize) -> Vec<String> {
     result
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::bots::approved_bot::modules::utils::split_text::split_text_to_chunks;

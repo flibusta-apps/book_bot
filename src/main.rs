@@ -2,14 +2,13 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use sentry::ClientOptions;
 use sentry::integrations::debug_images::DebugImagesIntegration;
 use sentry::types::Dsn;
+use sentry::ClientOptions;
 
 mod bots;
 mod bots_manager;
 mod config;
-
 
 #[tokio::main]
 async fn main() {
@@ -19,11 +18,11 @@ async fn main() {
         .init();
 
     let options = ClientOptions {
-            dsn: Some(Dsn::from_str(&config::CONFIG.sentry_dsn).unwrap()),
-            default_integrations: false,
-            ..Default::default()
-        }
-        .add_integration(DebugImagesIntegration::new());
+        dsn: Some(Dsn::from_str(&config::CONFIG.sentry_dsn).unwrap()),
+        default_integrations: false,
+        ..Default::default()
+    }
+    .add_integration(DebugImagesIntegration::new());
 
     let _guard = sentry::init(options);
 

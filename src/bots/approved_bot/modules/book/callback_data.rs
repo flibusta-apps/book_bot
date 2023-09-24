@@ -2,8 +2,9 @@ use std::str::FromStr;
 
 use regex::Regex;
 
-use crate::bots::approved_bot::modules::utils::{pagination::GetPaginationCallbackData, errors::CallbackQueryParseError};
-
+use crate::bots::approved_bot::modules::utils::{
+    errors::CallbackQueryParseError, pagination::GetPaginationCallbackData,
+};
 
 #[derive(Clone)]
 pub enum BookCallbackData {
@@ -20,18 +21,20 @@ impl FromStr for BookCallbackData {
             .unwrap_or_else(|_| panic!("Broken BookCallbackData regex pattern!"))
             .captures(s)
             .ok_or(CallbackQueryParseError)
-            .map(|caps| (
-                caps["an_type"].to_string(),
-                caps["id"].parse::<u32>().unwrap(),
-                caps["page"].parse::<u32>().unwrap()
-            ))
-            .map(|(annotation_type, id, page)|
-                match annotation_type.as_str() {
+            .map(|caps| {
+                (
+                    caps["an_type"].to_string(),
+                    caps["id"].parse::<u32>().unwrap(),
+                    caps["page"].parse::<u32>().unwrap(),
+                )
+            })
+            .map(
+                |(annotation_type, id, page)| match annotation_type.as_str() {
                     "a" => Ok(BookCallbackData::Author { id, page }),
                     "t" => Ok(BookCallbackData::Translator { id, page }),
                     "s" => Ok(BookCallbackData::Sequence { id, page }),
                     _ => panic!("Unknown BookCallbackData type: {}!", annotation_type),
-                }
+                },
             )?
     }
 }

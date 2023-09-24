@@ -1,6 +1,5 @@
 use teloxide::types::CallbackQuery;
 
-
 pub fn get_query(cq: CallbackQuery) -> Option<String> {
     cq.message
         .map(|message| {

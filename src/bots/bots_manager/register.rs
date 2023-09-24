@@ -6,14 +6,12 @@ use tracing::log;
 
 use crate::config;
 
-
 #[derive(Debug)]
 pub enum RegisterStatus {
-    Success {username: String},
+    Success { username: String },
     WrongToken,
     RegisterFail,
 }
-
 
 async fn get_bot_username(token: &str) -> Option<String> {
     match Bot::new(token).get_me().send().await {
@@ -25,7 +23,11 @@ async fn get_bot_username(token: &str) -> Option<String> {
     }
 }
 
-async fn make_register_request(user_id: UserId, username: &str, token: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
+async fn make_register_request(
+    user_id: UserId,
+    username: &str,
+    token: &str,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
     let body = json!({
         "token": token,
         "user": user_id,
@@ -46,13 +48,12 @@ async fn make_register_request(user_id: UserId, username: &str, token: &str) -> 
     Ok(())
 }
 
-
 pub async fn register(user_id: UserId, message_text: &str) -> RegisterStatus {
     let token = super::utils::get_token(message_text).unwrap();
 
     let bot_username = match get_bot_username(token).await {
         Some(v) => v,
-        None => return RegisterStatus::WrongToken
+        None => return RegisterStatus::WrongToken,
     };
 
     let register_request_status = make_register_request(user_id, &bot_username, token).await;
@@ -63,5 +64,7 @@ pub async fn register(user_id: UserId, message_text: &str) -> RegisterStatus {
         return RegisterStatus::RegisterFail;
     }
 
-    RegisterStatus::Success { username: bot_username }
+    RegisterStatus::Success {
+        username: bot_username,
+    }
 }

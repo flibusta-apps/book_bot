@@ -1,10 +1,12 @@
 use std::cmp::min;
 
-use crate::bots::approved_bot::modules::download::commands::{StartDownloadCommand, DownloadArchiveCommand};
+use crate::bots::approved_bot::modules::download::commands::{
+    DownloadArchiveCommand, StartDownloadCommand,
+};
 
 use super::types::{
-    Author, AuthorBook, Book, BookAuthor, BookGenre, SearchBook, Sequence, Translator,
-    TranslatorBook, SequenceBook, BookTranslator, Empty,
+    Author, AuthorBook, Book, BookAuthor, BookGenre, BookTranslator, Empty, SearchBook, Sequence,
+    SequenceBook, Translator, TranslatorBook,
 };
 
 const NO_LIMIT: usize = 4096;
@@ -45,7 +47,7 @@ impl FormatTitle for BookAuthor {
         } = self;
 
         if *id == 0 {
-            return "".to_string()
+            return "".to_string();
         }
 
         let command = (DownloadArchiveCommand::Author { id: *id }).to_string();
@@ -64,7 +66,7 @@ impl FormatTitle for BookTranslator {
         } = self;
 
         if *id == 0 {
-            return "".to_string()
+            return "".to_string();
         }
 
         let command = (DownloadArchiveCommand::Translator { id: *id }).to_string();
@@ -78,7 +80,7 @@ impl FormatTitle for Sequence {
         let Sequence { id, name } = self;
 
         if *id == 0 {
-            return "".to_string()
+            return "".to_string();
         }
 
         let command = (DownloadArchiveCommand::Sequence { id: *id }).to_string();
@@ -115,7 +117,7 @@ impl FormatInline for BookTranslator {
 
 fn format_authors(authors: Vec<BookAuthor>, count: usize) -> String {
     if count == 0 {
-        return "".to_string()
+        return "".to_string();
     }
 
     match !authors.is_empty() {
@@ -126,7 +128,11 @@ fn format_authors(authors: Vec<BookAuthor>, count: usize) -> String {
                 .collect::<Vec<String>>()
                 .join("\n");
 
-            let post_fix = if authors.len() > count { "\nи др." } else { "" };
+            let post_fix = if authors.len() > count {
+                "\nи др."
+            } else {
+                ""
+            };
             format!("Авторы:\n{formated_authors}{post_fix}\n")
         }
         false => "".to_string(),
@@ -135,7 +141,7 @@ fn format_authors(authors: Vec<BookAuthor>, count: usize) -> String {
 
 fn format_translators(translators: Vec<BookTranslator>, count: usize) -> String {
     if count == 0 {
-        return "".to_string()
+        return "".to_string();
     }
 
     match !translators.is_empty() {
@@ -146,7 +152,11 @@ fn format_translators(translators: Vec<BookTranslator>, count: usize) -> String 
                 .collect::<Vec<String>>()
                 .join("\n");
 
-            let post_fix = if translators.len() > count { "\nи др." } else { "" };
+            let post_fix = if translators.len() > count {
+                "\nи др."
+            } else {
+                ""
+            };
             format!("Переводчики:\n{formated_translators}{post_fix}\n")
         }
         false => "".to_string(),
@@ -155,7 +165,7 @@ fn format_translators(translators: Vec<BookTranslator>, count: usize) -> String 
 
 fn format_sequences(sequences: Vec<Sequence>, count: usize) -> String {
     if count == 0 {
-        return "".to_string()
+        return "".to_string();
     }
 
     match !sequences.is_empty() {
@@ -166,7 +176,11 @@ fn format_sequences(sequences: Vec<Sequence>, count: usize) -> String {
                 .collect::<Vec<String>>()
                 .join("\n");
 
-            let post_fix = if sequences.len() > count { "\nи др." } else { "" };
+            let post_fix = if sequences.len() > count {
+                "\nи др."
+            } else {
+                ""
+            };
             format!("Серии:\n{formated_sequences}{post_fix}\n")
         }
         false => "".to_string(),
@@ -175,7 +189,7 @@ fn format_sequences(sequences: Vec<Sequence>, count: usize) -> String {
 
 fn format_genres(genres: Vec<BookGenre>, count: usize) -> String {
     if count == 0 {
-        return "".to_string()
+        return "".to_string();
     }
 
     match !genres.is_empty() {
@@ -186,7 +200,11 @@ fn format_genres(genres: Vec<BookGenre>, count: usize) -> String {
                 .collect::<Vec<String>>()
                 .join("\n");
 
-            let post_fix = if genres.len() > count { "\nи др." } else { "" };
+            let post_fix = if genres.len() > count {
+                "\nи др."
+            } else {
+                ""
+            };
             format!("Жанры:\n{formated_genres}{post_fix}\n")
         }
         false => "".to_string(),
@@ -216,7 +234,7 @@ impl Format for Author {
         FormatResult {
             result,
             current_size: result_len,
-            max_size: result_len
+            max_size: result_len,
         }
     }
 }
@@ -234,7 +252,7 @@ impl Format for Sequence {
         FormatResult {
             result,
             current_size: result_len,
-            max_size: result_len
+            max_size: result_len,
         }
     }
 }
@@ -262,7 +280,7 @@ impl Format for Translator {
         FormatResult {
             result,
             current_size: result_len,
-            max_size: result_len
+            max_size: result_len,
         }
     }
 }
@@ -284,7 +302,12 @@ impl FormatVectorsCounts {
     }
 
     fn sub(self) -> Self {
-        let Self {mut authors, mut translators, mut sequences, mut genres} = self;
+        let Self {
+            mut authors,
+            mut translators,
+            mut sequences,
+            mut genres,
+        } = self;
 
         if genres > 0 {
             genres -= 1;
@@ -293,8 +316,8 @@ impl FormatVectorsCounts {
                 authors,
                 translators,
                 sequences,
-                genres
-            }
+                genres,
+            };
         }
 
         if sequences > 0 {
@@ -304,8 +327,8 @@ impl FormatVectorsCounts {
                 authors,
                 translators,
                 sequences,
-                genres
-            }
+                genres,
+            };
         }
 
         if translators > 0 {
@@ -315,8 +338,8 @@ impl FormatVectorsCounts {
                 authors,
                 translators,
                 sequences,
-                genres
-            }
+                genres,
+            };
         }
 
         if authors > 0 {
@@ -326,15 +349,15 @@ impl FormatVectorsCounts {
                 authors,
                 translators,
                 sequences,
-                genres
-            }
+                genres,
+            };
         }
 
         Self {
             authors,
             translators,
             sequences,
-            genres
+            genres,
         }
     }
 }
@@ -354,14 +377,20 @@ impl FormatVectorsResult {
     }
 
     fn with_max_result_size(self, max_result_size: usize) -> Self {
-        let Self { authors, translators, sequences, genres, .. } = self;
+        let Self {
+            authors,
+            translators,
+            sequences,
+            genres,
+            ..
+        } = self;
 
         Self {
             authors,
             translators,
             sequences,
             genres,
-            max_result_size
+            max_result_size,
         }
     }
 }
@@ -372,7 +401,7 @@ impl Book {
             authors: self.authors.len(),
             translators: self.translators.len(),
             sequences: self.sequences.len(),
-            genres: self.genres.len()
+            genres: self.genres.len(),
         };
 
         let mut result = FormatVectorsResult {
@@ -380,7 +409,7 @@ impl Book {
             translators: format_translators(self.translators.clone(), counts.translators),
             sequences: format_sequences(self.sequences.clone(), counts.sequences),
             genres: format_genres(self.genres.clone(), counts.genres),
-            max_result_size: 0
+            max_result_size: 0,
         };
 
         let max_result_size = result.len();
@@ -393,7 +422,7 @@ impl Book {
                 translators: format_translators(self.translators.clone(), counts.translators),
                 sequences: format_sequences(self.sequences.clone(), counts.sequences),
                 genres: format_genres(self.genres.clone(), counts.genres),
-                max_result_size: 0
+                max_result_size: 0,
             };
         }
 
@@ -426,17 +455,23 @@ impl Format for Book {
         let download_links = format!("Скачать:\n📥{download_command}");
 
         let required_data_len: usize = format!("{book_title}{annotations}{download_links}").len();
-        let FormatVectorsResult { authors, translators, sequences, genres, max_result_size } = self.format_vectors(
-            max_size - required_data_len
-        );
+        let FormatVectorsResult {
+            authors,
+            translators,
+            sequences,
+            genres,
+            max_result_size,
+        } = self.format_vectors(max_size - required_data_len);
 
-        let result = format!("{book_title}{annotations}{authors}{translators}{sequences}{genres}{download_links}");
+        let result = format!(
+            "{book_title}{annotations}{authors}{translators}{sequences}{genres}{download_links}"
+        );
         let result_len = result.len();
 
         FormatResult {
             result,
             current_size: result_len,
-            max_size: max_result_size + required_data_len
+            max_size: max_result_size + required_data_len,
         }
     }
 }

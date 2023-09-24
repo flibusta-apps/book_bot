@@ -1,5 +1,5 @@
-pub mod commands;
 pub mod callback_data;
+pub mod commands;
 
 use std::collections::HashSet;
 
@@ -16,12 +16,12 @@ use crate::bots::{
 };
 
 use teloxide::{
+    adaptors::{CacheMe, Throttle},
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardMarkup, Me}, adaptors::{Throttle, CacheMe},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup, Me},
 };
 
-use self::{commands::SettingsCommand, callback_data::SettingsCallbackData};
-
+use self::{callback_data::SettingsCallbackData, commands::SettingsCommand};
 
 async fn settings_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let keyboard = InlineKeyboardMarkup {
@@ -33,8 +33,7 @@ async fn settings_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotH
         }]],
     };
 
-    bot
-        .send_message(message.chat.id, "Настройки")
+    bot.send_message(message.chat.id, "Настройки")
         .reply_markup(keyboard)
         .send()
         .await?;
@@ -42,7 +41,10 @@ async fn settings_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotH
     Ok(())
 }
 
-fn get_lang_keyboard(all_langs: Vec<Lang>, allowed_langs: HashSet<SmartString>) -> InlineKeyboardMarkup {
+fn get_lang_keyboard(
+    all_langs: Vec<Lang>,
+    allowed_langs: HashSet<SmartString>,
+) -> InlineKeyboardMarkup {
     let buttons = all_langs
         .into_iter()
         .map(|lang| {
@@ -78,9 +80,11 @@ async fn settings_callback_handler(
     let message = match cq.message {
         Some(v) => v,
         None => {
-            bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(").send().await?;
+            bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(")
+                .send()
+                .await?;
             return Ok(());
-        },
+        }
     };
 
     let user = cq.from;
@@ -103,14 +107,13 @@ async fn settings_callback_handler(
     };
 
     if allowed_langs_set.is_empty() {
-        bot
-            .answer_callback_query(cq.id)
+        bot.answer_callback_query(cq.id)
             .text("Должен быть активен, хотя бы один язык!")
             .show_alert(true)
             .send()
             .await?;
 
-        return Ok(())
+        return Ok(());
     }
 
     if let Err(err) = create_or_update_user_settings(
@@ -121,23 +124,27 @@ async fn settings_callback_handler(
         me.username.clone().unwrap(),
         allowed_langs_set.clone().into_iter().collect(),
     )
-    .await {
-        bot.send_message(message.chat.id, "Ошибка! Попробуйте заново(").send().await?;
+    .await
+    {
+        bot.send_message(message.chat.id, "Ошибка! Попробуйте заново(")
+            .send()
+            .await?;
         return Err(err);
     }
 
     let all_langs = match get_langs().await {
         Ok(v) => v,
         Err(err) => {
-            bot.send_message(message.chat.id, "Ошибка! Попробуйте заново(").send().await?;
-            return Err(err)
-        },
+            bot.send_message(message.chat.id, "Ошибка! Попробуйте заново(")
+                .send()
+                .await?;
+            return Err(err);
+        }
     };
 
     let keyboard = get_lang_keyboard(all_langs, allowed_langs_set);
 
-    bot
-        .edit_message_reply_markup(message.chat.id, message.id)
+    bot.edit_message_reply_markup(message.chat.id, message.id)
         .reply_markup(keyboard)
         .send()
         .await?;

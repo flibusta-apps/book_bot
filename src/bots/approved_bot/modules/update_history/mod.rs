@@ -1,5 +1,5 @@
-pub mod commands;
 pub mod callback_data;
+pub mod commands;
 
 use chrono::{prelude::*, Duration};
 
@@ -9,15 +9,14 @@ use crate::bots::{
 };
 
 use teloxide::{
+    adaptors::{CacheMe, Throttle},
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
-    adaptors::{Throttle, CacheMe},
 };
 
-use self::{commands::UpdateLogCommand, callback_data::UpdateLogCallbackData};
+use self::{callback_data::UpdateLogCallbackData, commands::UpdateLogCommand};
 
 use super::utils::pagination::generic_get_pagination_keyboard;
-
 
 async fn update_log_command(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let now = Utc::now().date_naive();
@@ -82,9 +81,11 @@ async fn update_log_pagination_handler(
     let message = match cq.message {
         Some(v) => v,
         None => {
-            bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(").send().await?;
-            return Ok(())
-        },
+            bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(")
+                .send()
+                .await?;
+            return Ok(());
+        }
     };
 
     let from = update_callback_data.from.format("%d.%m.%Y");
@@ -94,14 +95,21 @@ async fn update_log_pagination_handler(
 
     let mut items_page = get_uploaded_books(
         update_callback_data.page,
-        update_callback_data.from.format("%Y-%m-%d").to_string().into(),
-        update_callback_data.to.format("%Y-%m-%d").to_string().into(),
+        update_callback_data
+            .from
+            .format("%Y-%m-%d")
+            .to_string()
+            .into(),
+        update_callback_data
+            .to
+            .format("%Y-%m-%d")
+            .to_string()
+            .into(),
     )
     .await?;
 
     if items_page.pages == 0 {
-        bot
-            .send_message(message.chat.id, "Нет новых книг за этот период.")
+        bot.send_message(message.chat.id, "Нет новых книг за этот период.")
             .send()
             .await?;
         return Ok(());
@@ -110,9 +118,18 @@ async fn update_log_pagination_handler(
     if update_callback_data.page > items_page.pages {
         items_page = get_uploaded_books(
             items_page.pages,
-            update_callback_data.from.format("%Y-%m-%d").to_string().into(),
-            update_callback_data.to.format("%Y-%m-%d").to_string().into(),
-        ).await?;
+            update_callback_data
+                .from
+                .format("%Y-%m-%d")
+                .to_string()
+                .into(),
+            update_callback_data
+                .to
+                .format("%Y-%m-%d")
+                .to_string()
+                .into(),
+        )
+        .await?;
     }
 
     let page = update_callback_data.page;
@@ -123,8 +140,7 @@ async fn update_log_pagination_handler(
     let message_text = format!("{header}{formatted_page}");
 
     let keyboard = generic_get_pagination_keyboard(page, total_pages, update_callback_data, true);
-    bot
-        .edit_message_text(message.chat.id, message.id, message_text)
+    bot.edit_message_text(message.chat.id, message.id, message_text)
         .reply_markup(keyboard)
         .send()
         .await?;

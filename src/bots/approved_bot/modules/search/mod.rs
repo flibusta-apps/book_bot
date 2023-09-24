@@ -6,15 +6,18 @@ use smartstring::alias::String as SmartString;
 
 use smallvec::SmallVec;
 use teloxide::{
+    adaptors::{CacheMe, Throttle},
+    dispatching::dialogue::GetChatId,
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardMarkup}, dispatching::dialogue::GetChatId, adaptors::{Throttle, CacheMe},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
 
 use crate::bots::{
     approved_bot::{
         services::{
             book_library::{
-                formatters::{Format, FormatTitle}, search_author, search_book, search_sequence, search_translator,
+                formatters::{Format, FormatTitle},
+                search_author, search_book, search_sequence, search_translator,
                 types::Page,
             },
             user_settings::get_user_or_default_lang_codes,
@@ -27,7 +30,6 @@ use crate::bots::{
 use self::{callback_data::SearchCallbackData, utils::get_query};
 
 use super::utils::pagination::generic_get_pagination_keyboard;
-
 
 async fn generic_search_pagination_handler<T, P, Fut>(
     cq: CallbackQuery,
@@ -46,11 +48,11 @@ where
     let query = get_query(cq);
 
     let (chat_id, query, message_id) = match (chat_id, query, message_id) {
-        (Some(chat_id), Some(query), Some(message_id)) => {
-            (chat_id, query, message_id)
-        }
+        (Some(chat_id), Some(query), Some(message_id)) => (chat_id, query, message_id),
         (Some(chat_id), _, _) => {
-            bot.send_message(chat_id, "Повторите поиск сначала").send().await?;
+            bot.send_message(chat_id, "Повторите поиск сначала")
+                .send()
+                .await?;
             return Ok(());
         }
         _ => {
@@ -70,8 +72,7 @@ where
     let mut items_page = match items_getter(query.clone(), page, allowed_langs.clone()).await {
         Ok(v) => v,
         Err(err) => {
-            bot
-                .send_message(chat_id, "Ошибка! Попробуйте позже :(")
+            bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
                 .send()
                 .await?;
 
@@ -92,31 +93,24 @@ where
     };
 
     if page > items_page.pages {
-        items_page = match items_getter(
-            query.clone(),
-            items_page.pages,
-            allowed_langs.clone(),
-        )
-        .await
-        {
-            Ok(v) => v,
-            Err(err) => {
-                bot
-                    .send_message(chat_id, "Ошибка! Попробуйте позже :(")
-                    .send()
-                    .await?;
+        items_page =
+            match items_getter(query.clone(), items_page.pages, allowed_langs.clone()).await {
+                Ok(v) => v,
+                Err(err) => {
+                    bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
+                        .send()
+                        .await?;
 
-                return Err(err);
-            }
-        };
+                    return Err(err);
+                }
+            };
     }
 
     let formated_page = items_page.format(page, 4096);
 
     let keyboard = generic_get_pagination_keyboard(page, items_page.pages, search_data, true);
 
-    bot
-        .edit_message_text(chat_id, message_id, formated_page)
+    bot.edit_message_text(chat_id, message_id, formated_page)
         .reply_markup(keyboard)
         .send()
         .await?;
@@ -156,8 +150,7 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
         ],
     };
 
-    bot
-        .send_message(message.chat.id, message_text)
+    bot.send_message(message.chat.id, message_text)
         .reply_to_message_id(message.id)
         .reply_markup(keyboard)
         .send()
@@ -167,19 +160,57 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
 }
 
 pub fn get_search_handler() -> crate::bots::BotHandler {
-    dptree::entry().branch(
-        Update::filter_message()
-            .endpoint(|message, bot| async move { message_handler(message, bot).await }),
-    ).branch(
-        Update::filter_callback_query()
-            .chain(filter_callback_query::<SearchCallbackData>())
-            .endpoint(|cq: CallbackQuery, callback_data: SearchCallbackData, bot: CacheMe<Throttle<Bot>>| async move {
-                match callback_data {
-                    SearchCallbackData::Book { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_book).await,
-                    SearchCallbackData::Authors { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_author).await,
-                    SearchCallbackData::Sequences { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_sequence).await,
-                    SearchCallbackData::Translators { .. } => generic_search_pagination_handler(cq, bot, callback_data, search_translator).await,
-                }
-            })
-    )
+    dptree::entry()
+        .branch(
+            Update::filter_message()
+                .endpoint(|message, bot| async move { message_handler(message, bot).await }),
+        )
+        .branch(
+            Update::filter_callback_query()
+                .chain(filter_callback_query::<SearchCallbackData>())
+                .endpoint(
+                    |cq: CallbackQuery,
+                     callback_data: SearchCallbackData,
+                     bot: CacheMe<Throttle<Bot>>| async move {
+                        match callback_data {
+                            SearchCallbackData::Book { .. } => {
+                                generic_search_pagination_handler(
+                                    cq,
+                                    bot,
+                                    callback_data,
+                                    search_book,
+                                )
+                                .await
+                            }
+                            SearchCallbackData::Authors { .. } => {
+                                generic_search_pagination_handler(
+                                    cq,
+                                    bot,
+                                    callback_data,
+                                    search_author,
+                                )
+                                .await
+                            }
+                            SearchCallbackData::Sequences { .. } => {
+                                generic_search_pagination_handler(
+                                    cq,
+                                    bot,
+                                    callback_data,
+                                    search_sequence,
+                                )
+                                .await
+                            }
+                            SearchCallbackData::Translators { .. } => {
+                                generic_search_pagination_handler(
+                                    cq,
+                                    bot,
+                                    callback_data,
+                                    search_translator,
+                                )
+                                .await
+                            }
+                        }
+                    },
+                ),
+        )
 }

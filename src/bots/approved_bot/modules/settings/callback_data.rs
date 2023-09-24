@@ -3,7 +3,6 @@ use std::str::FromStr;
 use regex::Regex;
 use smartstring::alias::String as SmartString;
 
-
 #[derive(Clone)]
 pub enum SettingsCallbackData {
     Settings,

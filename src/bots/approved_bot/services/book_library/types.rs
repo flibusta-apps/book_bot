@@ -4,7 +4,6 @@ use smallvec::SmallVec;
 
 use super::formatters::{Format, FormatResult, FormatTitle};
 
-
 #[derive(Default, Deserialize, Debug, Clone)]
 pub struct BookAuthor {
     pub id: u32,
@@ -87,13 +86,13 @@ pub struct Page<T, P> {
     pub pages: u32,
 
     #[serde(default)]
-    pub parent_item: Option<P>
+    pub parent_item: Option<P>,
 }
 
 impl<T, P> Page<T, P>
 where
     T: Format + Clone + Debug,
-    P: FormatTitle + Clone + Debug
+    P: FormatTitle + Clone + Debug,
 {
     pub fn format(&self, page: u32, max_size: usize) -> String {
         let title: String = match &self.parent_item {
@@ -105,7 +104,7 @@ where
                 }
 
                 format!("{item_title}\n\n\n")
-            },
+            }
             None => "".to_string(),
         };
 
@@ -124,7 +123,8 @@ where
         let items_count: usize = self.items.len();
         let item_size: usize = (max_size - separator_len * items_count) / items_count;
 
-        let format_result: Vec<FormatResult> = self.items
+        let format_result: Vec<FormatResult> = self
+            .items
             .iter()
             .map(|item| item.format(item_size))
             .collect();
@@ -232,7 +232,7 @@ impl From<SearchBook> for Book {
             translators: value.translators,
             sequences: value.sequences,
             genres: vec![],
-            pages: None
+            pages: None,
         }
     }
 }
@@ -262,7 +262,7 @@ impl From<AuthorBook> for Book {
             translators: value.translators,
             sequences: value.sequences,
             genres: vec![],
-            pages: None
+            pages: None,
         }
     }
 }
@@ -292,11 +292,10 @@ impl From<TranslatorBook> for Book {
             translators: vec![],
             sequences: value.sequences,
             genres: vec![],
-            pages: None
+            pages: None,
         }
     }
 }
-
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct SequenceBook {
@@ -323,7 +322,7 @@ impl From<SequenceBook> for Book {
             translators: value.translators,
             sequences: vec![],
             genres: vec![],
-            pages: None
+            pages: None,
         }
     }
 }

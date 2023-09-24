@@ -1,4 +1,7 @@
-use teloxide::{prelude::*, adaptors::{Throttle, CacheMe}};
+use teloxide::{
+    adaptors::{CacheMe, Throttle},
+    prelude::*,
+};
 
 use std::error::Error;
 
@@ -23,7 +26,6 @@ pub async fn message_handler(
         register::RegisterStatus::RegisterFail => strings::ALREADY_REGISTERED.to_string(),
     };
 
-
     bot.send_message(message.chat.id, message_text)
         .reply_to_message_id(message.id)
         .await?;
@@ -39,6 +41,9 @@ pub fn get_manager_handler() -> Handler<
 > {
     Update::filter_message().branch(
         Message::filter_text()
-            .chain(dptree::filter(|message: Message| { get_token(message.text().unwrap()).is_some() })).endpoint(message_handler),
+            .chain(dptree::filter(|message: Message| {
+                get_token(message.text().unwrap()).is_some()
+            }))
+            .endpoint(message_handler),
     )
 }

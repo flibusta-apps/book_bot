@@ -1,10 +1,10 @@
 use serde::Deserialize;
 use serde_json::json;
-use smallvec::{SmallVec, smallvec};
-use teloxide::types::{UserId, ChatId};
+use smallvec::{smallvec, SmallVec};
 use smartstring::alias::String as SmartString;
+use teloxide::types::{ChatId, UserId};
 
-use crate::{config, bots_manager::USER_LANGS_CACHE};
+use crate::{bots_manager::USER_LANGS_CACHE, config};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Lang {
@@ -40,25 +40,20 @@ pub async fn get_user_settings(
     Ok(response.json::<UserSettings>().await?)
 }
 
-pub async fn get_user_or_default_lang_codes(
-    user_id: UserId,
-) -> SmallVec<[SmartString; 3]> {
+pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartString; 3]> {
     if let Some(cached_langs) = USER_LANGS_CACHE.get(&user_id).await {
         return cached_langs;
     }
 
-    let default_lang_codes = smallvec![
-        "ru".into(),
-        "be".into(),
-        "uk".into()
-    ];
+    let default_lang_codes = smallvec!["ru".into(), "be".into(), "uk".into()];
 
     match get_user_settings(user_id).await {
         Ok(v) => {
-            let langs: SmallVec<[SmartString; 3]> = v.allowed_langs.into_iter().map(|lang| lang.code).collect();
+            let langs: SmallVec<[SmartString; 3]> =
+                v.allowed_langs.into_iter().map(|lang| lang.code).collect();
             USER_LANGS_CACHE.insert(user_id, langs.clone()).await;
             langs
-        },
+        }
         Err(_) => default_lang_codes,
     }
 }
@@ -109,7 +104,10 @@ pub async fn update_user_activity(
     user_id: UserId,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     reqwest::Client::new()
-        .post(format!("{}/users/{user_id}/update_activity", &config::CONFIG.user_settings_url))
+        .post(format!(
+            "{}/users/{user_id}/update_activity",
+            &config::CONFIG.user_settings_url
+        ))
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
         .await?
@@ -118,9 +116,14 @@ pub async fn update_user_activity(
     Ok(())
 }
 
-pub async fn is_need_donate_notifications(chat_id: ChatId) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn is_need_donate_notifications(
+    chat_id: ChatId,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     let response = reqwest::Client::new()
-        .get(format!("{}/donate_notifications/{chat_id}/is_need_send", &config::CONFIG.user_settings_url))
+        .get(format!(
+            "{}/donate_notifications/{chat_id}/is_need_send",
+            &config::CONFIG.user_settings_url
+        ))
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
         .await?
@@ -129,9 +132,14 @@ pub async fn is_need_donate_notifications(chat_id: ChatId) -> Result<bool, Box<d
     Ok(response.json::<bool>().await?)
 }
 
-pub async fn mark_donate_notification_sent(chat_id: ChatId) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn mark_donate_notification_sent(
+    chat_id: ChatId,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     reqwest::Client::new()
-        .post(format!("{}/donate_notifications/{chat_id}", &config::CONFIG.user_settings_url))
+        .post(format!(
+            "{}/donate_notifications/{chat_id}",
+            &config::CONFIG.user_settings_url
+        ))
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
         .await?

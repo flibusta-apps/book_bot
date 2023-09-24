@@ -1,7 +1,8 @@
 use regex::Regex;
 
-use crate::bots::approved_bot::modules::utils::{filter_command::CommandParse, errors::CommandParseError};
-
+use crate::bots::approved_bot::modules::utils::{
+    errors::CommandParseError, filter_command::CommandParse,
+};
 
 #[derive(Clone)]
 pub enum BookCommand {
@@ -16,17 +17,12 @@ impl CommandParse<Self> for BookCommand {
             .unwrap_or_else(|_| panic!("Broken BookCommand regexp!"))
             .captures(&s.replace(&format!("@{bot_name}"), ""))
             .ok_or(CommandParseError)
-            .map(|caps| (
-                caps["an_type"].to_string(),
-                caps["id"].parse().unwrap()
-            ))
-            .map(|(annotation_type, id)| {
-                match annotation_type.as_str() {
-                    "a" => Ok(BookCommand::Author { id }),
-                    "t" => Ok(BookCommand::Translator { id }),
-                    "s" => Ok(BookCommand::Sequence { id }),
-                    _ => panic!("Unknown BookCommand type: {}!", annotation_type),
-                }
+            .map(|caps| (caps["an_type"].to_string(), caps["id"].parse().unwrap()))
+            .map(|(annotation_type, id)| match annotation_type.as_str() {
+                "a" => Ok(BookCommand::Author { id }),
+                "t" => Ok(BookCommand::Translator { id }),
+                "s" => Ok(BookCommand::Sequence { id }),
+                _ => panic!("Unknown BookCommand type: {}!", annotation_type),
             })?
     }
 }

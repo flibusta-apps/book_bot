@@ -6,7 +6,6 @@ use regex::Regex;
 
 use crate::bots::approved_bot::modules::utils::pagination::GetPaginationCallbackData;
 
-
 #[derive(Clone, Copy)]
 pub struct UpdateLogCallbackData {
     pub from: NaiveDate,

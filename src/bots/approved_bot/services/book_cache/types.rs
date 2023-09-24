@@ -1,6 +1,5 @@
 use serde::Deserialize;
 
-
 #[derive(Deserialize, Debug, Clone)]
 pub struct CachedMessage {
     pub message_id: i32,
@@ -15,5 +14,5 @@ pub struct DownloadFile {
 
 #[derive(Deserialize)]
 pub struct DownloadLink {
-    pub link: String
+    pub link: String,
 }

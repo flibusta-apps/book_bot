@@ -1,5 +1,4 @@
-use strum_macros::{EnumIter, Display};
-
+use strum_macros::{Display, EnumIter};
 
 #[derive(Clone, Display, EnumIter)]
 #[strum(serialize_all = "snake_case")]

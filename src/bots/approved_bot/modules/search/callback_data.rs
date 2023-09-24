@@ -5,7 +5,6 @@ use strum_macros::EnumIter;
 
 use crate::bots::approved_bot::modules::utils::pagination::GetPaginationCallbackData;
 
-
 #[derive(Clone, EnumIter)]
 pub enum SearchCallbackData {
     Book { page: u32 },
@@ -56,12 +55,8 @@ impl FromStr for SearchCallbackData {
 impl GetPaginationCallbackData for SearchCallbackData {
     fn get_pagination_callback_data(&self, target_page: u32) -> String {
         match self {
-            SearchCallbackData::Book { .. } => {
-                SearchCallbackData::Book { page: target_page }
-            }
-            SearchCallbackData::Authors { .. } => {
-                SearchCallbackData::Authors { page: target_page }
-            }
+            SearchCallbackData::Book { .. } => SearchCallbackData::Book { page: target_page },
+            SearchCallbackData::Authors { .. } => SearchCallbackData::Authors { page: target_page },
             SearchCallbackData::Sequences { .. } => {
                 SearchCallbackData::Sequences { page: target_page }
             }

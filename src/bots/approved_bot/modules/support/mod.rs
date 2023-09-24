@@ -1,30 +1,37 @@
 use crate::bots::BotHandlerInternal;
 
 use teloxide::{
+    adaptors::{CacheMe, Throttle},
     prelude::*,
-    utils::command::BotCommands, adaptors::{Throttle, CacheMe},
+    utils::command::BotCommands,
 };
 
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase")]
 enum SupportCommand {
     Support,
-    Donate
+    Donate,
 }
 
 pub async fn support_command_handler(
     message: Message,
-    bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
-
+    bot: CacheMe<Throttle<Bot>>,
+) -> BotHandlerInternal {
     let is_bot = message.from().unwrap().is_bot;
 
     let username = if is_bot {
-        &message.reply_to_message().unwrap().from().unwrap().first_name
+        &message
+            .reply_to_message()
+            .unwrap()
+            .from()
+            .unwrap()
+            .first_name
     } else {
         &message.from().unwrap().first_name
     };
 
-    let message_text = format!("
+    let message_text = format!(
+        "
 Привет, {username}!
 
 Этот бот существует благодаря пожертвованиям от наших пользователей.
@@ -50,10 +57,10 @@ Bitcoin - BTC:
 
 The Open Network - TON:
 <pre>UQA4MySrq_60b_VMlR6UEmc_0u-neAUTXdtv8oKr_i6uhQNd</pre>
-");
+"
+    );
 
-    bot
-        .send_message(message.chat.id, message_text)
+    bot.send_message(message.chat.id, message_text)
         .parse_mode(teloxide::types::ParseMode::Html)
         .disable_web_page_preview(true)
         .await?;
@@ -64,7 +71,9 @@ The Open Network - TON:
 pub fn get_support_handler() -> crate::bots::BotHandler {
     dptree::entry().branch(
         Update::filter_message().branch(
-            dptree::entry().filter_command::<SupportCommand>().endpoint(support_command_handler),
+            dptree::entry()
+                .filter_command::<SupportCommand>()
+                .endpoint(support_command_handler),
         ),
     )
 }

@@ -2,12 +2,11 @@ use base64::{engine::general_purpose, Engine};
 use reqwest::StatusCode;
 use std::fmt;
 
-use crate::{config, bots::approved_bot::modules::download::callback_data::DownloadQueryData};
+use crate::{bots::approved_bot::modules::download::callback_data::DownloadQueryData, config};
 
 use self::types::{CachedMessage, DownloadFile, DownloadLink};
 
 pub mod types;
-
 
 #[derive(Debug, Clone)]
 struct DownloadError {
@@ -25,7 +24,10 @@ impl std::error::Error for DownloadError {}
 pub async fn get_cached_message(
     download_data: &DownloadQueryData,
 ) -> Result<CachedMessage, Box<dyn std::error::Error + Send + Sync>> {
-    let DownloadQueryData::DownloadData { book_id: id, file_type: format } = download_data;
+    let DownloadQueryData::DownloadData {
+        book_id: id,
+        file_type: format,
+    } = download_data;
 
     let client = reqwest::Client::new();
     let response = client
@@ -48,9 +50,12 @@ pub async fn get_cached_message(
 }
 
 pub async fn get_download_link(
-    download_data: &DownloadQueryData
+    download_data: &DownloadQueryData,
 ) -> Result<DownloadLink, Box<dyn std::error::Error + Send + Sync>> {
-    let DownloadQueryData::DownloadData { book_id: id, file_type: format } = download_data;
+    let DownloadQueryData::DownloadData {
+        book_id: id,
+        file_type: format,
+    } = download_data;
 
     let client = reqwest::Client::new();
     let response = client
@@ -75,7 +80,10 @@ pub async fn get_download_link(
 pub async fn download_file(
     download_data: &DownloadQueryData,
 ) -> Result<DownloadFile, Box<dyn std::error::Error + Send + Sync>> {
-    let DownloadQueryData::DownloadData { book_id: id, file_type: format } = download_data;
+    let DownloadQueryData::DownloadData {
+        book_id: id,
+        file_type: format,
+    } = download_data;
 
     let response = reqwest::Client::new()
         .get(format!(
@@ -120,10 +128,9 @@ pub async fn download_file(
     })
 }
 
-
 pub async fn download_file_by_link(
     filename: String,
-    link: String
+    link: String,
 ) -> Result<DownloadFile, Box<dyn std::error::Error + Send + Sync>> {
     let response = reqwest::Client::new()
         .get(link)

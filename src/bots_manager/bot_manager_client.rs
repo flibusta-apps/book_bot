@@ -2,7 +2,6 @@ use serde::Deserialize;
 
 use crate::config;
 
-
 #[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum BotCache {
     #[serde(rename = "original")]

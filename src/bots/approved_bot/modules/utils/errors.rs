@@ -1,6 +1,5 @@
 use std::fmt;
 
-
 #[derive(Debug)]
 pub struct CallbackQueryParseError;
 
@@ -11,7 +10,6 @@ impl fmt::Display for CallbackQueryParseError {
 }
 
 impl std::error::Error for CallbackQueryParseError {}
-
 
 #[derive(Debug)]
 pub struct CommandParseError;

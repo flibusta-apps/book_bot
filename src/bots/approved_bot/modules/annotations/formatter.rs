@@ -21,7 +21,6 @@ impl AnnotationFormat for BookAnnotation {
     }
 }
 
-
 impl AnnotationFormat for AuthorAnnotation {
     fn get_file(&self) -> Option<&String> {
         self.file.as_ref()

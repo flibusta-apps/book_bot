@@ -19,7 +19,7 @@ pub enum TaskStatus {
     InProgress,
     Archiving,
     Complete,
-    Failed
+    Failed,
 }
 
 #[derive(Serialize)]
@@ -38,7 +38,7 @@ pub struct Task {
     pub error_message: Option<String>,
     pub result_filename: Option<String>,
     pub result_link: Option<String>,
-    pub content_size: Option<u64>
+    pub content_size: Option<u64>,
 }
 
 pub async fn create_task(

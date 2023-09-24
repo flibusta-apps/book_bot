@@ -5,7 +5,6 @@ use strum_macros::EnumIter;
 
 use crate::bots::approved_bot::modules::utils::errors::CommandParseError;
 
-
 #[derive(Clone, EnumIter)]
 pub enum DownloadQueryData {
     DownloadData { book_id: u32, file_type: String },
@@ -29,13 +28,13 @@ impl FromStr for DownloadQueryData {
             .unwrap_or_else(|_| panic!("Broken DownloadQueryData regexp!"))
             .captures(s)
             .ok_or(CommandParseError)
-            .map(|caps| (
-                caps["book_id"].parse().unwrap(),
-                caps["file_type"].to_string()
-            ))
-            .map(|(book_id, file_type)| {
-                DownloadQueryData::DownloadData { book_id, file_type }
+            .map(|caps| {
+                (
+                    caps["book_id"].parse().unwrap(),
+                    caps["file_type"].to_string(),
+                )
             })
+            .map(|(book_id, file_type)| DownloadQueryData::DownloadData { book_id, file_type })
     }
 }
 
@@ -43,15 +42,19 @@ impl FromStr for DownloadQueryData {
 pub enum DownloadArchiveQueryData {
     Sequence { id: u32, file_type: String },
     Author { id: u32, file_type: String },
-    Translator { id: u32, file_type: String }
+    Translator { id: u32, file_type: String },
 }
 
 impl ToString for DownloadArchiveQueryData {
     fn to_string(&self) -> String {
         match self {
-            DownloadArchiveQueryData::Sequence { id, file_type } => format!("da_s_{id}_{file_type}"),
+            DownloadArchiveQueryData::Sequence { id, file_type } => {
+                format!("da_s_{id}_{file_type}")
+            }
             DownloadArchiveQueryData::Author { id, file_type } => format!("da_a_{id}_{file_type}"),
-            DownloadArchiveQueryData::Translator { id, file_type } => format!("da_t_{id}_{file_type}"),
+            DownloadArchiveQueryData::Translator { id, file_type } => {
+                format!("da_t_{id}_{file_type}")
+            }
         }
     }
 }
@@ -71,25 +74,23 @@ impl FromStr for DownloadArchiveQueryData {
         let id: u32 = caps["id"].parse().unwrap();
         let file_type: String = caps["file_type"].to_string();
 
-        Ok(
-            match caps["obj_type"].to_string().as_str() {
-                "s" => DownloadArchiveQueryData::Sequence { id, file_type },
-                "a" => DownloadArchiveQueryData::Author { id, file_type },
-                "t" => DownloadArchiveQueryData::Translator { id, file_type },
-                _ => return Err(strum::ParseError::VariantNotFound)
-            }
-        )
+        Ok(match caps["obj_type"].to_string().as_str() {
+            "s" => DownloadArchiveQueryData::Sequence { id, file_type },
+            "a" => DownloadArchiveQueryData::Author { id, file_type },
+            "t" => DownloadArchiveQueryData::Translator { id, file_type },
+            _ => return Err(strum::ParseError::VariantNotFound),
+        })
     }
 }
 
 #[derive(Clone)]
 pub struct CheckArchiveStatus {
-    pub task_id: String
+    pub task_id: String,
 }
 
 impl ToString for CheckArchiveStatus {
     fn to_string(&self) -> String {
-    format!("check_da_{}", self.task_id)
+        format!("check_da_{}", self.task_id)
     }
 }
 

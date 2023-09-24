@@ -1,37 +1,42 @@
-pub mod commands;
 pub mod callback_data;
-pub mod formatter;
+pub mod commands;
 pub mod errors;
+pub mod formatter;
 
 use std::convert::TryInto;
 
 use futures::TryStreamExt;
 
-use teloxide::{dispatching::UpdateFilterExt, dptree, prelude::*, types::*, adaptors::{Throttle, CacheMe}};
+use teloxide::{
+    adaptors::{CacheMe, Throttle},
+    dispatching::UpdateFilterExt,
+    dptree,
+    prelude::*,
+    types::*,
+};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 
 use crate::bots::{
     approved_bot::{
         modules::utils::pagination::generic_get_pagination_keyboard,
-        services::book_library::{
-            get_author_annotation, get_book_annotation,
-        },
+        services::book_library::{get_author_annotation, get_book_annotation},
         tools::filter_callback_query,
     },
     BotHandlerInternal,
 };
 
-use self::{commands::AnnotationCommand, formatter::AnnotationFormat, callback_data::AnnotationCallbackData, errors::AnnotationFormatError};
+use self::{
+    callback_data::AnnotationCallbackData, commands::AnnotationCommand,
+    errors::AnnotationFormatError, formatter::AnnotationFormat,
+};
 
-use super::utils::{split_text::split_text_to_chunks, filter_command::filter_command};
-
+use super::utils::{filter_command::filter_command, split_text::split_text_to_chunks};
 
 async fn download_image(
     file: &String,
 ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
     Ok(reqwest::get(file).await?.error_for_status()?)
 }
-
 
 pub async fn send_annotation_handler<T, Fut>(
     message: Message,
@@ -72,9 +77,9 @@ where
                 .into_async_read()
                 .compat();
 
-            #[allow(unused_must_use)] {
-                bot
-                    .send_photo(message.chat.id, InputFile::read(data))
+            #[allow(unused_must_use)]
+            {
+                bot.send_photo(message.chat.id, InputFile::read(data))
                     .send()
                     .await;
             }
@@ -82,33 +87,30 @@ where
     };
 
     if !annotation.is_normal_text() {
-        return Err(Box::new(AnnotationFormatError { command, text: annotation.get_text().to_string() }));
+        return Err(Box::new(AnnotationFormatError {
+            command,
+            text: annotation.get_text().to_string(),
+        }));
     }
 
     let annotation_text = annotation.get_text();
     let chunked_text = split_text_to_chunks(annotation_text, 512);
-    let current_text =  chunked_text.get(0).unwrap();
+    let current_text = chunked_text.get(0).unwrap();
 
     let callback_data = match command {
         AnnotationCommand::Book { id } => AnnotationCallbackData::Book { id, page: 1 },
         AnnotationCommand::Author { id } => AnnotationCallbackData::Author { id, page: 1 },
     };
-    let keyboard = generic_get_pagination_keyboard(
-        1,
-        chunked_text.len().try_into()?,
-        callback_data,
-        false,
-    );
+    let keyboard =
+        generic_get_pagination_keyboard(1, chunked_text.len().try_into()?, callback_data, false);
 
-    bot
-        .send_message(message.chat.id, current_text)
+    bot.send_message(message.chat.id, current_text)
         .reply_markup(keyboard)
         .send()
         .await?;
 
     Ok(())
 }
-
 
 pub async fn annotation_pagination_handler<T, Fut>(
     cq: CallbackQuery,
@@ -144,22 +146,16 @@ where
     };
     let current_text = chunked_text.get(page_index - 1).unwrap();
 
-    let keyboard = generic_get_pagination_keyboard(
-        page,
-        chunked_text.len().try_into()?,
-        callback_data,
-        false,
-    );
+    let keyboard =
+        generic_get_pagination_keyboard(page, chunked_text.len().try_into()?, callback_data, false);
 
-    bot
-        .edit_message_text(message.chat.id, message.id, current_text)
+    bot.edit_message_text(message.chat.id, message.id, current_text)
         .reply_markup(keyboard)
         .send()
         .await?;
 
     Ok(())
 }
-
 
 pub fn get_annotations_handler() -> crate::bots::BotHandler {
     dptree::entry()

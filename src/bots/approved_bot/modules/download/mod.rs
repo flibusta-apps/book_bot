@@ -1,11 +1,10 @@
-pub mod commands;
 pub mod callback_data;
+pub mod commands;
 
 use std::time::Duration;
 
 use chrono::Utc;
 use futures::TryStreamExt;
-
 
 use teloxide::{
     adaptors::{CacheMe, Throttle},
@@ -21,41 +20,45 @@ use tracing::log;
 use crate::{
     bots::{
         approved_bot::{
+            modules::download::callback_data::DownloadArchiveQueryData,
             services::{
+                batch_downloader::{create_task, get_task, Task, TaskStatus},
+                batch_downloader::{CreateTaskData, TaskObjectType},
                 book_cache::{
-                    download_file, get_cached_message,
-                    types::{CachedMessage, DownloadFile}, download_file_by_link, get_download_link,
+                    download_file, download_file_by_link, get_cached_message, get_download_link,
+                    types::{CachedMessage, DownloadFile},
                 },
-                book_library::{get_book, get_author_books_available_types, get_translator_books_available_types, get_sequence_books_available_types},
-                donation_notifications::send_donation_notification, user_settings::get_user_or_default_lang_codes, batch_downloader::{TaskObjectType, CreateTaskData},
-                batch_downloader::{create_task, get_task, TaskStatus, Task}
-
+                book_library::{
+                    get_author_books_available_types, get_book, get_sequence_books_available_types,
+                    get_translator_books_available_types,
+                },
+                donation_notifications::send_donation_notification,
+                user_settings::get_user_or_default_lang_codes,
             },
-            tools::filter_callback_query, modules::download::callback_data::DownloadArchiveQueryData,
+            tools::filter_callback_query,
         },
         BotHandlerInternal,
     },
     bots_manager::BotCache,
 };
 
-use self::{callback_data::{CheckArchiveStatus, DownloadQueryData}, commands::{StartDownloadCommand, DownloadArchiveCommand}};
+use self::{
+    callback_data::{CheckArchiveStatus, DownloadQueryData},
+    commands::{DownloadArchiveCommand, StartDownloadCommand},
+};
 
 use super::utils::filter_command::filter_command;
 
-
 fn get_check_keyboard(task_id: String) -> InlineKeyboardMarkup {
     InlineKeyboardMarkup {
-        inline_keyboard: vec![
-            vec![InlineKeyboardButton {
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    (CheckArchiveStatus { task_id }).to_string(),
-                ),
-                text: String::from("Обновить статус"),
-            }],
-        ],
+        inline_keyboard: vec![vec![InlineKeyboardButton {
+            kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
+                (CheckArchiveStatus { task_id }).to_string(),
+            ),
+            text: String::from("Обновить статус"),
+        }]],
     }
 }
-
 
 async fn _send_cached(
     message: &Message,
@@ -94,8 +97,7 @@ async fn send_cached_message(
         }
     };
 
-    send_with_download_from_channel(message, bot, download_data, need_delete_message)
-        .await?;
+    send_with_download_from_channel(message, bot, download_data, need_delete_message).await?;
 
     Ok(())
 }
@@ -137,7 +139,10 @@ async fn send_with_download_from_channel(
 ) -> BotHandlerInternal {
     match download_file(&download_data).await {
         Ok(v) => {
-            if _send_downloaded_file(&message, bot.clone(), v).await.is_err() {
+            if _send_downloaded_file(&message, bot.clone(), v)
+                .await
+                .is_err()
+            {
                 send_download_link(message.clone(), bot.clone(), download_data).await?;
                 return Ok(());
             };
@@ -147,7 +152,7 @@ async fn send_with_download_from_channel(
             }
 
             Ok(())
-        },
+        }
         Err(err) => Err(err),
     }
 }
@@ -162,24 +167,23 @@ async fn send_download_link(
         Err(err) => {
             log::error!("{:?}", err);
             return Err(err);
-        },
+        }
     };
 
-    bot
-        .edit_message_text(
-            message.chat.id,
-            message.id,
-            format!(
-                "Файл не может быть загружен в чат! \n \
+    bot.edit_message_text(
+        message.chat.id,
+        message.id,
+        format!(
+            "Файл не может быть загружен в чат! \n \
                 Вы можете скачать его <a href=\"{}\">по ссылке</a> (работает 3 часа)",
-                link_data.link
-            )
-        )
-        .parse_mode(ParseMode::Html)
-        .reply_markup(InlineKeyboardMarkup {
-            inline_keyboard: vec![],
-        })
-        .await?;
+            link_data.link
+        ),
+    )
+    .parse_mode(ParseMode::Html)
+    .reply_markup(InlineKeyboardMarkup {
+        inline_keyboard: vec![],
+    })
+    .await?;
 
     Ok(())
 }
@@ -193,22 +197,10 @@ async fn download_handler(
 ) -> BotHandlerInternal {
     match cache {
         BotCache::Original => {
-            send_cached_message(
-                message,
-                bot,
-                download_data,
-                need_delete_message,
-            )
-            .await
+            send_cached_message(message, bot, download_data, need_delete_message).await
         }
         BotCache::NoCache => {
-            send_with_download_from_channel(
-                message,
-                bot,
-                download_data,
-                need_delete_message,
-            )
-            .await
+            send_with_download_from_channel(message, bot, download_data, need_delete_message).await
         }
     }
 }
@@ -235,9 +227,7 @@ async fn get_download_keyboard_handler(
             .into_iter()
             .map(|item| -> Vec<InlineKeyboardButton> {
                 vec![InlineKeyboardButton {
-                    text: {
-                        format!("📥 {item}")
-                    },
+                    text: { format!("📥 {item}") },
                     kind: InlineKeyboardButtonKind::CallbackData(
                         (DownloadQueryData::DownloadData {
                             book_id: book.id,
@@ -264,14 +254,18 @@ async fn get_download_archive_keyboard_handler(
     bot: CacheMe<Throttle<Bot>>,
     command: DownloadArchiveCommand,
 ) -> BotHandlerInternal {
-    let allowed_langs = get_user_or_default_lang_codes(
-        message.from().unwrap().id,
-    ).await;
+    let allowed_langs = get_user_or_default_lang_codes(message.from().unwrap().id).await;
 
     let available_types = match command {
-        DownloadArchiveCommand::Sequence { id } => get_sequence_books_available_types(id, allowed_langs).await,
-        DownloadArchiveCommand::Author { id } => get_author_books_available_types(id, allowed_langs).await,
-        DownloadArchiveCommand::Translator { id } => get_translator_books_available_types(id, allowed_langs).await,
+        DownloadArchiveCommand::Sequence { id } => {
+            get_sequence_books_available_types(id, allowed_langs).await
+        }
+        DownloadArchiveCommand::Author { id } => {
+            get_author_books_available_types(id, allowed_langs).await
+        }
+        DownloadArchiveCommand::Translator { id } => {
+            get_translator_books_available_types(id, allowed_langs).await
+        }
     };
 
     let available_types = match available_types {
@@ -280,31 +274,39 @@ async fn get_download_archive_keyboard_handler(
     };
 
     let keyboard = InlineKeyboardMarkup {
-        inline_keyboard:
-            available_types.iter()
+        inline_keyboard: available_types
+            .iter()
             .filter(|file_type| !file_type.contains("zip"))
             .map(|file_type| {
                 let callback_data: String = match command {
                     DownloadArchiveCommand::Sequence { id } => DownloadArchiveQueryData::Sequence {
-                        id, file_type: file_type.to_string()
-                    }.to_string(),
+                        id,
+                        file_type: file_type.to_string(),
+                    }
+                    .to_string(),
                     DownloadArchiveCommand::Author { id } => DownloadArchiveQueryData::Author {
-                        id, file_type: file_type.to_string()
-                    }.to_string(),
-                    DownloadArchiveCommand::Translator { id } => DownloadArchiveQueryData::Translator {
-                        id, file_type: file_type.to_string()
-                    }.to_string(),
+                        id,
+                        file_type: file_type.to_string(),
+                    }
+                    .to_string(),
+                    DownloadArchiveCommand::Translator { id } => {
+                        DownloadArchiveQueryData::Translator {
+                            id,
+                            file_type: file_type.to_string(),
+                        }
+                        .to_string()
+                    }
                 };
 
                 vec![InlineKeyboardButton {
                     text: file_type.to_string(),
-                    kind: InlineKeyboardButtonKind::CallbackData(callback_data)
+                    kind: InlineKeyboardButtonKind::CallbackData(callback_data),
                 }]
-            }).collect()
+            })
+            .collect(),
     };
 
-    bot
-        .send_message(message.chat.id, "Выбери формат:")
+    bot.send_message(message.chat.id, "Выбери формат:")
         .reply_markup(keyboard)
         .reply_to_message_id(message.id)
         .await?;
@@ -327,21 +329,20 @@ async fn send_archive_link(
     message: Message,
     task: Task,
 ) -> BotHandlerInternal {
-    bot
-        .edit_message_text(
-            message.chat.id,
-            message.id,
-            format!(
-                "Файл не может быть загружен в чат! \n \
+    bot.edit_message_text(
+        message.chat.id,
+        message.id,
+        format!(
+            "Файл не может быть загружен в чат! \n \
                     Вы можете скачать его <a href=\"{}\">по ссылке</a> (работает 3 часа)",
-                    task.result_link.unwrap()
-            )
-        )
-        .parse_mode(ParseMode::Html)
-        .reply_markup(InlineKeyboardMarkup {
-            inline_keyboard: vec![],
-        })
-        .await?;
+            task.result_link.unwrap()
+        ),
+    )
+    .parse_mode(ParseMode::Html)
+    .reply_markup(InlineKeyboardMarkup {
+        inline_keyboard: vec![],
+    })
+    .await?;
 
     Ok(())
 }
@@ -362,7 +363,7 @@ async fn wait_archive(
                 send_error_message(bot, message.chat.id, message.id).await;
                 log::error!("{:?}", err);
                 return Err(err);
-            },
+            }
         };
 
         if task.status != TaskStatus::InProgress {
@@ -371,18 +372,17 @@ async fn wait_archive(
 
         let now = Utc::now().format("%H:%M:%S UTC").to_string();
 
-        bot
-            .edit_message_text(
-                message.chat.id,
-                message.id,
-                format!(
-                    "Статус: \n ⏳ {} \n\nОбновлено в {now}",
-                    task.status_description
-                )
-            )
-            .reply_markup(get_check_keyboard(task.id))
-            .send()
-            .await?;
+        bot.edit_message_text(
+            message.chat.id,
+            message.id,
+            format!(
+                "Статус: \n ⏳ {} \n\nОбновлено в {now}",
+                task.status_description
+            ),
+        )
+        .reply_markup(get_check_keyboard(task.id))
+        .send()
+        .await?;
     };
 
     if task.status != TaskStatus::Complete {
@@ -394,53 +394,52 @@ async fn wait_archive(
 
     if content_size > 20 * 1024 * 1024 {
         send_archive_link(bot.clone(), message.clone(), task.clone()).await?;
-        return Ok(())
+        return Ok(());
     }
 
     let downloaded_data = match download_file_by_link(
         task.clone().result_filename.unwrap(),
-        task.result_link.clone().unwrap()
-    ).await {
+        task.result_link.clone().unwrap(),
+    )
+    .await
+    {
         Ok(v) => v,
         Err(err) => {
             send_error_message(bot, message.chat.id, message.id).await;
             log::error!("{:?}", err);
             return Err(err);
-        },
+        }
     };
 
-    match _send_downloaded_file(
-        &message,
-        bot.clone(),
-        downloaded_data,
-    ).await {
+    match _send_downloaded_file(&message, bot.clone(), downloaded_data).await {
         Ok(_) => (),
         Err(_) => {
             send_archive_link(bot.clone(), message.clone(), task).await?;
-        },
+        }
     }
 
-    bot
-        .delete_message(message.chat.id, message.id)
-        .await?;
+    bot.delete_message(message.chat.id, message.id).await?;
 
     Ok(())
 }
-
 
 async fn download_archive(
     cq: CallbackQuery,
     download_archive_query_data: DownloadArchiveQueryData,
     bot: CacheMe<Throttle<Bot>>,
 ) -> BotHandlerInternal {
-    let allowed_langs = get_user_or_default_lang_codes(
-        cq.from.id,
-    ).await;
+    let allowed_langs = get_user_or_default_lang_codes(cq.from.id).await;
 
     let (id, file_type, task_type) = match download_archive_query_data {
-        DownloadArchiveQueryData::Sequence { id, file_type } => (id, file_type, TaskObjectType::Sequence),
-        DownloadArchiveQueryData::Author { id, file_type } => (id, file_type, TaskObjectType::Author),
-        DownloadArchiveQueryData::Translator { id, file_type } => (id, file_type, TaskObjectType::Translator),
+        DownloadArchiveQueryData::Sequence { id, file_type } => {
+            (id, file_type, TaskObjectType::Sequence)
+        }
+        DownloadArchiveQueryData::Author { id, file_type } => {
+            (id, file_type, TaskObjectType::Author)
+        }
+        DownloadArchiveQueryData::Translator { id, file_type } => {
+            (id, file_type, TaskObjectType::Translator)
+        }
     };
 
     let message = cq.message.unwrap();
@@ -450,7 +449,8 @@ async fn download_archive(
         object_type: task_type,
         file_format: file_type,
         allowed_langs,
-    }).await;
+    })
+    .await;
 
     let task = match task {
         Ok(v) => v,
@@ -458,11 +458,10 @@ async fn download_archive(
             send_error_message(bot, message.chat.id, message.id).await;
             log::error!("{:?}", err);
             return Err(err);
-        },
+        }
     };
 
-    bot
-        .edit_message_text(message.chat.id, message.id, "⏳ Подготовка архива...")
+    bot.edit_message_text(message.chat.id, message.id, "⏳ Подготовка архива...")
         .reply_markup(get_check_keyboard(task.id.clone()))
         .send()
         .await?;
