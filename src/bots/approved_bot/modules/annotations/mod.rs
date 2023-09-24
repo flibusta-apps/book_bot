@@ -32,6 +32,7 @@ async fn download_image(
     Ok(reqwest::get(file).await?.error_for_status()?)
 }
 
+
 pub async fn send_annotation_handler<T, Fut>(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
@@ -108,6 +109,7 @@ where
     Ok(())
 }
 
+
 pub async fn annotation_pagination_handler<T, Fut>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
@@ -157,6 +159,7 @@ where
 
     Ok(())
 }
+
 
 pub fn get_annotations_handler() -> crate::bots::BotHandler {
     dptree::entry()

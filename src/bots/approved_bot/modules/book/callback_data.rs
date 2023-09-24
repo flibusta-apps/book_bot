@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use regex::Regex;
 
-use crate::bots::approved_bot::modules::utils::pagination::GetPaginationCallbackData;
+use crate::bots::approved_bot::modules::utils::{pagination::GetPaginationCallbackData, errors::CallbackQueryParseError};
 
 
 #[derive(Clone)]
@@ -13,27 +13,26 @@ pub enum BookCallbackData {
 }
 
 impl FromStr for BookCallbackData {
-    type Err = strum::ParseError;
+    type Err = CallbackQueryParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"^b(?P<an_type>[ats])_(?P<id>\d+)_(?P<page>\d+)$").unwrap();
-
-        let caps = re.captures(s);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let annotation_type = &caps["an_type"];
-        let id = caps["id"].parse::<u32>().unwrap();
-        let page = caps["page"].parse::<u32>().unwrap();
-
-        match annotation_type {
-            "a" => Ok(BookCallbackData::Author { id, page }),
-            "t" => Ok(BookCallbackData::Translator { id, page }),
-            "s" => Ok(BookCallbackData::Sequence { id, page }),
-            _ => Err(strum::ParseError::VariantNotFound),
-        }
+        Regex::new(r"^b(?P<an_type>[ats])_(?P<id>\d+)_(?P<page>\d+)$")
+            .unwrap_or_else(|_| panic!("Broken BookCallbackData regex pattern!"))
+            .captures(s)
+            .ok_or(CallbackQueryParseError)
+            .map(|caps| (
+                caps["an_type"].to_string(),
+                caps["id"].parse::<u32>().unwrap(),
+                caps["page"].parse::<u32>().unwrap()
+            ))
+            .map(|(annotation_type, id, page)|
+                match annotation_type.as_str() {
+                    "a" => Ok(BookCallbackData::Author { id, page }),
+                    "t" => Ok(BookCallbackData::Translator { id, page }),
+                    "s" => Ok(BookCallbackData::Sequence { id, page }),
+                    _ => panic!("Unknown BookCallbackData type: {}!", annotation_type),
+                }
+            )?
     }
 }
 

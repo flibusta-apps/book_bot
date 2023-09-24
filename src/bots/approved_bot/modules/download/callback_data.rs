@@ -3,6 +3,8 @@ use std::str::FromStr;
 use regex::Regex;
 use strum_macros::EnumIter;
 
+use crate::bots::approved_bot::modules::utils::errors::CommandParseError;
+
 
 #[derive(Clone, EnumIter)]
 pub enum DownloadQueryData {
@@ -20,21 +22,20 @@ impl ToString for DownloadQueryData {
 }
 
 impl FromStr for DownloadQueryData {
-    type Err = strum::ParseError;
+    type Err = CommandParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"^d_(?P<book_id>\d+)_(?P<file_type>\w+)$").unwrap();
-
-        let caps = re.captures(s);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let book_id: u32 = caps["book_id"].parse().unwrap();
-        let file_type: String = caps["file_type"].to_string();
-
-        Ok(DownloadQueryData::DownloadData { book_id, file_type })
+        Regex::new(r"^d_(?P<book_id>\d+)_(?P<file_type>\w+)$")
+            .unwrap_or_else(|_| panic!("Broken DownloadQueryData regexp!"))
+            .captures(s)
+            .ok_or(CommandParseError)
+            .map(|caps| (
+                caps["book_id"].parse().unwrap(),
+                caps["file_type"].to_string()
+            ))
+            .map(|(book_id, file_type)| {
+                DownloadQueryData::DownloadData { book_id, file_type }
+            })
     }
 }
 
