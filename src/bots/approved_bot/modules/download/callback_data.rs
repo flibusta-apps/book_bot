@@ -3,7 +3,9 @@ use std::str::FromStr;
 use regex::Regex;
 use strum_macros::EnumIter;
 
-use crate::bots::approved_bot::modules::utils::errors::CommandParseError;
+use crate::bots::approved_bot::modules::utils::errors::{
+    CallbackQueryParseError, CommandParseError,
+};
 
 #[derive(Clone, EnumIter)]
 pub enum DownloadQueryData {
@@ -60,26 +62,26 @@ impl ToString for DownloadArchiveQueryData {
 }
 
 impl FromStr for DownloadArchiveQueryData {
-    type Err = strum::ParseError;
+    type Err = CallbackQueryParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"^da_(?P<obj_type>[sat])_(?P<id>\d+)_(?P<file_type>\w+)$").unwrap();
-
-        let caps = re.captures(s);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let id: u32 = caps["id"].parse().unwrap();
-        let file_type: String = caps["file_type"].to_string();
-
-        Ok(match caps["obj_type"].to_string().as_str() {
-            "s" => DownloadArchiveQueryData::Sequence { id, file_type },
-            "a" => DownloadArchiveQueryData::Author { id, file_type },
-            "t" => DownloadArchiveQueryData::Translator { id, file_type },
-            _ => return Err(strum::ParseError::VariantNotFound),
-        })
+        Regex::new(r"^da_(?P<obj_type>[sat])_(?P<id>\d+)_(?P<file_type>\w+)$")
+            .unwrap_or_else(|_| panic!("Broken BookCallbackData regex pattern!"))
+            .captures(s)
+            .ok_or(CallbackQueryParseError)
+            .map(|caps| {
+                (
+                    caps["id"].parse().unwrap(),
+                    caps["file_type"].to_string(),
+                    caps["obj_type"].to_string(),
+                )
+            })
+            .map(|(id, file_type, obj_type)| match obj_type.as_str() {
+                "s" => DownloadArchiveQueryData::Sequence { id, file_type },
+                "a" => DownloadArchiveQueryData::Author { id, file_type },
+                "t" => DownloadArchiveQueryData::Translator { id, file_type },
+                _ => panic!("Unknown DownloadArchiveQueryData type: {}!", obj_type),
+            })
     }
 }
 
@@ -95,19 +97,14 @@ impl ToString for CheckArchiveStatus {
 }
 
 impl FromStr for CheckArchiveStatus {
-    type Err = strum::ParseError;
+    type Err = CallbackQueryParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"^check_da_(?P<task_id>\w+)$").unwrap();
-
-        let caps = re.captures(s);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let task_id: String = caps["task_id"].parse().unwrap();
-
-        Ok(CheckArchiveStatus { task_id })
+        Regex::new(r"^check_da_(?P<task_id>\w+)$")
+            .unwrap_or_else(|_| panic!("Broken CheckArchiveStatus regex pattern!"))
+            .captures(s)
+            .ok_or(CallbackQueryParseError)
+            .map(|caps| caps["task_id"].parse().unwrap())
+            .map(|task_id| CheckArchiveStatus { task_id })
     }
 }
