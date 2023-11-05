@@ -435,12 +435,17 @@ impl Format for Book {
         let book_title = {
             let Book { title, lang, .. } = self;
 
-            let pages_count = match self.pages {
-                Some(1) | None => "".to_string(),
-                Some(v) => format!(" [ {v}с. ]\n"),
+            let year_part = match self.year {
+                0 => "".to_string(),
+                v => format!(" | {v}г."),
             };
 
-            format!("📖 {title} | {lang}{pages_count}\n")
+            let pages_count = match self.pages {
+                Some(1) | None => "".to_string(),
+                Some(v) => format!(" [ {v}с. ]"),
+            };
+
+            format!("📖 {title} | {lang}{year_part}{pages_count}\n")
         };
 
         let annotations = match self.annotation_exists {

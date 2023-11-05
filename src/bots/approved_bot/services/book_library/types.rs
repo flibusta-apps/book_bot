@@ -203,6 +203,7 @@ pub struct Book {
     // source: Source,
     // remote_id: u32,
     // id_deleted: bool,
+    pub year: i32,
     pub pages: Option<u32>,
 }
 
@@ -218,6 +219,7 @@ pub struct SearchBook {
     pub authors: Vec<BookAuthor>,
     pub translators: Vec<BookTranslator>,
     pub sequences: Vec<Sequence>,
+    pub year: i32,
 }
 
 impl From<SearchBook> for Book {
@@ -233,6 +235,7 @@ impl From<SearchBook> for Book {
             sequences: value.sequences,
             genres: vec![],
             pages: None,
+            year: value.year,
         }
     }
 }
@@ -248,6 +251,7 @@ pub struct AuthorBook {
     pub annotation_exists: bool,
     pub translators: Vec<BookTranslator>,
     pub sequences: Vec<Sequence>,
+    pub year: i32,
 }
 
 impl From<AuthorBook> for Book {
@@ -263,6 +267,7 @@ impl From<AuthorBook> for Book {
             sequences: value.sequences,
             genres: vec![],
             pages: None,
+            year: value.year,
         }
     }
 }
@@ -278,6 +283,7 @@ pub struct TranslatorBook {
     pub annotation_exists: bool,
     pub authors: Vec<BookAuthor>,
     pub sequences: Vec<Sequence>,
+    pub year: i32,
 }
 
 impl From<TranslatorBook> for Book {
@@ -293,6 +299,7 @@ impl From<TranslatorBook> for Book {
             sequences: value.sequences,
             genres: vec![],
             pages: None,
+            year: value.year,
         }
     }
 }
@@ -308,6 +315,7 @@ pub struct SequenceBook {
     pub authors: Vec<BookAuthor>,
     pub translators: Vec<BookTranslator>,
     pub annotation_exists: bool,
+    pub year: i32,
 }
 
 impl From<SequenceBook> for Book {
@@ -323,6 +331,7 @@ impl From<SequenceBook> for Book {
             sequences: vec![],
             genres: vec![],
             pages: None,
+            year: value.year,
         }
     }
 }
