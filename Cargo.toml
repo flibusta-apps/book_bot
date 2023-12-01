@@ -6,30 +6,30 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "1.33.0", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.34.0", features = ["rt-multi-thread", "macros"] }
 reqwest = { version = "0.11.22", features = ["json"] }
-serde = { version = "1.0.188", features = ["derive"] }
-serde_json = "1.0.107"
+serde = { version = "1.0.193", features = ["derive"] }
+serde_json = "1.0.108"
 teloxide = { git = "https://github.com/teloxide/teloxide.git", branch="master", features = ["macros", "webhooks-axum", "cache-me", "throttle"] }
-url = "2.4.1"
+url = "2.5.0"
 ctrlc = { version = "3.4.1", features = ["termination"] }
 strum = "0.25.0"
-strum_macros = "0.25.2"
-futures = "0.3.28"
-base64 = "0.21.4"
-tokio-util = { version = "0.7.9", features = ["compat"] }
+strum_macros = "0.25.3"
+futures = "0.3.29"
+base64 = "0.21.5"
+tokio-util = { version = "0.7.10", features = ["compat"] }
 textwrap = "0.16.0"
-regex = "1.10.0"
+regex = "1.10.2"
 chrono = "0.4.31"
-dateparser = "0.2.0"
-sentry = { version = "0.31.7", features = ["debug-images"] }
+dateparser = "0.2.1"
+sentry = { version = "0.32.0", features = ["debug-images"] }
 moka = { version = "0.12.1", features = ["future"] }
 axum = "0.6.20"
-smallvec = { version = "1.11.1", features = ["serde"] }
+smallvec = { version = "1.11.2", features = ["serde"] }
 smartstring = { version = "1.0.1", features = ["serde"] }
 tokio-stream = "0.1.14"
-tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.17", features = ["env-filter"]}
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"]}
 tower = "0.4.13"
 tower-http = { version = "0.4.4", features = ["trace"] }
 once_cell = "1.18.0"
