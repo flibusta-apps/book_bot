@@ -11,6 +11,14 @@ pub enum RegisterStatus {
     Success { username: String },
     WrongToken,
     RegisterFail,
+    LimitExtended,
+}
+
+#[derive(Debug)]
+pub enum RegisterRequestStatus {
+    Success,
+    LimitExtended,
+    UnknownError { status_code: u16 },
 }
 
 async fn get_bot_username(token: &str) -> Option<String> {
@@ -27,7 +35,7 @@ async fn make_register_request(
     user_id: UserId,
     username: &str,
     token: &str,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
+) -> Result<RegisterRequestStatus, Box<dyn Error + Send + Sync>> {
     let body = json!({
         "token": token,
         "user": user_id,
@@ -36,16 +44,19 @@ async fn make_register_request(
         "username": username,
     });
 
-    reqwest::Client::new()
+    let result = reqwest::Client::new()
         .post(config::CONFIG.manager_url.clone())
         .body(body.to_string())
         .header("Authorization", config::CONFIG.manager_api_key.clone())
         .header("Content-Type", "application/json")
         .send()
-        .await?
-        .error_for_status()?;
+        .await?;
 
-    Ok(())
+    Ok(match result.status().as_u16() {
+        200 => RegisterRequestStatus::Success,
+        402 => RegisterRequestStatus::LimitExtended,
+        status_code => RegisterRequestStatus::UnknownError { status_code },
+    })
 }
 
 pub async fn register(user_id: UserId, message_text: &str) -> RegisterStatus {
@@ -58,13 +69,20 @@ pub async fn register(user_id: UserId, message_text: &str) -> RegisterStatus {
 
     let register_request_status = make_register_request(user_id, &bot_username, token).await;
 
-    if let Err(err) = register_request_status {
-        log::error!("Bot reg error: {:?}", err);
+    let result = match register_request_status {
+        Ok(v) => v,
+        Err(err) => {
+            log::error!("Bot reg error: {:?}", err);
 
-        return RegisterStatus::RegisterFail;
-    }
+            return RegisterStatus::RegisterFail;
+        }
+    };
 
-    RegisterStatus::Success {
-        username: bot_username,
+    match result {
+        RegisterRequestStatus::Success => RegisterStatus::Success {
+            username: bot_username,
+        },
+        RegisterRequestStatus::LimitExtended => RegisterStatus::LimitExtended,
+        RegisterRequestStatus::UnknownError { .. } => RegisterStatus::RegisterFail,
     }
 }
