@@ -98,7 +98,7 @@ impl BotsManager {
     }
 
     pub async fn start(running: Arc<AtomicBool>) {
-        start_axum_server().await;
+        start_axum_server(running.clone()).await;
 
         let mut interval = time::interval(Duration::from_secs(5));
 

@@ -4,7 +4,13 @@ use axum::routing::post;
 
 use reqwest::StatusCode;
 
-use std::net::SocketAddr;
+use std::{
+    net::SocketAddr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use teloxide::types::{Update, UpdateKind};
 
@@ -14,7 +20,7 @@ use tracing::log;
 
 use crate::bots_manager::{internal::start_bot, BOTS_DATA, BOTS_ROUTES, SERVER_PORT};
 
-pub async fn start_axum_server() {
+pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
     async fn telegram_request(Path(token): Path<String>, input: String) -> impl IntoResponse {
         let (_, r_tx) = match BOTS_ROUTES.get(&token).await {
             Some(tx) => tx,
@@ -80,6 +86,13 @@ pub async fn start_axum_server() {
 
         axum::Server::bind(&addr)
             .serve(router.into_make_service())
+            .with_graceful_shutdown(async move {
+                loop {
+                    if !stop_signal.load(Ordering::SeqCst) {
+                        break;
+                    };
+                }
+            })
             .await
             .expect("Axum server error");
 
