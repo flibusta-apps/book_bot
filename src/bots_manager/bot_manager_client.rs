@@ -10,7 +10,7 @@ pub enum BotCache {
     NoCache,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct BotData {
     pub id: u32,
     pub token: String,
