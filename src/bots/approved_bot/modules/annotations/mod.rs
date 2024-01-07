@@ -95,7 +95,7 @@ where
 
     let annotation_text = annotation.get_text();
     let chunked_text = split_text_to_chunks(annotation_text, 512);
-    let current_text = chunked_text.get(0).unwrap();
+    let current_text = chunked_text.first().unwrap();
 
     let callback_data = match command {
         AnnotationCommand::Book { id } => AnnotationCallbackData::Book { id, page: 1 },

@@ -25,7 +25,7 @@ use self::{
 
 use super::{
     bots_manager::get_manager_handler, ignore_channel_messages, ignore_chat_member_update,
-    BotCommands, BotHandler,
+    ignore_user_edited_message, BotCommands, BotHandler,
 };
 
 async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) -> Option<()> {
@@ -86,6 +86,7 @@ pub fn get_approved_handler() -> (BotHandler, BotCommands) {
         dptree::entry()
             .branch(ignore_channel_messages())
             .branch(ignore_chat_member_update())
+            .branch(ignore_user_edited_message())
             .branch(update_user_activity_handler())
             .branch(get_help_handler())
             .branch(get_settings_handler())

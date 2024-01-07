@@ -28,6 +28,10 @@ fn ignore_chat_member_update() -> crate::bots::BotHandler {
         .branch(Update::filter_my_chat_member().endpoint(|| async { Ok(()) }))
 }
 
+fn ignore_user_edited_message() -> crate::bots::BotHandler {
+    dptree::entry().branch(Update::filter_edited_message().endpoint(|| async { Ok(()) }))
+}
+
 pub fn get_bot_handler() -> (BotHandler, BotCommands) {
     approved_bot::get_approved_handler()
 }
