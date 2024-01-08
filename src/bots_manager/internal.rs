@@ -49,7 +49,7 @@ pub fn get_listener() -> (
 pub async fn set_webhook(bot_data: &BotData) -> bool {
     log::info!("Set webhook Bot(id={})!", bot_data.id);
 
-    let bot = Bot::new(bot_data.token.clone());
+    let bot = Bot::new(bot_data.token.clone()).set_api_url(config::CONFIG.telegram_bot_api.clone());
 
     let token = &bot_data.token;
 
