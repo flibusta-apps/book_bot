@@ -24,7 +24,8 @@ use tower_http::trace::{self, TraceLayer};
 use tracing::log;
 use tracing::Level;
 
-use crate::bots_manager::{internal::start_bot, BOTS_DATA, BOTS_ROUTES, SERVER_PORT};
+use crate::bots_manager::{internal::start_bot, BOTS_DATA, BOTS_ROUTES};
+use crate::config;
 
 pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
     async fn telegram_request(
@@ -113,7 +114,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
     tokio::spawn(async move {
         log::info!("Start webserver...");
 
-        let addr = SocketAddr::from(([0, 0, 0, 0], SERVER_PORT));
+        let addr = SocketAddr::from(([0, 0, 0, 0], config::CONFIG.webhook_port));
 
         axum::Server::bind(&addr)
             .serve(router.into_make_service())

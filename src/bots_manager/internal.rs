@@ -21,7 +21,7 @@ use crate::config;
 
 use super::closable_sender::ClosableSender;
 use super::utils::tuple_first_mut;
-use super::{BotData, SERVER_PORT};
+use super::BotData;
 
 type UpdateSender = mpsc::UnboundedSender<Result<Update, std::convert::Infallible>>;
 
@@ -53,7 +53,11 @@ pub async fn set_webhook(bot_data: &BotData) -> bool {
 
     let token = &bot_data.token;
 
-    let host = format!("{}:{}", &config::CONFIG.webhook_base_url, SERVER_PORT);
+    let host = format!(
+        "{}:{}",
+        &config::CONFIG.webhook_base_url,
+        config::CONFIG.webhook_port
+    );
     let url = Url::parse(&format!("{host}/{token}/"))
         .unwrap_or_else(|_| panic!("Can't parse webhook url!"));
 
