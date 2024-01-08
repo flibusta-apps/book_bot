@@ -1,4 +1,3 @@
-use axum::extract::State;
 use axum::response::IntoResponse;
 use axum::routing::post;
 use axum::{extract::Path, routing::get};
@@ -26,7 +25,7 @@ use crate::bots_manager::{internal::start_bot, BOTS_DATA, BOTS_ROUTES, SERVER_PO
 
 pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
     async fn telegram_request(
-        State(start_bot_mutex): State<Arc<Mutex<()>>>,
+        // State(start_bot_mutex): State<Arc<Mutex<()>>>,
         Path(token): Path<String>,
         input: String,
     ) -> impl IntoResponse {
@@ -40,7 +39,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
                 }
 
                 'creator: {
-                    let _guard = start_bot_mutex.lock().await;
+                    // let _guard = start_bot_mutex.lock().await;
 
                     if BOTS_ROUTES.contains_key(&token) {
                         break 'creator;
