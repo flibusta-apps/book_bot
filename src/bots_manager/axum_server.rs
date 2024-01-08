@@ -4,7 +4,9 @@ use axum::{extract::Path, routing::get};
 
 use axum_prometheus::PrometheusMetricLayer;
 use reqwest::StatusCode;
+use tokio::time;
 
+use std::time::Duration;
 use std::{
     net::SocketAddr,
     sync::{
@@ -115,10 +117,14 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
         axum::Server::bind(&addr)
             .serve(router.into_make_service())
             .with_graceful_shutdown(async move {
+                let mut interval = time::interval(Duration::from_secs(1));
+
                 loop {
                     if !stop_signal.load(Ordering::SeqCst) {
                         break;
                     };
+
+                    interval.tick().await;
                 }
             })
             .await
