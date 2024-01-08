@@ -1,3 +1,5 @@
+use once_cell::sync::Lazy;
+
 use teloxide::adaptors::throttle::Limits;
 use teloxide::dispatching::Dispatcher;
 use teloxide::error_handlers::LoggingErrorHandler;
@@ -9,12 +11,14 @@ use teloxide::update_listeners::{StatefulListener, UpdateListener};
 use teloxide::{dptree, Bot};
 
 use tokio::sync::mpsc::{self, UnboundedSender};
+use tokio::sync::Mutex;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use tracing::log;
 use url::Url;
 
 use std::convert::Infallible;
+use std::sync::Arc;
 
 use crate::bots_manager::BOTS_ROUTES;
 use crate::config;
@@ -46,7 +50,11 @@ pub fn get_listener() -> (
     (stop_token, stop_flag, tx, listener)
 }
 
+pub static START_BOT_LOCK: Lazy<Arc<Mutex<()>>> = Lazy::new(|| Arc::new(Mutex::new(())));
+
 pub async fn start_bot(bot_data: &BotData, port: u16) -> bool {
+    let _mutex_guard = START_BOT_LOCK.lock().await;
+
     let bot = Bot::new(bot_data.token.clone())
         .set_api_url(config::CONFIG.telegram_bot_api.clone())
         .throttle(Limits::default())
