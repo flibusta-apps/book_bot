@@ -4,7 +4,6 @@ use axum::{extract::Path, routing::get};
 
 use axum_prometheus::PrometheusMetricLayer;
 use reqwest::StatusCode;
-use tokio::sync::Mutex;
 
 use std::{
     net::SocketAddr,
@@ -45,9 +44,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
                         break 'creator;
                     }
 
-                    let start_result = start_bot(&bot_data.unwrap(), SERVER_PORT).await;
-
-                    if !start_result {
+                    if !start_bot(&bot_data.unwrap(), SERVER_PORT).await {
                         return StatusCode::SERVICE_UNAVAILABLE;
                     }
                 }
@@ -92,12 +89,11 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
 
-    let start_bot_mutex = Arc::new(Mutex::new(()));
+    // let start_bot_mutex = Arc::new(Mutex::new(()));
 
     let app_router = axum::Router::new()
         .route("/:token/", post(telegram_request))
-        .layer(prometheus_layer)
-        .with_state(start_bot_mutex);
+        .layer(prometheus_layer);
 
     let metric_router =
         axum::Router::new().route("/metrics", get(|| async move { metric_handle.render() }));
