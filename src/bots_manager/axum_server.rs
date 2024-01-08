@@ -97,8 +97,8 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
 
     let app_router = axum::Router::new()
         .route("/:token/", post(telegram_request))
-        .layer(prometheus_layer)
-        .with_state(start_bot_mutex);
+        .with_state(start_bot_mutex)
+        .layer(prometheus_layer);
 
     let metric_router =
         axum::Router::new().route("/metrics", get(|| async move { metric_handle.render() }));
