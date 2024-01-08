@@ -46,7 +46,7 @@ pub static CHAT_DONATION_NOTIFICATIONS_CACHE: Lazy<Cache<ChatId, ()>> = Lazy::ne
         .build()
 });
 
-pub static SERVER_PORT: u16 = 8000;
+pub static SERVER_PORT: u16 = 8080;
 
 type StopTokenWithSender = (
     StopToken,
