@@ -1,9 +1,11 @@
+use axum::extract::State;
 use axum::response::IntoResponse;
 use axum::routing::post;
 use axum::{extract::Path, routing::get};
 
 use axum_prometheus::PrometheusMetricLayer;
 use reqwest::StatusCode;
+use tokio::sync::Mutex;
 use tokio::time;
 
 use std::time::Duration;
@@ -26,7 +28,7 @@ use crate::bots_manager::{internal::start_bot, BOTS_DATA, BOTS_ROUTES, SERVER_PO
 
 pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
     async fn telegram_request(
-        // State(start_bot_mutex): State<Arc<Mutex<()>>>,
+        State(start_bot_mutex): State<Arc<Mutex<()>>>,
         Path(token): Path<String>,
         input: String,
     ) -> impl IntoResponse {
@@ -40,7 +42,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
                 }
 
                 'creator: {
-                    // let _guard = start_bot_mutex.lock().await;
+                    let _guard = start_bot_mutex.lock().await;
 
                     if BOTS_ROUTES.contains_key(&token) {
                         break 'creator;
@@ -91,11 +93,12 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
 
-    // let start_bot_mutex = Arc::new(Mutex::new(()));
+    let start_bot_mutex = Arc::new(Mutex::new(()));
 
     let app_router = axum::Router::new()
         .route("/:token/", post(telegram_request))
-        .layer(prometheus_layer);
+        .layer(prometheus_layer)
+        .with_state(start_bot_mutex);
 
     let metric_router =
         axum::Router::new().route("/metrics", get(|| async move { metric_handle.render() }));
