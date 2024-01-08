@@ -57,7 +57,9 @@ pub static BOTS_ROUTES: Lazy<Cache<String, StopTokenWithSender>> = Lazy::new(|| 
     Cache::builder()
         .time_to_idle(Duration::from_secs(60 * 60))
         .max_capacity(100)
-        .eviction_listener(|_token, value: StopTokenWithSender, _cause| {
+        .eviction_listener(|token, value: StopTokenWithSender, _cause| {
+            log::info!("Stop Bot(token={})!", token);
+
             let (stop_token, mut sender) = value;
 
             stop_token.stop();

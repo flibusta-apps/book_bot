@@ -47,6 +47,8 @@ pub fn get_listener() -> (
 }
 
 pub async fn set_webhook(bot_data: &BotData) -> bool {
+    log::info!("Set webhook Bot(id={})!", bot_data.id);
+
     let bot = Bot::new(bot_data.token.clone());
 
     let token = &bot_data.token;
@@ -70,7 +72,7 @@ pub async fn start_bot(bot_data: &BotData) {
 
     let token = bot.inner().inner().token();
 
-    log::info!("Start bot(id={})", bot_data.id);
+    log::info!("Start Bot(id={})!", bot_data.id);
 
     let (handler, commands) = crate::bots::get_bot_handler();
 
