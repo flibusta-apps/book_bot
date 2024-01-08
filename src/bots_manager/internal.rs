@@ -57,11 +57,13 @@ pub async fn set_webhook(bot_data: &BotData) -> bool {
     let url = Url::parse(&format!("{host}/{token}/"))
         .unwrap_or_else(|_| panic!("Can't parse webhook url!"));
 
-    if bot.set_webhook(url.clone()).await.is_err() {
-        return false;
+    match bot.set_webhook(url.clone()).await {
+        Ok(_) => true,
+        Err(err) => {
+            log::error!("Webhook set error: {}", err);
+            false
+        }
     }
-
-    true
 }
 
 pub async fn start_bot(bot_data: &BotData) {
