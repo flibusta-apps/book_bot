@@ -1,7 +1,8 @@
-use axum::extract::Path;
 use axum::response::IntoResponse;
 use axum::routing::post;
+use axum::{extract::Path, routing::get};
 
+use axum_prometheus::PrometheusMetricLayer;
 use reqwest::StatusCode;
 
 use std::{
@@ -14,9 +15,10 @@ use std::{
 
 use teloxide::types::{Update, UpdateKind};
 
-use tower_http::trace::TraceLayer;
+use tower_http::trace::{self, TraceLayer};
 
 use tracing::log;
+use tracing::Level;
 
 use crate::bots_manager::{internal::start_bot, BOTS_DATA, BOTS_ROUTES, SERVER_PORT};
 
@@ -75,9 +77,23 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
         StatusCode::OK
     }
 
-    let router = axum::Router::new()
+    let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
+
+    let app_router = axum::Router::new()
         .route("/:token/", post(telegram_request))
-        .layer(TraceLayer::new_for_http());
+        .layer(prometheus_layer);
+
+    let metric_router =
+        axum::Router::new().route("/metrics", get(|| async move { metric_handle.render() }));
+
+    let router = axum::Router::new()
+        .nest("/", app_router)
+        .nest("/", metric_router)
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
+        );
 
     tokio::spawn(async move {
         log::info!("Start webserver...");
