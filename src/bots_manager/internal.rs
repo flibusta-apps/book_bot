@@ -21,7 +21,7 @@ use crate::config;
 
 use super::closable_sender::ClosableSender;
 use super::utils::tuple_first_mut;
-use super::BotData;
+use super::{BotData, SERVER_PORT};
 
 type UpdateSender = mpsc::UnboundedSender<Result<Update, std::convert::Infallible>>;
 
@@ -46,7 +46,23 @@ pub fn get_listener() -> (
     (stop_token, stop_flag, tx, listener)
 }
 
-pub async fn start_bot(bot_data: &BotData, port: u16) -> bool {
+pub async fn set_webhook(bot_data: &BotData) -> bool {
+    let bot = Bot::new(bot_data.token.clone());
+
+    let token = &bot_data.token;
+
+    let host = format!("{}:{}", &config::CONFIG.webhook_base_url, SERVER_PORT);
+    let url = Url::parse(&format!("{host}/{token}/"))
+        .unwrap_or_else(|_| panic!("Can't parse webhook url!"));
+
+    if bot.set_webhook(url.clone()).await.is_err() {
+        return false;
+    }
+
+    true
+}
+
+pub async fn start_bot(bot_data: &BotData) {
     let bot = Bot::new(bot_data.token.clone())
         .set_api_url(config::CONFIG.telegram_bot_api.clone())
         .throttle(Limits::default())
@@ -73,14 +89,6 @@ pub async fn start_bot(bot_data: &BotData, port: u16) -> bool {
 
     let (stop_token, _stop_flag, tx, listener) = get_listener();
 
-    let host = format!("{}:{}", &config::CONFIG.webhook_base_url, port);
-    let url = Url::parse(&format!("{host}/{token}/"))
-        .unwrap_or_else(|_| panic!("Can't parse webhook url!"));
-
-    if bot.set_webhook(url.clone()).await.is_err() {
-        return false;
-    }
-
     tokio::spawn(async move {
         dispatcher
             .dispatch_with_listener(
@@ -93,6 +101,4 @@ pub async fn start_bot(bot_data: &BotData, port: u16) -> bool {
     BOTS_ROUTES
         .insert(token.to_string(), (stop_token, ClosableSender::new(tx)))
         .await;
-
-    true
 }

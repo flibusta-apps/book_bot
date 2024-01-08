@@ -48,9 +48,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
                         break 'creator;
                     }
 
-                    if !start_bot(&bot_data.unwrap(), SERVER_PORT).await {
-                        return StatusCode::SERVICE_UNAVAILABLE;
-                    }
+                    start_bot(&bot_data.unwrap()).await
                 }
 
                 BOTS_ROUTES.get(&token).await.unwrap()

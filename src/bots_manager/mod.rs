@@ -23,6 +23,7 @@ use self::axum_server::start_axum_server;
 use self::bot_manager_client::get_bots;
 pub use self::bot_manager_client::{BotCache, BotData};
 use self::closable_sender::ClosableSender;
+use self::internal::set_webhook;
 
 pub static USER_ACTIVITY_CACHE: Lazy<Cache<UserId, ()>> = Lazy::new(|| {
     Cache::builder()
@@ -76,9 +77,15 @@ impl BotsManager {
         match bots_data {
             Ok(v) => {
                 for bot_data in v.iter() {
+                    if BOTS_DATA.contains_key(&bot_data.token) {
+                        continue;
+                    }
+
                     BOTS_DATA
                         .insert(bot_data.token.clone(), bot_data.clone())
                         .await;
+
+                    set_webhook(bot_data).await;
                 }
             }
             Err(err) => {
