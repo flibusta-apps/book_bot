@@ -27,22 +27,22 @@ use self::internal::set_webhook;
 
 pub static USER_ACTIVITY_CACHE: Lazy<Cache<UserId, ()>> = Lazy::new(|| {
     Cache::builder()
-        .time_to_idle(Duration::from_secs(5 * 60))
-        .max_capacity(2048)
+        .time_to_idle(Duration::from_secs(30 * 60))
+        .max_capacity(4096)
         .build()
 });
 
 pub static USER_LANGS_CACHE: Lazy<Cache<UserId, SmallVec<[SmartString; 3]>>> = Lazy::new(|| {
     Cache::builder()
-        .time_to_idle(Duration::from_secs(5 * 60))
-        .max_capacity(2048)
+        .time_to_idle(Duration::from_secs(30 * 60))
+        .max_capacity(4096)
         .build()
 });
 
 pub static CHAT_DONATION_NOTIFICATIONS_CACHE: Lazy<Cache<ChatId, ()>> = Lazy::new(|| {
     Cache::builder()
         .time_to_idle(Duration::from_secs(24 * 60 * 60))
-        .max_capacity(2048)
+        .max_capacity(4098)
         .build()
 });
 
