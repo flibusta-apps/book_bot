@@ -7,6 +7,7 @@ pub mod utils;
 use once_cell::sync::Lazy;
 use smartstring::alias::String as SmartString;
 use teloxide::stop::StopToken;
+use tokio::task::JoinSet;
 use tracing::log;
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -74,22 +75,35 @@ impl BotsManager {
     async fn check() {
         let bots_data = get_bots().await;
 
-        match bots_data {
-            Ok(v) => {
-                for bot_data in v.iter() {
-                    if BOTS_DATA.contains_key(&bot_data.token) {
-                        continue;
-                    }
-
-                    BOTS_DATA
-                        .insert(bot_data.token.clone(), bot_data.clone())
-                        .await;
-
-                    set_webhook(bot_data).await;
-                }
-            }
+        let bots_data = match bots_data {
+            Ok(v) => v,
             Err(err) => {
                 log::info!("{:?}", err);
+                return;
+            }
+        };
+
+        let mut set_webhook_tasks = JoinSet::new();
+
+        for bot_data in bots_data.iter() {
+            if BOTS_DATA.contains_key(&bot_data.token) {
+                continue;
+            }
+
+            BOTS_DATA
+                .insert(bot_data.token.clone(), bot_data.clone())
+                .await;
+
+            let bot_data = bot_data.clone();
+
+            set_webhook_tasks.spawn(async move {
+                set_webhook(&bot_data).await;
+            });
+        }
+
+        loop {
+            if set_webhook_tasks.join_next().await.is_none() {
+                break;
             }
         }
     }
