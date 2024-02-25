@@ -32,6 +32,10 @@ fn ignore_user_edited_message() -> crate::bots::BotHandler {
     dptree::entry().branch(Update::filter_edited_message().endpoint(|| async { Ok(()) }))
 }
 
+fn ingore_chat_join_request() -> crate::bots::BotHandler {
+    dptree::entry().branch(Update::filter_chat_join_request().endpoint(|| async { Ok(()) }))
+}
+
 pub fn get_bot_handler() -> (BotHandler, BotCommands) {
     approved_bot::get_approved_handler()
 }
