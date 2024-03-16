@@ -21,7 +21,7 @@ pub async fn send_donation_notification(
         .is_some()
     {
         return Ok(());
-    } else if !is_need_donate_notifications(message.chat.id).await? {
+    } else if !is_need_donate_notifications(message.chat.id, message.chat.is_private()).await? {
         CHAT_DONATION_NOTIFICATIONS_CACHE
             .insert(message.chat.id, ())
             .await;

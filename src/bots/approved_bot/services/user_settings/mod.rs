@@ -118,10 +118,11 @@ pub async fn update_user_activity(
 
 pub async fn is_need_donate_notifications(
     chat_id: ChatId,
+    is_private: bool,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     let response = reqwest::Client::new()
         .get(format!(
-            "{}/donate_notifications/{chat_id}/is_need_send",
+            "{}/donate_notifications/{chat_id}/is_need_send?is_private={is_private}",
             &config::CONFIG.user_settings_url
         ))
         .header("Authorization", &config::CONFIG.user_settings_api_key)
