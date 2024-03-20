@@ -91,7 +91,10 @@ async fn send_cached_message(
                 bot.delete_message(message.chat.id, message.id).await?;
             }
 
-            send_donation_notification(bot.clone(), message).await?;
+            match send_donation_notification(bot.clone(), message).await {
+                Ok(_) => (),
+                Err(err) => log::error!("{:?}", err),
+            }
 
             return Ok(());
         }
@@ -126,7 +129,10 @@ async fn _send_downloaded_file(
         .send()
         .await?;
 
-    send_donation_notification(bot, message.clone()).await?;
+    match send_donation_notification(bot, message.clone()).await {
+        Ok(_) => (),
+        Err(err) => log::error!("{:?}", err),
+    };
 
     Ok(())
 }
