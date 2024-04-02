@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use smallvec::SmallVec;
 use tokio::time::{self, sleep, Duration};
+use tokio::sync::Semaphore;
 
 use teloxide::prelude::*;
 
@@ -83,6 +84,7 @@ impl BotsManager {
             }
         };
 
+        let semaphore = Arc::new(Semaphore::const_new(10));
         let mut set_webhook_tasks = JoinSet::new();
 
         for bot_data in bots_data.iter() {
@@ -96,8 +98,13 @@ impl BotsManager {
 
             let bot_data = bot_data.clone();
 
+            let semphore = semaphore.clone();
             set_webhook_tasks.spawn(async move {
+                let _permit = semphore.acquire().await.unwrap();
+
                 set_webhook(&bot_data).await;
+
+                drop(_permit);
             });
         }
 
