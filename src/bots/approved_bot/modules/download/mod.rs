@@ -419,8 +419,9 @@ async fn wait_archive(
 
     match _send_downloaded_file(&message, bot.clone(), downloaded_data).await {
         Ok(_) => (),
-        Err(_) => {
+        Err(err) => {
             send_archive_link(bot.clone(), message.clone(), task).await?;
+            log::error!("{:?}", err);
         }
     }
 
