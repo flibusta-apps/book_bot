@@ -3,6 +3,7 @@ use serde_json::json;
 use smallvec::{smallvec, SmallVec};
 use smartstring::alias::String as SmartString;
 use teloxide::types::{ChatId, UserId};
+use tracing::log;
 
 use crate::{bots_manager::USER_LANGS_CACHE, config};
 
@@ -54,7 +55,10 @@ pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartS
             USER_LANGS_CACHE.insert(user_id, langs.clone()).await;
             langs
         }
-        Err(_) => default_lang_codes,
+        Err(err) => {
+            log::error!("{:?}", err);
+            default_lang_codes
+        },
     }
 }
 
