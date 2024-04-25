@@ -115,9 +115,9 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
         log::info!("Start webserver...");
 
         let addr = SocketAddr::from(([0, 0, 0, 0], config::CONFIG.webhook_port));
+        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
 
-        axum::Server::bind(&addr)
-            .serve(router.into_make_service())
+        axum::serve(listener, router)
             .with_graceful_shutdown(async move {
                 let mut interval = time::interval(Duration::from_secs(1));
 
@@ -130,7 +130,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
                 }
             })
             .await
-            .expect("Axum server error");
+            .unwrap();
 
         log::info!("Webserver shutdown...");
     });
