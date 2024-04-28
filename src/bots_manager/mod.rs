@@ -7,6 +7,7 @@ pub mod utils;
 use once_cell::sync::Lazy;
 use smartstring::alias::String as SmartString;
 use teloxide::stop::StopToken;
+use teloxide::update_listeners::webhooks;
 use tokio::task::JoinSet;
 use tracing::log;
 
@@ -125,6 +126,32 @@ impl BotsManager {
         sleep(Duration::from_secs(5)).await;
     }
 
+    pub async fn check_pending_updates() {
+        for (token, bot_data) in BOTS_DATA.iter() {
+            let bot = Bot::new(token.clone().as_str());
+
+            let result = bot.get_webhook_info().send().await;
+
+            match result {
+                Ok(webhook_info) => {
+                    if webhook_info.pending_update_count != 0 {
+                        continue;
+                    }
+
+                    if webhook_info.last_error_message.is_some() {
+                        log::error!(
+                            "Error getting webhook info: {:?}",
+                            webhook_info.last_error_message
+                        );
+
+                        set_webhook(&bot_data).await;
+                    }
+                },
+                Err(err) => log::error!("Error getting webhook info: {:?}", err),
+            }
+        }
+    }
+
     pub async fn start(running: Arc<AtomicBool>) {
         start_axum_server(running.clone()).await;
 
@@ -141,6 +168,8 @@ impl BotsManager {
                     return;
                 };
             }
+
+            BotsManager::check_pending_updates().await;
         }
     }
 }
