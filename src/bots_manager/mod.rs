@@ -7,7 +7,6 @@ pub mod utils;
 use once_cell::sync::Lazy;
 use smartstring::alias::String as SmartString;
 use teloxide::stop::StopToken;
-use teloxide::update_listeners::webhooks;
 use tokio::task::JoinSet;
 use tracing::log;
 
