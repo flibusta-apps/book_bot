@@ -156,21 +156,25 @@ impl BotsManager {
     pub async fn start(running: Arc<AtomicBool>) {
         start_axum_server(running.clone()).await;
 
-        let mut interval = time::interval(Duration::from_secs(5));
+        let mut interval_1s = time::interval(Duration::from_secs(1));
+        let mut interval_30s = time::interval(Duration::from_secs(30));
+        let mut interval_1m = time::interval(Duration::from_secs(60));
 
         loop {
-            BotsManager::check().await;
-
-            for _i in 0..30 {
-                interval.tick().await;
-
-                if !running.load(Ordering::SeqCst) {
-                    BotsManager::stop_all().await;
-                    return;
-                };
+            tokio::select! {
+                _ = interval_1s.tick() => {
+                    if !running.load(Ordering::SeqCst) {
+                        BotsManager::stop_all().await;
+                        return;
+                    }
+                },
+                _ = interval_30s.tick() => {
+                    BotsManager::check().await;
+                },
+                _ = interval_1m.tick() => {
+                    BotsManager::check_pending_updates().await;
+                },
             }
-
-            BotsManager::check_pending_updates().await;
         }
     }
 }
