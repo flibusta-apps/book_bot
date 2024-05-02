@@ -30,3 +30,18 @@ pub async fn get_bots() -> Result<Vec<BotData>, reqwest::Error> {
         Err(err) => Err(err),
     }
 }
+
+
+pub async fn delete_bot(id: u32) -> Result<(), reqwest::Error> {
+    let client = reqwest::Client::new();
+    let response = client
+        .delete(&format!("{}/{}/", config::CONFIG.manager_url, id))
+        .header("Authorization", &config::CONFIG.manager_api_key)
+        .send()
+        .await;
+
+    match response {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err),
+    }
+}
