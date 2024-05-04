@@ -14,7 +14,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use smallvec::SmallVec;
-use tokio::time::{self, sleep, Duration};
+use tokio::time::{sleep, Duration};
 use tokio::sync::Semaphore;
 
 use teloxide::prelude::*;
@@ -156,25 +156,25 @@ impl BotsManager {
     pub async fn start(running: Arc<AtomicBool>) {
         start_axum_server(running.clone()).await;
 
-        let mut interval_1s = time::interval(Duration::from_secs(1));
-        let mut interval_30s = time::interval(Duration::from_secs(30));
-        let mut interval_1m = time::interval(Duration::from_secs(60));
+        let mut tick_number: i32 = 0;
 
         loop {
-            tokio::select! {
-                _ = interval_1s.tick() => {
-                    if !running.load(Ordering::SeqCst) {
-                        BotsManager::stop_all().await;
-                        return;
-                    }
-                },
-                _ = interval_30s.tick() => {
-                    BotsManager::check().await;
-                },
-                _ = interval_1m.tick() => {
-                    BotsManager::check_pending_updates().await;
-                },
+            tokio::time::sleep(Duration::from_secs(1)).await;
+
+            if !running.load(Ordering::SeqCst) {
+                BotsManager::stop_all().await;
+                return;
             }
+
+            if tick_number % 30 == 0 {
+                BotsManager::check().await;
+            }
+
+            if tick_number % 60 == 0 {
+                BotsManager::check_pending_updates().await;
+            }
+
+            tick_number = (tick_number + 1) % 60;
         }
     }
 }
