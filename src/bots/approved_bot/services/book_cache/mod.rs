@@ -2,7 +2,7 @@ use base64::{engine::general_purpose, Engine};
 use reqwest::StatusCode;
 use std::fmt;
 
-use crate::{bots::approved_bot::modules::download::callback_data::DownloadQueryData, config};
+use crate::{bots::approved_bot::modules::download::callback_data::DownloadQueryData, bots_manager::BotCache, config};
 
 use self::types::{CachedMessage, DownloadFile, DownloadLink};
 
@@ -23,16 +23,19 @@ impl std::error::Error for DownloadError {}
 
 pub async fn get_cached_message(
     download_data: &DownloadQueryData,
+    bot_cache: BotCache,
 ) -> Result<CachedMessage, Box<dyn std::error::Error + Send + Sync>> {
     let DownloadQueryData::DownloadData {
         book_id: id,
         file_type: format,
     } = download_data;
 
+    let is_need_copy = bot_cache != BotCache::Original;
+
     let client = reqwest::Client::new();
     let response = client
         .get(format!(
-            "{}/api/v1/{id}/{format}/",
+            "{}/api/v1/{id}/{format}/?copy={is_need_copy}",
             &config::CONFIG.cache_server_url
         ))
         .header("Authorization", &config::CONFIG.cache_server_api_key)

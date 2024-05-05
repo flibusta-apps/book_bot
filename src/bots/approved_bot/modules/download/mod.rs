@@ -84,8 +84,9 @@ async fn send_cached_message(
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadQueryData,
     need_delete_message: bool,
+    cache: BotCache,
 ) -> BotHandlerInternal {
-    if let Ok(v) = get_cached_message(&download_data).await {
+    if let Ok(v) = get_cached_message(&download_data, cache).await {
         if _send_cached(&message, &bot, v).await.is_ok() {
             if need_delete_message {
                 bot.delete_message(message.chat.id, message.id).await?;
@@ -206,7 +207,7 @@ async fn download_handler(
 ) -> BotHandlerInternal {
     match cache {
         BotCache::Original => {
-            send_cached_message(message, bot, download_data, need_delete_message).await
+            send_cached_message(message, bot, download_data, need_delete_message, cache).await
         }
         BotCache::NoCache => {
             send_with_download_from_channel(message, bot, download_data, need_delete_message).await
