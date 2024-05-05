@@ -205,14 +205,7 @@ async fn download_handler(
     download_data: DownloadQueryData,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
-    match cache {
-        BotCache::Original => {
-            send_cached_message(message, bot, download_data, need_delete_message, cache).await
-        }
-        BotCache::NoCache => {
-            send_with_download_from_channel(message, bot, download_data, need_delete_message).await
-        }
-    }
+    send_cached_message(message, bot, download_data, need_delete_message, cache).await
 }
 
 async fn get_download_keyboard_handler(
