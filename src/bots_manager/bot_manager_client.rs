@@ -6,6 +6,8 @@ use crate::config;
 pub enum BotCache {
     #[serde(rename = "original")]
     Original,
+    #[serde(rename = "cache")]
+    Cache,
     #[serde(rename = "no_cache")]
     NoCache,
 }

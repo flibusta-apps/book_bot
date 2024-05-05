@@ -30,7 +30,7 @@ pub async fn get_cached_message(
         file_type: format,
     } = download_data;
 
-    let is_need_copy = bot_cache != BotCache::Original;
+    let is_need_copy = bot_cache == BotCache::Cache;
 
     let client = reqwest::Client::new();
     let response = client
