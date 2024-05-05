@@ -170,11 +170,11 @@ impl BotsManager {
                 BotsManager::check().await;
             }
 
-            if tick_number % 60 == 0 {
+            if tick_number % 180 == 0 {
                 BotsManager::check_pending_updates().await;
             }
 
-            tick_number = (tick_number + 1) % 60;
+            tick_number = (tick_number + 1) % 180;
         }
     }
 }
