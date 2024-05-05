@@ -401,14 +401,14 @@ async fn wait_archive(
 
     let content_size = task.content_size.unwrap();
 
-    if content_size > 20 * 1024 * 1024 {
+    if content_size > 1024 * 1024 * 1024 {
         send_archive_link(bot.clone(), message.clone(), task.clone()).await?;
         return Ok(());
     }
 
     let downloaded_data = match download_file_by_link(
         task.clone().result_filename.unwrap(),
-        task.result_link.clone().unwrap(),
+        task.result_internal_link.clone().unwrap(),
     )
     .await
     {
