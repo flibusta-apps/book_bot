@@ -340,7 +340,7 @@ async fn send_archive_link(
 ) -> BotHandlerInternal {
     let link = format!(
         "{}/api/download/{}",
-        config::CONFIG.batch_downloader_url.clone(),
+        config::CONFIG.public_batch_downloader_url.clone(),
         task.id
     );
 
