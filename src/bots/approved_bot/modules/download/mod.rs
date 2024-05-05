@@ -22,8 +22,7 @@ use crate::{
         approved_bot::{
             modules::download::callback_data::DownloadArchiveQueryData,
             services::{
-                batch_downloader::{create_task, get_task, Task, TaskStatus},
-                batch_downloader::{CreateTaskData, TaskObjectType},
+                batch_downloader::{create_task, get_task, CreateTaskData, Task, TaskObjectType, TaskStatus},
                 book_cache::{
                     download_file, download_file_by_link, get_cached_message, get_download_link,
                     types::{CachedMessage, DownloadFile},
@@ -39,7 +38,7 @@ use crate::{
         },
         BotHandlerInternal,
     },
-    bots_manager::BotCache,
+    bots_manager::BotCache, config,
 };
 
 use self::{
@@ -339,13 +338,19 @@ async fn send_archive_link(
     message: Message,
     task: Task,
 ) -> BotHandlerInternal {
+    let link = format!(
+        "{}/api/download/{}",
+        config::CONFIG.batch_downloader_url.clone(),
+        task.id
+    );
+
     bot.edit_message_text(
         message.chat.id,
         message.id,
         format!(
             "Файл не может быть загружен в чат! \n \
                     Вы можете скачать его <a href=\"{}\">по ссылке</a> (работает 3 часа)",
-            task.result_link.unwrap()
+            link
         ),
     )
     .parse_mode(ParseMode::Html)
@@ -407,9 +412,15 @@ async fn wait_archive(
         return Ok(());
     }
 
+    let link = format!(
+        "{}/api/download/{}",
+        config::CONFIG.batch_downloader_url.clone(),
+        task.id
+    );
+
     let downloaded_data = match download_file_by_link(
         task.clone().result_filename.unwrap(),
-        task.result_internal_link.clone().unwrap(),
+        link,
     )
     .await
     {
