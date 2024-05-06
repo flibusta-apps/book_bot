@@ -6,6 +6,7 @@ use sentry::integrations::debug_images::DebugImagesIntegration;
 use sentry::types::Dsn;
 use sentry::ClientOptions;
 use sentry_tracing::EventFilter;
+use tracing_subscriber::filter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -21,6 +22,7 @@ async fn main() {
         ..Default::default()
     }
     .add_integration(DebugImagesIntegration::new());
+
     let _guard = sentry::init(options);
 
     let sentry_layer = sentry_tracing::layer().event_filter(|md| match md.level() {
@@ -29,7 +31,8 @@ async fn main() {
     });
 
     tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::fmt::layer().with_target(false))
+        .with(filter::LevelFilter::INFO)
         .with(sentry_layer)
         .init();
 
