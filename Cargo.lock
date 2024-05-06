@@ -281,6 +281,7 @@ dependencies = [
  "regex",
  "reqwest 0.12.4",
  "sentry",
+ "sentry-tracing",
  "serde",
  "serde_json",
  "smallvec",
