@@ -15,17 +15,13 @@ mod config;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt()
-        .with_target(false)
-        .compact()
-        .init();
-
     let options = ClientOptions {
         dsn: Some(Dsn::from_str(&config::CONFIG.sentry_dsn).unwrap()),
         default_integrations: false,
         ..Default::default()
     }
     .add_integration(DebugImagesIntegration::new());
+    let _guard = sentry::init(options);
 
     let sentry_layer = sentry_tracing::layer().event_filter(|md| match md.level() {
         &tracing::Level::ERROR => EventFilter::Event,
