@@ -77,7 +77,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
                 }
             }
             Err(error) => {
-                log::error!(
+                log::warn!(
                     "Cannot parse an update.\nError: {:?}\nValue: {}\n\
                      This is a bug in teloxide-core, please open an issue here: \
                      https://github.com/teloxide/teloxide/issues.",
