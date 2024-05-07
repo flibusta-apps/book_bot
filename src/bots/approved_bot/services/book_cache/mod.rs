@@ -1,30 +1,17 @@
 use base64::{engine::general_purpose, Engine};
 use reqwest::StatusCode;
-use std::fmt;
 
 use crate::{bots::approved_bot::modules::download::callback_data::DownloadQueryData, bots_manager::BotCache, config};
 
-use self::types::{CachedMessage, DownloadFile, DownloadLink};
+use self::types::{CachedMessage, DownloadFile};
 
 pub mod types;
 
-#[derive(Debug, Clone)]
-struct DownloadError {
-    status_code: StatusCode,
-}
-
-impl fmt::Display for DownloadError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Status code is {0}", self.status_code)
-    }
-}
-
-impl std::error::Error for DownloadError {}
 
 pub async fn get_cached_message(
     download_data: &DownloadQueryData,
     bot_cache: BotCache,
-) -> Result<CachedMessage, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<Option<CachedMessage>, Box<dyn std::error::Error + Send + Sync>> {
     let DownloadQueryData::DownloadData {
         book_id: id,
         file_type: format,
@@ -43,46 +30,17 @@ pub async fn get_cached_message(
         .await?
         .error_for_status()?;
 
-    if response.status() != StatusCode::OK {
-        return Err(Box::new(DownloadError {
-            status_code: response.status(),
-        }));
+    if response.status() == StatusCode::NO_CONTENT {
+        return Ok(None);
     };
 
-    Ok(response.json::<CachedMessage>().await?)
+    Ok(Some(response.json::<CachedMessage>().await?))
 }
 
-pub async fn get_download_link(
-    download_data: &DownloadQueryData,
-) -> Result<DownloadLink, Box<dyn std::error::Error + Send + Sync>> {
-    let DownloadQueryData::DownloadData {
-        book_id: id,
-        file_type: format,
-    } = download_data;
-
-    let client = reqwest::Client::new();
-    let response = client
-        .get(format!(
-            "{}/api/v1/link/{id}/{format}/",
-            &config::CONFIG.cache_server_url
-        ))
-        .header("Authorization", &config::CONFIG.cache_server_api_key)
-        .send()
-        .await?
-        .error_for_status()?;
-
-    if response.status() != StatusCode::OK {
-        return Err(Box::new(DownloadError {
-            status_code: response.status(),
-        }));
-    };
-
-    Ok(response.json::<DownloadLink>().await?)
-}
 
 pub async fn download_file(
     download_data: &DownloadQueryData,
-) -> Result<DownloadFile, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<Option<DownloadFile>, Box<dyn std::error::Error + Send + Sync>> {
     let DownloadQueryData::DownloadData {
         book_id: id,
         file_type: format,
@@ -98,10 +56,8 @@ pub async fn download_file(
         .await?
         .error_for_status()?;
 
-    if response.status() != StatusCode::OK {
-        return Err(Box::new(DownloadError {
-            status_code: response.status(),
-        }));
+    if response.status() == StatusCode::NO_CONTENT {
+        return Ok(None);
     };
 
     let headers = response.headers();
@@ -124,17 +80,17 @@ pub async fn download_file(
     .unwrap()
     .to_string();
 
-    Ok(DownloadFile {
+    Ok(Some(DownloadFile {
         response,
         filename,
         caption,
-    })
+    }))
 }
 
 pub async fn download_file_by_link(
     filename: String,
     link: String,
-) -> Result<DownloadFile, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<Option<DownloadFile>, Box<dyn std::error::Error + Send + Sync>> {
     let response = reqwest::Client::new()
         .get(link)
         .send()
@@ -142,14 +98,12 @@ pub async fn download_file_by_link(
         .error_for_status()?;
 
     if response.status() != StatusCode::OK {
-        return Err(Box::new(DownloadError {
-            status_code: response.status(),
-        }));
+        return Ok(None);
     };
 
-    Ok(DownloadFile {
+    Ok(Some(DownloadFile {
         response,
         filename,
         caption: "".to_string(),
-    })
+    }))
 }

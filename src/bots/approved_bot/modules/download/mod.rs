@@ -24,7 +24,7 @@ use crate::{
             services::{
                 batch_downloader::{create_task, get_task, CreateTaskData, Task, TaskObjectType, TaskStatus},
                 book_cache::{
-                    download_file, download_file_by_link, get_cached_message, get_download_link,
+                    download_file, download_file_by_link, get_cached_message,
                     types::{CachedMessage, DownloadFile},
                 },
                 book_library::{
@@ -85,20 +85,27 @@ async fn send_cached_message(
     need_delete_message: bool,
     cache: BotCache,
 ) -> BotHandlerInternal {
-    if let Ok(v) = get_cached_message(&download_data, cache).await {
-        if _send_cached(&message, &bot, v).await.is_ok() {
-            if need_delete_message {
-                bot.delete_message(message.chat.id, message.id).await?;
-            }
+    'cached: {
+        if let Ok(v) = get_cached_message(&download_data, cache).await {
+            let cached = match v {
+                Some(v) => v,
+                None => break 'cached,
+            };
 
-            match send_donation_notification(bot.clone(), message).await {
-                Ok(_) => (),
-                Err(err) => log::error!("{:?}", err),
-            }
+            if _send_cached(&message, &bot, cached).await.is_ok() {
+                if need_delete_message {
+                    bot.delete_message(message.chat.id, message.id).await?;
+                }
 
-            return Ok(());
-        }
-    };
+                match send_donation_notification(bot.clone(), message).await {
+                    Ok(_) => (),
+                    Err(err) => log::error!("{:?}", err),
+                }
+
+                return Ok(());
+            }
+        };
+    }
 
     send_with_download_from_channel(message, bot, download_data, need_delete_message).await?;
 
@@ -140,6 +147,7 @@ async fn _send_downloaded_file(
     Ok(())
 }
 
+
 async fn send_with_download_from_channel(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
@@ -148,13 +156,15 @@ async fn send_with_download_from_channel(
 ) -> BotHandlerInternal {
     match download_file(&download_data).await {
         Ok(v) => {
-            if _send_downloaded_file(&message, bot.clone(), v)
-                .await
-                .is_err()
-            {
-                send_download_link(message.clone(), bot.clone(), download_data).await?;
-                return Ok(());
+            let download_file = match v {
+                Some(v) => v,
+                None => {
+                    log::error!("File not found");
+                    return Ok(());
+                },
             };
+
+            _send_downloaded_file(&message, bot.clone(), download_file).await?;
 
             if need_delete_message {
                 bot.delete_message(message.chat.id, message.id).await?;
@@ -166,36 +176,6 @@ async fn send_with_download_from_channel(
     }
 }
 
-async fn send_download_link(
-    message: Message,
-    bot: CacheMe<Throttle<Bot>>,
-    download_data: DownloadQueryData,
-) -> BotHandlerInternal {
-    let link_data = match get_download_link(&download_data).await {
-        Ok(v) => v,
-        Err(err) => {
-            log::error!("{:?}", err);
-            return Err(err);
-        }
-    };
-
-    bot.edit_message_text(
-        message.chat.id,
-        message.id,
-        format!(
-            "Файл не может быть загружен в чат! \n \
-                Вы можете скачать его <a href=\"{}\">по ссылке</a> (работает 3 часа)",
-            link_data.link
-        ),
-    )
-    .parse_mode(ParseMode::Html)
-    .reply_markup(InlineKeyboardMarkup {
-        inline_keyboard: vec![],
-    })
-    .await?;
-
-    Ok(())
-}
 
 async fn download_handler(
     message: Message,
@@ -424,7 +404,13 @@ async fn wait_archive(
     )
     .await
     {
-        Ok(v) => v,
+        Ok(v) => match v {
+            Some(v) => v,
+            None => {
+                send_error_message(bot, message.chat.id, message.id).await;
+                return Ok(());
+            },
+        },
         Err(err) => {
             send_error_message(bot, message.chat.id, message.id).await;
             log::error!("{:?}", err);
