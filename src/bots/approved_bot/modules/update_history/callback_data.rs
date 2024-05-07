@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use chrono::NaiveDate;
 use dateparser::parse;
@@ -36,15 +36,15 @@ impl FromStr for UpdateLogCallbackData {
     }
 }
 
-impl ToString for UpdateLogCallbackData {
-    fn to_string(&self) -> String {
+impl Display for UpdateLogCallbackData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let date_format = "%Y-%m-%d";
 
         let from = self.from.format(date_format);
         let to = self.to.format(date_format);
         let page = self.page;
 
-        format!("update_log_{from}_{to}_{page}")
+        write!(f, "update_log_{}_{}_{}", from, to, page)
     }
 }
 

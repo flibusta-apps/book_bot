@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use regex::Regex;
 use smartstring::alias::String as SmartString;
@@ -37,12 +37,12 @@ impl FromStr for SettingsCallbackData {
     }
 }
 
-impl ToString for SettingsCallbackData {
-    fn to_string(&self) -> String {
+impl Display for SettingsCallbackData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SettingsCallbackData::Settings => "lang_settings".to_string(),
-            SettingsCallbackData::On { code } => format!("lang_on_{code}"),
-            SettingsCallbackData::Off { code } => format!("lang_off_{code}"),
+            SettingsCallbackData::Settings => write!(f, "lang_settings"),
+            SettingsCallbackData::On { code } => write!(f, "lang_on_{}", code),
+            SettingsCallbackData::Off { code } => write!(f, "lang_off_{}", code),
         }
     }
 }

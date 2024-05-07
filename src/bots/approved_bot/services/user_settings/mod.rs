@@ -1,3 +1,4 @@
+use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
 use smallvec::{smallvec, SmallVec};
@@ -26,7 +27,7 @@ pub struct UserSettings {
 
 pub async fn get_user_settings(
     user_id: UserId,
-) -> Result<UserSettings, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<Option<UserSettings>, Box<dyn std::error::Error + Send + Sync>> {
     let response = reqwest::Client::new()
         .get(format!(
             "{}/users/{}",
@@ -38,7 +39,11 @@ pub async fn get_user_settings(
         .await?
         .error_for_status()?;
 
-    Ok(response.json::<UserSettings>().await?)
+    if response.status() == StatusCode::NO_CONTENT {
+        return Ok(None);
+    }
+
+    Ok(Some(response.json::<UserSettings>().await?))
 }
 
 pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartString; 3]> {
@@ -50,8 +55,10 @@ pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartS
 
     match get_user_settings(user_id).await {
         Ok(v) => {
-            let langs: SmallVec<[SmartString; 3]> =
-                v.allowed_langs.into_iter().map(|lang| lang.code).collect();
+            let langs: SmallVec<[SmartString; 3]> = match v {
+                Some(v) => v.allowed_langs.into_iter().map(|lang| lang.code).collect(),
+                None => return default_lang_codes,
+            };
             USER_LANGS_CACHE.insert(user_id, langs.clone()).await;
             langs
         }

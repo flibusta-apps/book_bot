@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use regex::Regex;
 use strum_macros::EnumIter;
@@ -13,13 +13,13 @@ pub enum SearchCallbackData {
     Translators { page: u32 },
 }
 
-impl ToString for SearchCallbackData {
-    fn to_string(&self) -> String {
+impl Display for SearchCallbackData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SearchCallbackData::Book { page } => format!("sb_{page}"),
-            SearchCallbackData::Authors { page } => format!("sa_{page}"),
-            SearchCallbackData::Sequences { page } => format!("ss_{page}"),
-            SearchCallbackData::Translators { page } => format!("st_{page}"),
+            SearchCallbackData::Book { page } => write!(f, "sb_{}", page),
+            SearchCallbackData::Authors { page } => write!(f, "sa_{}", page),
+            SearchCallbackData::Sequences { page } => write!(f, "ss_{}", page),
+            SearchCallbackData::Translators { page } => write!(f, "st_{}", page),
         }
     }
 }

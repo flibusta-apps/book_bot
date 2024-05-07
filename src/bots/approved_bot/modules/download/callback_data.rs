@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use regex::Regex;
 use strum_macros::EnumIter;
@@ -12,11 +12,11 @@ pub enum DownloadQueryData {
     DownloadData { book_id: u32, file_type: String },
 }
 
-impl ToString for DownloadQueryData {
-    fn to_string(&self) -> String {
+impl Display for DownloadQueryData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DownloadQueryData::DownloadData { book_id, file_type } => {
-                format!("d_{book_id}_{file_type}")
+                write!(f, "d_{}_{}", book_id, file_type)
             }
         }
     }
@@ -47,15 +47,15 @@ pub enum DownloadArchiveQueryData {
     Translator { id: u32, file_type: String },
 }
 
-impl ToString for DownloadArchiveQueryData {
-    fn to_string(&self) -> String {
+impl Display for DownloadArchiveQueryData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DownloadArchiveQueryData::Sequence { id, file_type } => {
-                format!("da_s_{id}_{file_type}")
+                write!(f, "da_s_{}_{}", id, file_type)
             }
-            DownloadArchiveQueryData::Author { id, file_type } => format!("da_a_{id}_{file_type}"),
+            DownloadArchiveQueryData::Author { id, file_type } => write!(f, "da_a_{}_{}", id, file_type),
             DownloadArchiveQueryData::Translator { id, file_type } => {
-                format!("da_t_{id}_{file_type}")
+                write!(f, "da_t_{}_{}", id, file_type)
             }
         }
     }
@@ -90,9 +90,9 @@ pub struct CheckArchiveStatus {
     pub task_id: String,
 }
 
-impl ToString for CheckArchiveStatus {
-    fn to_string(&self) -> String {
-        format!("check_da_{}", self.task_id)
+impl Display for CheckArchiveStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "check_da_{}", self.task_id)
     }
 }
 

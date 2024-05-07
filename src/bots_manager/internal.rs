@@ -65,17 +65,11 @@ pub async fn set_webhook(bot_data: &BotData) -> bool {
     match bot.set_webhook(url.clone()).await {
         Ok(_) => true,
         Err(err) => {
-            match err {
-                teloxide::RequestError::Api(ref err) => {
-                    match err {
-                        teloxide::ApiError::NotFound => {
-                            let _ = delete_bot(bot_data.id).await;
-                        },
-                        _ => (),
-                    }
-                },
-                _ => ()
-            };
+            if let teloxide::RequestError::Api(ref err) = err {
+                if err == &teloxide::ApiError::NotFound {
+                    let _ = delete_bot(bot_data.id).await;
+                }
+            }
 
             log::error!("Webhook set error: {}", err);
             false

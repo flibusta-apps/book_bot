@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use regex::Regex;
 
@@ -39,12 +39,12 @@ impl FromStr for BookCallbackData {
     }
 }
 
-impl ToString for BookCallbackData {
-    fn to_string(&self) -> String {
+impl Display for BookCallbackData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BookCallbackData::Author { id, page } => format!("ba_{id}_{page}"),
-            BookCallbackData::Translator { id, page } => format!("bt_{id}_{page}"),
-            BookCallbackData::Sequence { id, page } => format!("bs_{id}_{page}"),
+            BookCallbackData::Author { id, page } => write!(f, "ba_{}_{}", id, page),
+            BookCallbackData::Translator { id, page } => write!(f, "bt_{}_{}", id, page),
+            BookCallbackData::Sequence { id, page } => write!(f, "bs_{}_{}", id, page),
         }
     }
 }

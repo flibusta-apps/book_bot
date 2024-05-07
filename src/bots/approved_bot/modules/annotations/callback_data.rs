@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use regex::Regex;
 
@@ -37,11 +37,11 @@ impl FromStr for AnnotationCallbackData {
     }
 }
 
-impl ToString for AnnotationCallbackData {
-    fn to_string(&self) -> String {
+impl Display for AnnotationCallbackData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AnnotationCallbackData::Book { id, page } => format!("b_an_{id}_{page}"),
-            AnnotationCallbackData::Author { id, page } => format!("a_an_{id}_{page}"),
+            AnnotationCallbackData::Book { id, page } => write!(f, "b_an_{}_{}", id, page),
+            AnnotationCallbackData::Author { id, page } => write!(f, "a_an_{}_{}", id, page),
         }
     }
 }

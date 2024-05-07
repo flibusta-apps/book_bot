@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use regex::Regex;
 use strum_macros::EnumIter;
 
@@ -10,10 +12,9 @@ pub struct StartDownloadCommand {
     pub id: u32,
 }
 
-impl ToString for StartDownloadCommand {
-    fn to_string(&self) -> String {
-        let StartDownloadCommand { id } = self;
-        format!("/d_{id}")
+impl Display for StartDownloadCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "/d_{}", self.id)
     }
 }
 
@@ -43,12 +44,12 @@ pub enum DownloadArchiveCommand {
     Translator { id: u32 },
 }
 
-impl ToString for DownloadArchiveCommand {
-    fn to_string(&self) -> String {
+impl Display for DownloadArchiveCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DownloadArchiveCommand::Sequence { id } => format!("/da_s_{id}"),
-            DownloadArchiveCommand::Author { id } => format!("/da_a_{id}"),
-            DownloadArchiveCommand::Translator { id } => format!("/da_t_{id}"),
+            DownloadArchiveCommand::Sequence { id } => write!(f, "/da_s_{}", id),
+            DownloadArchiveCommand::Author { id } => write!(f, "/da_a_{}", id),
+            DownloadArchiveCommand::Translator { id } => write!(f, "/da_t_{}", id),
         }
     }
 }
