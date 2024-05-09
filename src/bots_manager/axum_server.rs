@@ -66,8 +66,14 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
 
         match serde_json::from_str::<Update>(&input) {
             Ok(mut update) => {
-                if let UpdateKind::Error(value) = &mut update.kind {
-                    *value = serde_json::from_str(&input).unwrap_or_default();
+                if let UpdateKind::Error(_) = &mut update.kind {
+                    log::warn!(
+                        "Cannot parse an update.\nValue: {}\n\
+                         This is a bug in teloxide-core, please open an issue here: \
+                         https://github.com/teloxide/teloxide/issues.",
+                        input
+                    );
+                    return StatusCode::OK;
                 }
 
                 if let Err(err) = tx.send(Ok(update)) {

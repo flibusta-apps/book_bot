@@ -141,7 +141,7 @@ impl BotsManager {
 
                     if webhook_info.last_error_message.is_some() {
                         log::error!(
-                            "Error getting webhook info: {:?}",
+                            "Webhook last error: {:?}",
                             webhook_info.last_error_message
                         );
 
