@@ -1,9 +1,14 @@
+use once_cell::sync::Lazy;
 use smallvec::SmallVec;
 use smartstring::alias::String as SmartString;
 
 use serde::{Deserialize, Serialize};
 
 use crate::config;
+
+
+pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -43,7 +48,7 @@ pub struct Task {
 pub async fn create_task(
     data: CreateTaskData,
 ) -> Result<Task, Box<dyn std::error::Error + Send + Sync>> {
-    Ok(reqwest::Client::new()
+    Ok(CLIENT
         .post(format!("{}/api/", &config::CONFIG.batch_downloader_url))
         .body(serde_json::to_string(&data).unwrap())
         .header("Authorization", &config::CONFIG.batch_downloader_api_key)
@@ -56,7 +61,7 @@ pub async fn create_task(
 }
 
 pub async fn get_task(task_id: String) -> Result<Task, Box<dyn std::error::Error + Send + Sync>> {
-    Ok(reqwest::Client::new()
+    Ok(CLIENT
         .get(format!(
             "{}/api/check_archive/{task_id}",
             &config::CONFIG.batch_downloader_url

@@ -1,6 +1,11 @@
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 
 use crate::config;
+
+
+pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+
 
 #[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum BotCache {
@@ -20,8 +25,7 @@ pub struct BotData {
 }
 
 pub async fn get_bots() -> Result<Vec<BotData>, reqwest::Error> {
-    let client = reqwest::Client::new();
-    let response = client
+    let response = CLIENT
         .get(&config::CONFIG.manager_url)
         .header("Authorization", &config::CONFIG.manager_api_key)
         .send()
@@ -35,8 +39,7 @@ pub async fn get_bots() -> Result<Vec<BotData>, reqwest::Error> {
 
 
 pub async fn delete_bot(id: u32) -> Result<(), reqwest::Error> {
-    let client = reqwest::Client::new();
-    let response = client
+    let response = CLIENT
         .delete(&format!("{}/{}/", config::CONFIG.manager_url, id))
         .header("Authorization", &config::CONFIG.manager_api_key)
         .send()

@@ -1,4 +1,5 @@
 use base64::{engine::general_purpose, Engine};
+use once_cell::sync::Lazy;
 use reqwest::StatusCode;
 
 use crate::{bots::approved_bot::modules::download::callback_data::DownloadQueryData, bots_manager::BotCache, config};
@@ -6,6 +7,9 @@ use crate::{bots::approved_bot::modules::download::callback_data::DownloadQueryD
 use self::types::{CachedMessage, DownloadFile};
 
 pub mod types;
+
+
+pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
 
 
 pub async fn get_cached_message(
@@ -19,8 +23,7 @@ pub async fn get_cached_message(
 
     let is_need_copy = bot_cache == BotCache::Cache;
 
-    let client = reqwest::Client::new();
-    let response = client
+    let response = CLIENT
         .get(format!(
             "{}/api/v1/{id}/{format}/?copy={is_need_copy}",
             &config::CONFIG.cache_server_url
@@ -46,7 +49,7 @@ pub async fn download_file(
         file_type: format,
     } = download_data;
 
-    let response = reqwest::Client::new()
+    let response = CLIENT
         .get(format!(
             "{}/api/v1/download/{id}/{format}/",
             &config::CONFIG.cache_server_url
@@ -92,7 +95,7 @@ pub async fn download_file_by_link(
     filename: String,
     link: String,
 ) -> Result<Option<DownloadFile>, Box<dyn std::error::Error + Send + Sync>> {
-    let response = reqwest::Client::new()
+    let response = CLIENT
         .get(link)
         .send()
         .await?

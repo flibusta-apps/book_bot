@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
@@ -7,6 +8,10 @@ use teloxide::types::{ChatId, UserId};
 use tracing::log;
 
 use crate::{bots_manager::USER_LANGS_CACHE, config};
+
+
+pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Lang {
@@ -28,7 +33,7 @@ pub struct UserSettings {
 pub async fn get_user_settings(
     user_id: UserId,
 ) -> Result<Option<UserSettings>, Box<dyn std::error::Error + Send + Sync>> {
-    let response = reqwest::Client::new()
+    let response = CLIENT
         .get(format!(
             "{}/users/{}",
             &config::CONFIG.user_settings_url,
@@ -88,7 +93,7 @@ pub async fn create_or_update_user_settings(
         "allowed_langs": allowed_langs.into_vec()
     });
 
-    let response = reqwest::Client::new()
+    let response = CLIENT
         .post(format!("{}/users/", &config::CONFIG.user_settings_url))
         .body(body.to_string())
         .header("Authorization", &config::CONFIG.user_settings_api_key)
@@ -101,7 +106,7 @@ pub async fn create_or_update_user_settings(
 }
 
 pub async fn get_langs() -> Result<Vec<Lang>, Box<dyn std::error::Error + Send + Sync>> {
-    let response = reqwest::Client::new()
+    let response = CLIENT
         .get(format!("{}/languages/", &config::CONFIG.user_settings_url))
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
@@ -114,7 +119,7 @@ pub async fn get_langs() -> Result<Vec<Lang>, Box<dyn std::error::Error + Send +
 pub async fn update_user_activity(
     user_id: UserId,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    reqwest::Client::new()
+    CLIENT
         .post(format!(
             "{}/users/{user_id}/update_activity",
             &config::CONFIG.user_settings_url
@@ -131,7 +136,7 @@ pub async fn is_need_donate_notifications(
     chat_id: ChatId,
     is_private: bool,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
-    let response = reqwest::Client::new()
+    let response = CLIENT
         .get(format!(
             "{}/donate_notifications/{chat_id}/is_need_send?is_private={is_private}",
             &config::CONFIG.user_settings_url
@@ -147,7 +152,7 @@ pub async fn is_need_donate_notifications(
 pub async fn mark_donate_notification_sent(
     chat_id: ChatId,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    reqwest::Client::new()
+    CLIENT
         .post(format!(
             "{}/donate_notifications/{chat_id}",
             &config::CONFIG.user_settings_url

@@ -1,6 +1,7 @@
 pub mod formatters;
 pub mod types;
 
+use once_cell::sync::Lazy;
 use smartstring::alias::String as SmartString;
 
 use serde::de::DeserializeOwned;
@@ -10,6 +11,10 @@ use tracing::log;
 use crate::config;
 
 use self::types::Empty;
+
+
+pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+
 
 fn get_allowed_langs_params(
     allowed_langs: SmallVec<[SmartString; 3]>,
@@ -27,7 +32,7 @@ async fn _make_request<T>(
 where
     T: DeserializeOwned,
 {
-    let response = reqwest::Client::new()
+    let response = CLIENT
         .get(format!("{}{}", &config::CONFIG.book_server_url, url))
         .query(&params)
         .header("Authorization", &config::CONFIG.book_server_api_key)
