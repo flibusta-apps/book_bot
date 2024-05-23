@@ -48,6 +48,13 @@ pub static CHAT_DONATION_NOTIFICATIONS_CACHE: Lazy<Cache<ChatId, ()>> = Lazy::ne
         .build()
 });
 
+pub static WEBHOOK_CHECK_ERRORS_COUNT: Lazy<Cache<u32, u32>> = Lazy::new(|| {
+    Cache::builder()
+        .time_to_idle(Duration::from_secs(600))
+        .max_capacity(128)
+        .build()
+});
+
 type StopTokenWithSender = (
     StopToken,
     ClosableSender<Result<Update, std::convert::Infallible>>,
@@ -129,6 +136,12 @@ impl BotsManager {
 
     pub async fn check_pending_updates() {
         for (token, bot_data) in BOTS_DATA.iter() {
+            let error_count = WEBHOOK_CHECK_ERRORS_COUNT.get(&bot_data.id).await.unwrap_or(0);
+
+            if error_count >= 3 {
+                continue;
+            }
+
             let bot = Bot::new(token.clone().as_str());
 
             let result = bot.get_webhook_info().send().await;
@@ -148,7 +161,11 @@ impl BotsManager {
                         set_webhook(&bot_data).await;
                     }
                 },
-                Err(err) => log::error!("Error getting webhook info: {:?}", err),
+                Err(err) => {
+                    log::error!("Error getting webhook info: {:?}", err);
+
+                    WEBHOOK_CHECK_ERRORS_COUNT.insert(bot_data.id, error_count + 1).await;
+                },
             }
         }
     }
