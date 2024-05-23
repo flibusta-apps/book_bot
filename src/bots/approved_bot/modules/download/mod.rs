@@ -159,7 +159,6 @@ async fn send_with_download_from_channel(
             let download_file = match v {
                 Some(v) => v,
                 None => {
-                    log::error!("File not found");
                     return Ok(());
                 },
             };
