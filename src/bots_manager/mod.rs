@@ -6,6 +6,7 @@ pub mod utils;
 
 use once_cell::sync::Lazy;
 use smartstring::alias::String as SmartString;
+use teloxide::adaptors::throttle::Limits;
 use teloxide::stop::StopToken;
 use tokio::task::JoinSet;
 use tracing::log;
@@ -142,7 +143,7 @@ impl BotsManager {
                 continue;
             }
 
-            let bot = Bot::new(token.clone().as_str());
+            let bot = Bot::new(token.clone().as_str()).throttle(Limits::default());
 
             let result = bot.get_webhook_info().send().await;
 
