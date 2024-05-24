@@ -98,8 +98,7 @@ pub async fn download_file_by_link(
     let response = CLIENT
         .get(link)
         .send()
-        .await?
-        .error_for_status()?;
+        .await?;
 
     if response.status() != StatusCode::OK {
         return Ok(None);
