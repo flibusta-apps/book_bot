@@ -25,9 +25,15 @@ async fn main() {
 
     let _guard = sentry::init(options);
 
-    let sentry_layer = sentry_tracing::layer().event_filter(|md| match md.level() {
-        &tracing::Level::ERROR => EventFilter::Event,
-        _ => EventFilter::Ignore,
+    let sentry_layer = sentry_tracing::layer().event_filter(|md| {
+        if md.name().contains("Forbidden: bot can't initiate conversation with a user") {
+            return EventFilter::Ignore;
+        }
+
+        match md.level() {
+            &tracing::Level::ERROR => EventFilter::Event,
+            _ => EventFilter::Ignore,
+        }
     });
 
     tracing_subscriber::registry()
