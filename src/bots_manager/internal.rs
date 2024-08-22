@@ -16,6 +16,7 @@ use url::Url;
 
 use std::convert::Infallible;
 
+use crate::bots_manager::bot_manager_client::delete_bot;
 use crate::bots_manager::BOTS_ROUTES;
 use crate::config;
 
@@ -64,10 +65,10 @@ pub async fn set_webhook(bot_data: &BotData) -> bool {
     match bot.set_webhook(url.clone()).await {
         Ok(_) => true,
         Err(err) => {
-            if let teloxide::RequestError::Api(ref _err) = err {
-                // if err == &teloxide::ApiError::NotFound {
-                //     let _ = delete_bot(bot_data.id).await;
-                // }
+            if let teloxide::RequestError::Api(ref err) = err {
+                if err == &teloxide::ApiError::InvalidToken {
+                    let _ = delete_bot(bot_data.id).await;
+                }
             }
 
             log::error!("Webhook set error: {}", err);
