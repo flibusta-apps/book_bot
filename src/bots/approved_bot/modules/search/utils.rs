@@ -1,16 +1,19 @@
-use teloxide::types::CallbackQuery;
+use teloxide::types::{CallbackQuery, MaybeInaccessibleMessage};
+
 
 pub fn get_query(cq: CallbackQuery) -> Option<String> {
-    cq.message
-        .map(|message| {
-            message
-                .reply_to_message()
-                .map(|reply_to_message| {
-                    reply_to_message
+    match cq.message {
+        Some(message) => {
+            match message {
+                MaybeInaccessibleMessage::Regular(message) => {
+                    message
                         .text()
-                        .map(|text| text.replace(['/', '&', '?'], ""))
-                })
-                .unwrap_or(None)
-        })
-        .unwrap_or(None)
+                        .map_or(None, |text| Some(text.replace(['/', '&', '?'], "")))
+                }
+                MaybeInaccessibleMessage::Inaccessible(_) => None,
+            }
+        }
+        None => None,
+
+    }
 }

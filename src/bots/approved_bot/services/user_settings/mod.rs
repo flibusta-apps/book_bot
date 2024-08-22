@@ -22,11 +22,11 @@ pub struct Lang {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct UserSettings {
-    pub user_id: u64,
-    pub last_name: SmartString,
-    pub first_name: SmartString,
-    pub username: SmartString,
-    pub source: SmartString,
+    // pub user_id: u64,
+    // pub last_name: SmartString,
+    // pub first_name: SmartString,
+    // pub username: SmartString,
+    // pub source: SmartString,
     pub allowed_langs: SmallVec<[Lang; 3]>,
 }
 

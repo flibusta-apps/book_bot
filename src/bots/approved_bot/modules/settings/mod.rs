@@ -126,7 +126,7 @@ async fn settings_callback_handler(
     )
     .await
     {
-        bot.send_message(message.chat.id, "Ошибка! Попробуйте заново(")
+        bot.send_message(message.chat().id, "Ошибка! Попробуйте заново(")
             .send()
             .await?;
         return Err(err);
@@ -135,7 +135,7 @@ async fn settings_callback_handler(
     let all_langs = match get_langs().await {
         Ok(v) => v,
         Err(err) => {
-            bot.send_message(message.chat.id, "Ошибка! Попробуйте заново(")
+            bot.send_message(message.chat().id, "Ошибка! Попробуйте заново(")
                 .send()
                 .await?;
             return Err(err);
@@ -144,7 +144,7 @@ async fn settings_callback_handler(
 
     let keyboard = get_lang_keyboard(all_langs, allowed_langs_set);
 
-    bot.edit_message_reply_markup(message.chat.id, message.id)
+    bot.edit_message_reply_markup(message.chat().id, message.id())
         .reply_markup(keyboard)
         .send()
         .await?;

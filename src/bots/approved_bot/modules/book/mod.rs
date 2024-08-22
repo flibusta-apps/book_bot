@@ -48,7 +48,7 @@ where
     };
 
     let chat_id = message.chat.id;
-    let user_id = message.from().map(|from| from.id);
+    let user_id = message.from.map(|from| from.id);
 
     let user_id = match user_id {
         Some(v) => v,
@@ -118,9 +118,9 @@ where
         BookCallbackData::Sequence { id, page } => (id, page),
     };
 
-    let chat_id = cq.message.as_ref().map(|message| message.chat.id);
+    let chat_id = cq.message.as_ref().map(|message| message.chat().id);
     let user_id = cq.from.id;
-    let message_id = cq.message.as_ref().map(|message| message.id);
+    let message_id = cq.message.as_ref().map(|message| message.id());
 
     let (chat_id, message_id) = match (chat_id, message_id) {
         (Some(chat_id), Some(message_id)) => (chat_id, message_id),

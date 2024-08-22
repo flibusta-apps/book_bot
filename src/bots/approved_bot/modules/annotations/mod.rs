@@ -58,7 +58,7 @@ where
     if annotation.get_file().is_none() && !annotation.is_normal_text() {
         return match bot
             .send_message(message.chat.id, "Аннотация недоступна :(")
-            .reply_to_message_id(message.id)
+            .reply_parameters(ReplyParameters::new(message.id))
             .send()
             .await
         {
@@ -149,7 +149,7 @@ where
     let keyboard =
         generic_get_pagination_keyboard(page, chunked_text.len().try_into()?, callback_data, false);
 
-    bot.edit_message_text(message.chat.id, message.id, current_text)
+    bot.edit_message_text(message.chat().id, message.id(), current_text)
         .reply_markup(keyboard)
         .send()
         .await?;

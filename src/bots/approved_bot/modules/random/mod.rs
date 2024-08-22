@@ -6,7 +6,7 @@ use smartstring::alias::String as SmartString;
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardMarkup},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup, ReplyParameters},
 };
 
 use crate::bots::{
@@ -59,7 +59,7 @@ async fn random_handler(
     };
 
     bot.send_message(message.chat.id, MESSAGE_TEXT)
-        .reply_to_message_id(message.id)
+        .reply_parameters(ReplyParameters::new(message.id))
         .reply_markup(keyboard)
         .send()
         .await?;
@@ -99,7 +99,7 @@ where
 
     match cq.message {
         Some(message) => {
-            bot.edit_message_reply_markup(message.chat.id, message.id)
+            bot.edit_message_reply_markup(message.chat().id, message.id())
                 .reply_markup(InlineKeyboardMarkup {
                     inline_keyboard: vec![],
                 })
@@ -161,7 +161,7 @@ async fn get_genre_metas_handler(
             .collect(),
     };
 
-    bot.edit_message_reply_markup(message.chat.id, message.id)
+    bot.edit_message_reply_markup(message.chat().id, message.id())
         .reply_markup(keyboard)
         .send()
         .await?;
@@ -225,7 +225,7 @@ async fn get_genres_by_meta_handler(
         }
     };
 
-    bot.edit_message_reply_markup(message.chat.id, message.id)
+    bot.edit_message_reply_markup(message.chat().id, message.id())
         .reply_markup(keyboard)
         .send()
         .await?;

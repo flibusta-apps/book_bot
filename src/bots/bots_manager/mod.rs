@@ -1,6 +1,6 @@
 use teloxide::{
     adaptors::{CacheMe, Throttle},
-    prelude::*,
+    prelude::*, types::ReplyParameters,
 };
 
 use std::error::Error;
@@ -16,7 +16,7 @@ pub async fn message_handler(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let from_user = message.from().unwrap();
+    let from_user = message.clone().from.unwrap();
     let text = message.text().unwrap_or("");
 
     let result = register::register(from_user.id, text).await;
@@ -29,7 +29,7 @@ pub async fn message_handler(
     };
 
     bot.send_message(message.chat.id, message_text)
-        .reply_to_message_id(message.id)
+        .reply_parameters(ReplyParameters::new(message.id))
         .await?;
 
     Ok(())

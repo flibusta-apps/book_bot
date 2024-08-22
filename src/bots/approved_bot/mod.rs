@@ -73,7 +73,7 @@ fn update_user_activity_handler() -> BotHandler {
         )
         .branch(Update::filter_message().chain(dptree::filter_map_async(
             |message: Message, bot: CacheMe<Throttle<Bot>>| async move {
-                match message.from() {
+                match message.from {
                     Some(user) => _update_activity(bot.get_me().await.unwrap(), user.clone()).await,
                     None => None,
                 }

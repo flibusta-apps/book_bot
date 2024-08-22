@@ -109,7 +109,7 @@ async fn update_log_pagination_handler(
     .await?;
 
     if items_page.pages == 0 {
-        bot.send_message(message.chat.id, "Нет новых книг за этот период.")
+        bot.send_message(message.chat().id, "Нет новых книг за этот период.")
             .send()
             .await?;
         return Ok(());
@@ -140,7 +140,7 @@ async fn update_log_pagination_handler(
     let message_text = format!("{header}{formatted_page}");
 
     let keyboard = generic_get_pagination_keyboard(page, total_pages, update_callback_data, true);
-    bot.edit_message_text(message.chat.id, message.id, message_text)
+    bot.edit_message_text(message.chat().id, message.id(), message_text)
         .reply_markup(keyboard)
         .send()
         .await?;

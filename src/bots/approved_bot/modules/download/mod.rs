@@ -60,13 +60,13 @@ fn get_check_keyboard(task_id: String) -> InlineKeyboardMarkup {
 }
 
 async fn _send_cached(
-    message: &Message,
+    message: &MaybeInaccessibleMessage,
     bot: &CacheMe<Throttle<Bot>>,
     cached_message: CachedMessage,
 ) -> BotHandlerInternal {
     match bot
         .copy_message(
-            message.chat.id,
+            message.chat().id,
             Recipient::Id(ChatId(cached_message.chat_id)),
             MessageId(cached_message.message_id),
         )
@@ -79,7 +79,7 @@ async fn _send_cached(
 }
 
 async fn send_cached_message(
-    message: Message,
+    message: MaybeInaccessibleMessage,
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadQueryData,
     need_delete_message: bool,
@@ -94,7 +94,9 @@ async fn send_cached_message(
 
             if _send_cached(&message, &bot, cached).await.is_ok() {
                 if need_delete_message {
-                    bot.delete_message(message.chat.id, message.id).await?;
+                    if let MaybeInaccessibleMessage::Regular(message) = message.clone() {
+                        bot.delete_message(message.chat.id, message.id).await?;
+                    }
                 }
 
                 match send_donation_notification(bot.clone(), message).await {
@@ -113,7 +115,7 @@ async fn send_cached_message(
 }
 
 async fn _send_downloaded_file(
-    message: &Message,
+    message: &MaybeInaccessibleMessage,
     bot: CacheMe<Throttle<Bot>>,
     downloaded_data: DownloadFile,
 ) -> BotHandlerInternal {
@@ -131,7 +133,7 @@ async fn _send_downloaded_file(
 
     let document: InputFile = InputFile::read(data).file_name(filename.clone());
 
-    match bot.send_document(message.chat.id, document)
+    match bot.send_document(message.chat().id, document)
         .caption(caption)
         .send()
         .await {
@@ -152,7 +154,7 @@ async fn _send_downloaded_file(
 
 
 async fn send_with_download_from_channel(
-    message: Message,
+    message: MaybeInaccessibleMessage,
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadQueryData,
     need_delete_message: bool,
@@ -169,7 +171,9 @@ async fn send_with_download_from_channel(
             _send_downloaded_file(&message, bot.clone(), download_file).await?;
 
             if need_delete_message {
-                bot.delete_message(message.chat.id, message.id).await?;
+                if let MaybeInaccessibleMessage::Regular(message) = message {
+                    bot.delete_message(message.chat.id, message.id).await?;
+                };
             }
 
             Ok(())
@@ -180,7 +184,7 @@ async fn send_with_download_from_channel(
 
 
 async fn download_handler(
-    message: Message,
+    message: MaybeInaccessibleMessage,
     bot: CacheMe<Throttle<Bot>>,
     cache: BotCache,
     download_data: DownloadQueryData,
@@ -233,7 +237,7 @@ async fn get_download_keyboard_handler(
 
     bot.send_message(message.chat.id, "Выбери формат:")
         .reply_markup(keyboard)
-        .reply_to_message_id(message.id)
+        .reply_parameters(ReplyParameters::new(message.id))
         .send()
         .await?;
 
@@ -245,7 +249,7 @@ async fn get_download_archive_keyboard_handler(
     bot: CacheMe<Throttle<Bot>>,
     command: DownloadArchiveCommand,
 ) -> BotHandlerInternal {
-    let allowed_langs = get_user_or_default_lang_codes(message.from().unwrap().id).await;
+    let allowed_langs = get_user_or_default_lang_codes(message.from.unwrap().id).await;
 
     let available_types = match command {
         DownloadArchiveCommand::Sequence { id } => {
@@ -299,7 +303,7 @@ async fn get_download_archive_keyboard_handler(
 
     bot.send_message(message.chat.id, "Выбери формат:")
         .reply_markup(keyboard)
-        .reply_to_message_id(message.id)
+        .reply_parameters(ReplyParameters::new(message.id))
         .await?;
 
     Ok(())
@@ -347,9 +351,17 @@ async fn send_archive_link(
 async fn wait_archive(
     bot: CacheMe<Throttle<Bot>>,
     task_id: String,
-    message: Message,
+    input_message: MaybeInaccessibleMessage,
 ) -> BotHandlerInternal {
     let mut interval = time::interval(Duration::from_secs(15));
+
+    let message = match input_message {
+        MaybeInaccessibleMessage::Regular(message) => message,
+        _ => {
+            send_error_message(bot, input_message.chat().id, input_message.id()).await;
+            return Ok(());
+        }
+    };
 
     let task = loop {
         interval.tick().await;
@@ -420,7 +432,7 @@ async fn wait_archive(
         }
     };
 
-    match _send_downloaded_file(&message, bot.clone(), downloaded_data).await {
+    match _send_downloaded_file(&MaybeInaccessibleMessage::Regular(message.clone()), bot.clone(), downloaded_data).await {
         Ok(_) => (),
         Err(err) => {
             send_archive_link(bot.clone(), message.clone(), task).await?;
@@ -465,13 +477,13 @@ async fn download_archive(
     let task = match task {
         Ok(v) => v,
         Err(err) => {
-            send_error_message(bot, message.chat.id, message.id).await;
+            send_error_message(bot, message.chat().id, message.id()).await;
             log::error!("{:?}", err);
             return Err(err);
         }
     };
 
-    bot.edit_message_text(message.chat.id, message.id, "⏳ Подготовка архива...")
+    bot.edit_message_text(message.chat().id, message.id(), "⏳ Подготовка архива...")
         .reply_markup(get_check_keyboard(task.id.clone()))
         .send()
         .await?;

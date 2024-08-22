@@ -22,7 +22,7 @@ pub struct BookTranslator {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct BookGenre {
-    pub id: u32,
+    // pub id: u32,
     pub description: String,
 }
 
@@ -65,11 +65,11 @@ pub struct Sequence {
 #[derive(Deserialize, Debug, Clone)]
 pub struct Genre {
     pub id: u32,
-    pub source: Source,
-    pub remote_id: u32,
-    pub code: String,
+    // pub source: Source,
+    // pub remote_id: u32,
+    // pub code: String,
     pub description: String,
-    pub meta: String,
+    // pub meta: String,
 }
 
 #[derive(Default, Deserialize, Debug, Clone)]
@@ -78,11 +78,11 @@ pub struct Empty {}
 #[derive(Deserialize, Debug, Clone)]
 pub struct Page<T, P> {
     pub items: Vec<T>,
-    pub total: u32,
+    // pub total: u32,
 
-    pub page: u32,
+    // pub page: u32,
 
-    pub size: u32,
+    // pub size: u32,
     pub pages: u32,
 
     #[serde(default)]
@@ -173,16 +173,16 @@ where
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct BookAnnotation {
-    pub id: u32,
-    pub title: String,
+    // pub id: u32,
+    // pub title: String,
     pub text: String,
     pub file: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct AuthorAnnotation {
-    pub id: u32,
-    pub title: String,
+    // pub id: u32,
+    // pub title: String,
     pub text: String,
     pub file: Option<String>,
 }

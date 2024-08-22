@@ -1,9 +1,7 @@
 use crate::bots::BotHandlerInternal;
 
 use teloxide::{
-    adaptors::{CacheMe, Throttle},
-    prelude::*,
-    utils::command::BotCommands,
+    adaptors::{CacheMe, Throttle}, prelude::*, types::MaybeInaccessibleMessage, utils::command::BotCommands
 };
 
 #[derive(BotCommands, Clone)]
@@ -14,20 +12,28 @@ enum SupportCommand {
 }
 
 pub async fn support_command_handler(
-    message: Message,
+    orgingal_message: MaybeInaccessibleMessage,
     bot: CacheMe<Throttle<Bot>>,
 ) -> BotHandlerInternal {
-    let is_bot = message.from().unwrap().is_bot;
+    let message = match orgingal_message {
+        MaybeInaccessibleMessage::Regular(message) => message,
+        MaybeInaccessibleMessage::Inaccessible(_) => return Ok(()),
+    };
 
-    let username = if is_bot {
-        &message
-            .reply_to_message()
-            .unwrap()
-            .from()
-            .unwrap()
-            .first_name
-    } else {
-        &message.from().unwrap().first_name
+    let username = match message.clone().from {
+        Some(user) => {
+            match user.is_bot {
+                true => match message.reply_to_message() {
+                    Some(v) => match &v.from {
+                        Some(v) => v.first_name.clone(),
+                        None => "пользователь".to_string(),
+                    },
+                    None => "пользователь".to_string(),
+                },
+                false => user.first_name,
+            }
+        }
+        None => "пользователь".to_string(),
     };
 
     let message_text = format!(
@@ -59,7 +65,6 @@ The Open Network - TON:
 
     bot.send_message(message.chat.id, message_text)
         .parse_mode(teloxide::types::ParseMode::Html)
-        .disable_web_page_preview(true)
         .await?;
 
     Ok(())

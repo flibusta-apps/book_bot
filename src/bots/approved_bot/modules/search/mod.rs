@@ -9,7 +9,7 @@ use teloxide::{
     adaptors::{CacheMe, Throttle},
     dispatching::dialogue::GetChatId,
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardMarkup},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup, ReplyParameters},
 };
 
 use crate::bots::{
@@ -44,7 +44,7 @@ where
 {
     let chat_id = cq.chat_id();
     let user_id = cq.from.id;
-    let message_id = cq.message.as_ref().map(|message| message.id);
+    let message_id = cq.message.as_ref().map(|message| message.id());
     let query = get_query(cq);
 
     let (chat_id, query, message_id) = match (chat_id, query, message_id) {
@@ -151,7 +151,7 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
     };
 
     bot.send_message(message.chat.id, message_text)
-        .reply_to_message_id(message.id)
+        .reply_parameters(ReplyParameters::new(message.id))
         .reply_markup(keyboard)
         .send()
         .await?;

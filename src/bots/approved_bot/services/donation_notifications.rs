@@ -1,7 +1,5 @@
 use teloxide::{
-    adaptors::{CacheMe, Throttle},
-    types::Message,
-    Bot,
+    adaptors::{CacheMe, Throttle}, types::MaybeInaccessibleMessage, Bot
 };
 
 use crate::{
@@ -13,25 +11,25 @@ use super::user_settings::{is_need_donate_notifications, mark_donate_notificatio
 
 pub async fn send_donation_notification(
     bot: CacheMe<Throttle<Bot>>,
-    message: Message,
+    message: MaybeInaccessibleMessage,
 ) -> BotHandlerInternal {
     if CHAT_DONATION_NOTIFICATIONS_CACHE
-        .get(&message.chat.id)
+        .get(&message.chat().id)
         .await
         .is_some()
     {
         return Ok(());
-    } else if !is_need_donate_notifications(message.chat.id, message.chat.is_private()).await? {
+    } else if !is_need_donate_notifications(message.chat().id, message.chat().is_private()).await? {
         CHAT_DONATION_NOTIFICATIONS_CACHE
-            .insert(message.chat.id, ())
+            .insert(message.chat().id, ())
             .await;
         return Ok(());
     }
 
     CHAT_DONATION_NOTIFICATIONS_CACHE
-        .insert(message.chat.id, ())
+        .insert(message.chat().id, ())
         .await;
-    mark_donate_notification_sent(message.chat.id).await?;
+    mark_donate_notification_sent(message.chat().id).await?;
 
     support_command_handler(message, bot).await?;
 

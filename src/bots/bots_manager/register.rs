@@ -18,7 +18,7 @@ pub enum RegisterStatus {
 pub enum RegisterRequestStatus {
     Success,
     LimitExtended,
-    UnknownError { status_code: u16 },
+    UnknownError,
 }
 
 async fn get_bot_username(token: &str) -> Option<String> {
@@ -55,7 +55,7 @@ async fn make_register_request(
     Ok(match result.status().as_u16() {
         200 => RegisterRequestStatus::Success,
         402 => RegisterRequestStatus::LimitExtended,
-        status_code => RegisterRequestStatus::UnknownError { status_code },
+        _ => RegisterRequestStatus::UnknownError,
     })
 }
 
