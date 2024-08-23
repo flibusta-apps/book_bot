@@ -88,8 +88,8 @@ where
 
     if !annotation.is_normal_text() {
         return Err(Box::new(AnnotationFormatError {
-            command,
-            text: annotation.get_text().to_string(),
+            _command: command,
+            _text: annotation.get_text().to_string(),
         }));
     }
 
