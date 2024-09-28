@@ -446,8 +446,8 @@ impl Format for Book {
             };
 
             let position_prefix = match self.position {
+                Some(0) | None => "".to_string(),
                 Some(v) => format!("{v} | "),
-                None => "".to_string(),
             };
 
             format!("{position_prefix}📖 {title} | {lang}{year_part}{pages_count}\n")
