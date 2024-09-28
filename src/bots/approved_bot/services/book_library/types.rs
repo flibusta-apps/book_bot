@@ -205,6 +205,7 @@ pub struct Book {
     // id_deleted: bool,
     pub year: i32,
     pub pages: Option<u32>,
+    pub position: Option<i32>
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -236,6 +237,7 @@ impl From<SearchBook> for Book {
             genres: vec![],
             pages: None,
             year: value.year,
+            position: None
         }
     }
 }
@@ -268,6 +270,7 @@ impl From<AuthorBook> for Book {
             genres: vec![],
             pages: None,
             year: value.year,
+            position: None
         }
     }
 }
@@ -300,6 +303,7 @@ impl From<TranslatorBook> for Book {
             genres: vec![],
             pages: None,
             year: value.year,
+            position: None
         }
     }
 }
@@ -316,6 +320,7 @@ pub struct SequenceBook {
     pub translators: Vec<BookTranslator>,
     pub annotation_exists: bool,
     pub year: i32,
+    pub position: i32
 }
 
 impl From<SequenceBook> for Book {
@@ -332,6 +337,7 @@ impl From<SequenceBook> for Book {
             genres: vec![],
             pages: None,
             year: value.year,
+            position: Some(value.position)
         }
     }
 }

@@ -445,7 +445,12 @@ impl Format for Book {
                 Some(v) => format!(" | {v}с."),
             };
 
-            format!("📖 {title} | {lang}{year_part}{pages_count}\n")
+            let position_prefix = match self.position {
+                Some(v) => format!("{v} | "),
+                None => "".to_string(),
+            };
+
+            format!("{position_prefix}📖 {title} | {lang}{year_part}{pages_count}\n")
         };
 
         let annotations = match self.annotation_exists {
