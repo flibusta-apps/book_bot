@@ -109,8 +109,8 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
         axum::Router::new().route("/metrics", get(|| async move { metric_handle.render() }));
 
     let router = axum::Router::new()
-        .nest("/", app_router)
-        .nest("/", metric_router)
+        .merge(app_router)
+        .merge(metric_router)
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
