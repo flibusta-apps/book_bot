@@ -101,7 +101,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
     let start_bot_mutex = Arc::new(Mutex::new(()));
 
     let app_router = axum::Router::new()
-        .route("/:token/", post(telegram_request))
+        .route("/{token}/", post(telegram_request))
         .with_state(start_bot_mutex)
         .layer(prometheus_layer);
 
