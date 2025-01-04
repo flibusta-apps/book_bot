@@ -158,19 +158,12 @@ pub fn get_settings_handler() -> crate::bots::BotHandler {
             Update::filter_message().branch(
                 dptree::entry()
                     .filter_command::<SettingsCommand>()
-                    .endpoint(|message, bot| async move { settings_handler(message, bot).await }),
+                    .endpoint(settings_handler),
             ),
         )
         .branch(
             Update::filter_callback_query()
                 .chain(filter_callback_query::<SettingsCallbackData>())
-                .endpoint(
-                    |cq: CallbackQuery,
-                     bot: CacheMe<Throttle<Bot>>,
-                     callback_data: SettingsCallbackData,
-                     me: Me| async move {
-                        settings_callback_handler(cq, bot, callback_data, me).await
-                    },
-                ),
+                .endpoint(settings_callback_handler),
         )
 }

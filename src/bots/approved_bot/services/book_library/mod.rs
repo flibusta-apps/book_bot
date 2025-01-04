@@ -12,9 +12,7 @@ use crate::config;
 
 use self::types::Empty;
 
-
 pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
-
 
 fn get_allowed_langs_params(
     allowed_langs: SmallVec<[SmartString; 3]>,

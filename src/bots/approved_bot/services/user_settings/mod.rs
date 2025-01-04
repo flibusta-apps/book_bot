@@ -9,9 +9,7 @@ use tracing::log;
 
 use crate::{bots_manager::USER_LANGS_CACHE, config};
 
-
 pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
-
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Lang {
@@ -70,7 +68,7 @@ pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartS
         Err(err) => {
             log::error!("{:?}", err);
             default_lang_codes
-        },
+        }
     }
 }
 

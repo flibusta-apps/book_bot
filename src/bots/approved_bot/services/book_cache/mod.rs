@@ -2,15 +2,16 @@ use base64::{engine::general_purpose, Engine};
 use once_cell::sync::Lazy;
 use reqwest::StatusCode;
 
-use crate::{bots::approved_bot::modules::download::callback_data::DownloadQueryData, bots_manager::BotCache, config};
+use crate::{
+    bots::approved_bot::modules::download::callback_data::DownloadQueryData,
+    bots_manager::BotCache, config,
+};
 
 use self::types::{CachedMessage, DownloadFile};
 
 pub mod types;
 
-
 pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
-
 
 pub async fn get_cached_message(
     download_data: &DownloadQueryData,
@@ -39,7 +40,6 @@ pub async fn get_cached_message(
 
     Ok(Some(response.json::<CachedMessage>().await?))
 }
-
 
 pub async fn download_file(
     download_data: &DownloadQueryData,
@@ -90,15 +90,11 @@ pub async fn download_file(
     }))
 }
 
-
 pub async fn download_file_by_link(
     filename: String,
     link: String,
 ) -> Result<Option<DownloadFile>, Box<dyn std::error::Error + Send + Sync>> {
-    let response = CLIENT
-        .get(link)
-        .send()
-        .await?;
+    let response = CLIENT.get(link).send().await?;
 
     if response.status() != StatusCode::OK {
         return Ok(None);

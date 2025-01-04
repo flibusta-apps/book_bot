@@ -15,8 +15,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use smallvec::SmallVec;
-use tokio::time::{sleep, Duration};
 use tokio::sync::Semaphore;
+use tokio::time::{sleep, Duration};
 
 use teloxide::prelude::*;
 
@@ -137,7 +137,10 @@ impl BotsManager {
 
     pub async fn check_pending_updates() {
         for (token, bot_data) in BOTS_DATA.iter() {
-            let error_count = WEBHOOK_CHECK_ERRORS_COUNT.get(&bot_data.id).await.unwrap_or(0);
+            let error_count = WEBHOOK_CHECK_ERRORS_COUNT
+                .get(&bot_data.id)
+                .await
+                .unwrap_or(0);
 
             if error_count >= 3 {
                 continue;
@@ -154,19 +157,18 @@ impl BotsManager {
                     }
 
                     if webhook_info.last_error_message.is_some() {
-                        log::error!(
-                            "Webhook last error: {:?}",
-                            webhook_info.last_error_message
-                        );
+                        log::error!("Webhook last error: {:?}", webhook_info.last_error_message);
 
                         set_webhook(&bot_data).await;
                     }
-                },
+                }
                 Err(err) => {
                     log::error!("Error getting webhook info: {:?}", err);
 
-                    WEBHOOK_CHECK_ERRORS_COUNT.insert(bot_data.id, error_count + 1).await;
-                },
+                    WEBHOOK_CHECK_ERRORS_COUNT
+                        .insert(bot_data.id, error_count + 1)
+                        .await;
+                }
             }
         }
     }

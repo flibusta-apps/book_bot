@@ -6,9 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config;
 
-
 pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
-
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

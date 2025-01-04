@@ -47,7 +47,7 @@ pub fn get_help_handler() -> crate::bots::BotHandler {
         Update::filter_message().branch(
             dptree::entry()
                 .filter_command::<HelpCommand>()
-                .endpoint(|message, bot| async move { help_handler(message, bot).await }),
+                .endpoint(help_handler),
         ),
     )
 }

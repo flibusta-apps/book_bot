@@ -154,20 +154,14 @@ pub fn get_update_log_handler() -> crate::bots::BotHandler {
             Update::filter_message().branch(
                 dptree::entry()
                     .filter_command::<UpdateLogCommand>()
-                    .endpoint(|message, bot| async move { update_log_command(message, bot).await }),
+                    .endpoint(update_log_command),
             ),
         )
         .branch(
             Update::filter_callback_query().branch(
                 dptree::entry()
                     .chain(filter_callback_query::<UpdateLogCallbackData>())
-                    .endpoint(
-                        |cq: CallbackQuery,
-                         bot: CacheMe<Throttle<Bot>>,
-                         update_log_data: UpdateLogCallbackData| async move {
-                            update_log_pagination_handler(cq, bot, update_log_data).await
-                        },
-                    ),
+                    .endpoint(update_log_pagination_handler),
             ),
         )
 }

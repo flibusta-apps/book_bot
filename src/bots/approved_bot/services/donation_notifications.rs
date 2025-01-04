@@ -1,5 +1,7 @@
 use teloxide::{
-    adaptors::{CacheMe, Throttle}, types::MaybeInaccessibleMessage, Bot
+    adaptors::{CacheMe, Throttle},
+    types::MaybeInaccessibleMessage,
+    Bot,
 };
 
 use crate::{

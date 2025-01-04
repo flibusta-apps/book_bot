@@ -22,7 +22,9 @@ use crate::{
         approved_bot::{
             modules::download::callback_data::DownloadArchiveQueryData,
             services::{
-                batch_downloader::{create_task, get_task, CreateTaskData, Task, TaskObjectType, TaskStatus},
+                batch_downloader::{
+                    create_task, get_task, CreateTaskData, Task, TaskObjectType, TaskStatus,
+                },
                 book_cache::{
                     download_file, download_file_by_link, get_cached_message,
                     types::{CachedMessage, DownloadFile},
@@ -38,7 +40,8 @@ use crate::{
         },
         BotHandlerInternal,
     },
-    bots_manager::BotCache, config,
+    bots_manager::BotCache,
+    config,
 };
 
 use self::{
@@ -133,16 +136,18 @@ async fn _send_downloaded_file(
 
     let document: InputFile = InputFile::read(data).file_name(filename.clone());
 
-    match bot.send_document(message.chat().id, document)
+    match bot
+        .send_document(message.chat().id, document)
         .caption(caption)
         .send()
-        .await {
-            Ok(_) => (),
-            Err(err) => {
-                log::error!("Download error: {:?} | {:?}", filename, err);
-                return Err(Box::new(err));
-            }
+        .await
+    {
+        Ok(_) => (),
+        Err(err) => {
+            log::error!("Download error: {:?} | {:?}", filename, err);
+            return Err(Box::new(err));
         }
+    }
 
     match send_donation_notification(bot, message.clone()).await {
         Ok(_) => (),
@@ -151,7 +156,6 @@ async fn _send_downloaded_file(
 
     Ok(())
 }
-
 
 async fn send_with_download_from_channel(
     message: MaybeInaccessibleMessage,
@@ -165,7 +169,7 @@ async fn send_with_download_from_channel(
                 Some(v) => v,
                 None => {
                     return Ok(());
-                },
+                }
             };
 
             _send_downloaded_file(&message, bot.clone(), download_file).await?;
@@ -181,7 +185,6 @@ async fn send_with_download_from_channel(
         Err(err) => Err(err),
     }
 }
-
 
 async fn download_handler(
     message: MaybeInaccessibleMessage,
@@ -412,27 +415,29 @@ async fn wait_archive(
         task.id
     );
 
-    let downloaded_data = match download_file_by_link(
-        task.clone().result_filename.unwrap(),
-        link,
+    let downloaded_data =
+        match download_file_by_link(task.clone().result_filename.unwrap(), link).await {
+            Ok(v) => match v {
+                Some(v) => v,
+                None => {
+                    send_error_message(bot, message.chat.id, message.id).await;
+                    return Ok(());
+                }
+            },
+            Err(err) => {
+                send_error_message(bot, message.chat.id, message.id).await;
+                log::error!("{:?}", err);
+                return Err(err);
+            }
+        };
+
+    match _send_downloaded_file(
+        &MaybeInaccessibleMessage::Regular(message.clone()),
+        bot.clone(),
+        downloaded_data,
     )
     .await
     {
-        Ok(v) => match v {
-            Some(v) => v,
-            None => {
-                send_error_message(bot, message.chat.id, message.id).await;
-                return Ok(());
-            },
-        },
-        Err(err) => {
-            send_error_message(bot, message.chat.id, message.id).await;
-            log::error!("{:?}", err);
-            return Err(err);
-        }
-    };
-
-    match _send_downloaded_file(&MaybeInaccessibleMessage::Regular(message.clone()), bot.clone(), downloaded_data).await {
         Ok(_) => (),
         Err(err) => {
             send_archive_link(bot.clone(), message.clone(), task).await?;

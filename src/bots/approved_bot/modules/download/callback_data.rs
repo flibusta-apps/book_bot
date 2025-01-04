@@ -53,7 +53,9 @@ impl Display for DownloadArchiveQueryData {
             DownloadArchiveQueryData::Sequence { id, file_type } => {
                 write!(f, "da_s_{}_{}", id, file_type)
             }
-            DownloadArchiveQueryData::Author { id, file_type } => write!(f, "da_a_{}_{}", id, file_type),
+            DownloadArchiveQueryData::Author { id, file_type } => {
+                write!(f, "da_a_{}_{}", id, file_type)
+            }
             DownloadArchiveQueryData::Translator { id, file_type } => {
                 write!(f, "da_t_{}_{}", id, file_type)
             }

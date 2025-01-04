@@ -1,7 +1,9 @@
 use crate::bots::BotHandlerInternal;
 
 use teloxide::{
-    adaptors::{CacheMe, Throttle}, prelude::*, utils::command::BotCommands
+    adaptors::{CacheMe, Throttle},
+    prelude::*,
+    utils::command::BotCommands,
 };
 
 #[derive(BotCommands, Clone)]
@@ -16,18 +18,16 @@ pub async fn support_command_handler(
     bot: CacheMe<Throttle<Bot>>,
 ) -> BotHandlerInternal {
     let username = match message.clone().from {
-        Some(user) => {
-            match user.is_bot {
-                true => match message.reply_to_message() {
-                    Some(v) => match &v.from {
-                        Some(v) => v.first_name.clone(),
-                        None => "пользователь".to_string(),
-                    },
+        Some(user) => match user.is_bot {
+            true => match message.reply_to_message() {
+                Some(v) => match &v.from {
+                    Some(v) => v.first_name.clone(),
                     None => "пользователь".to_string(),
                 },
-                false => user.first_name,
-            }
-        }
+                None => "пользователь".to_string(),
+            },
+            false => user.first_name,
+        },
         None => "пользователь".to_string(),
     };
 

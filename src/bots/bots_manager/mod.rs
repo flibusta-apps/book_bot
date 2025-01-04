@@ -1,6 +1,7 @@
 use teloxide::{
     adaptors::{CacheMe, Throttle},
-    prelude::*, types::ReplyParameters,
+    prelude::*,
+    types::ReplyParameters,
 };
 
 use std::error::Error;
@@ -10,7 +11,6 @@ use self::{strings::format_registered_message, utils::get_token};
 pub mod register;
 pub mod strings;
 pub mod utils;
-
 
 pub async fn message_handler(
     message: Message,

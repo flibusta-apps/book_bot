@@ -3,9 +3,7 @@ use serde::Deserialize;
 
 use crate::config;
 
-
 pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
-
 
 #[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum BotCache {
@@ -36,7 +34,6 @@ pub async fn get_bots() -> Result<Vec<BotData>, reqwest::Error> {
         Err(err) => Err(err),
     }
 }
-
 
 pub async fn delete_bot(id: u32) -> Result<(), reqwest::Error> {
     let response = CLIENT
