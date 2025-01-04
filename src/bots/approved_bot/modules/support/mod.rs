@@ -1,7 +1,7 @@
 use crate::bots::BotHandlerInternal;
 
 use teloxide::{
-    adaptors::{CacheMe, Throttle}, prelude::*, types::MaybeInaccessibleMessage, utils::command::BotCommands
+    adaptors::{CacheMe, Throttle}, prelude::*, utils::command::BotCommands
 };
 
 #[derive(BotCommands, Clone)]
@@ -12,14 +12,9 @@ enum SupportCommand {
 }
 
 pub async fn support_command_handler(
-    orgingal_message: MaybeInaccessibleMessage,
+    message: Message,
     bot: CacheMe<Throttle<Bot>>,
 ) -> BotHandlerInternal {
-    let message = match orgingal_message {
-        MaybeInaccessibleMessage::Regular(message) => message,
-        MaybeInaccessibleMessage::Inaccessible(_) => return Ok(()),
-    };
-
     let username = match message.clone().from {
         Some(user) => {
             match user.is_bot {

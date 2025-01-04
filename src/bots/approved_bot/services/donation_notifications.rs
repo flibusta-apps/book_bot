@@ -31,7 +31,12 @@ pub async fn send_donation_notification(
         .await;
     mark_donate_notification_sent(message.chat().id).await?;
 
-    support_command_handler(message, bot).await?;
+    match message {
+        MaybeInaccessibleMessage::Regular(message) => {
+            support_command_handler(message, bot).await?;
+        }
+        MaybeInaccessibleMessage::Inaccessible(_) => {}
+    }
 
     Ok(())
 }
