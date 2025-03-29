@@ -36,11 +36,12 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
         let (_, r_tx) = match BOTS_ROUTES.get(&token).await {
             Some(tx) => tx,
             None => {
-                let bot_data = BOTS_DATA.get(&token).await;
-
-                if bot_data.is_none() {
-                    return StatusCode::NOT_FOUND;
-                }
+                let bot_data = match BOTS_DATA.get(&token).await {
+                    Some(v) => v,
+                    None => {
+                        return StatusCode::NOT_FOUND;
+                    }
+                };
 
                 'creator: {
                     let _guard = start_bot_mutex.lock().await;
@@ -49,10 +50,16 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
                         break 'creator;
                     }
 
-                    start_bot(&bot_data.unwrap()).await
+                    start_bot(&bot_data).await
                 }
 
-                BOTS_ROUTES.get(&token).await.unwrap()
+                match BOTS_ROUTES.get(&token).await {
+                    None => {
+                        log::error!("Cannot get a bot with token: {}", token);
+                        return StatusCode::SERVICE_UNAVAILABLE;
+                    }
+                    Some(v) => v,
+                }
             }
         };
 
