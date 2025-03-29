@@ -97,7 +97,7 @@ impl BotsManager {
     }
 
     async fn check_unininted(bots_data: &[BotData]) {
-        let semaphore = Arc::new(Semaphore::const_new(10));
+        let semaphore = Arc::new(Semaphore::const_new(5));
         let mut set_webhook_tasks = JoinSet::new();
 
         for bot_data in bots_data.iter() {
