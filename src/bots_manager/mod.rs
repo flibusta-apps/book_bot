@@ -192,6 +192,8 @@ impl BotsManager {
     }
 
     pub async fn start(running: Arc<AtomicBool>) {
+        BotsManager::check().await;
+
         start_axum_server(running.clone()).await;
 
         let mut tick_number: i32 = 0;
