@@ -33,7 +33,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
         Path(token): Path<String>,
         input: String,
     ) -> impl IntoResponse {
-        let (_, r_tx) = match BOTS_ROUTES.get(&token).await {
+        let (_, stop_flag, r_tx) = match BOTS_ROUTES.get(&token).await {
             Some(tx) => tx,
             None => {
                 let bot_data = match BOTS_DATA.get(&token).await {
@@ -64,23 +64,22 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
         };
 
         let tx = match r_tx.get() {
-            Some(v) => v,
             None => {
                 BOTS_ROUTES.remove(&token).await;
                 return StatusCode::SERVICE_UNAVAILABLE;
             }
+            Some(v) => v,
         };
+
+        if stop_flag.is_stopped() {
+            BOTS_ROUTES.remove(&token).await;
+            return StatusCode::SERVICE_UNAVAILABLE;
+        }
 
         match serde_json::from_str::<Update>(&input) {
             Ok(mut update) => {
-                if let UpdateKind::Error(_) = &mut update.kind {
-                    log::warn!(
-                        "Cannot parse an update.\nValue: {}\n\
-                         This is a bug in teloxide-core, please open an issue here: \
-                         https://github.com/teloxide/teloxide/issues.",
-                        input
-                    );
-                    return StatusCode::OK;
+                if let UpdateKind::Error(value) = &mut update.kind {
+                    *value = serde_json::from_str(&input).unwrap_or_default();
                 }
 
                 if let Err(err) = tx.send(Ok(update)) {
@@ -90,7 +89,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
                 }
             }
             Err(error) => {
-                log::warn!(
+                log::error!(
                     "Cannot parse an update.\nError: {:?}\nValue: {}\n\
                      This is a bug in teloxide-core, please open an issue here: \
                      https://github.com/teloxide/teloxide/issues.",

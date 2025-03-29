@@ -7,7 +7,7 @@ pub mod utils;
 use once_cell::sync::Lazy;
 use smartstring::alias::String as SmartString;
 use teloxide::adaptors::throttle::Limits;
-use teloxide::stop::StopToken;
+use teloxide::stop::{StopFlag, StopToken};
 use tokio::task::JoinSet;
 use tracing::log;
 
@@ -58,6 +58,7 @@ pub static WEBHOOK_CHECK_ERRORS_COUNT: Lazy<Cache<u32, u32>> = Lazy::new(|| {
 
 type StopTokenWithSender = (
     StopToken,
+    StopFlag,
     ClosableSender<Result<Update, std::convert::Infallible>>,
 );
 
@@ -68,7 +69,7 @@ pub static BOTS_ROUTES: Lazy<Cache<String, StopTokenWithSender>> = Lazy::new(|| 
         .eviction_listener(|token, value: StopTokenWithSender, _cause| {
             log::info!("Stop Bot(token={})!", token);
 
-            let (stop_token, mut sender) = value;
+            let (stop_token, _stop_flag, mut sender) = value;
 
             stop_token.stop();
             sender.close();
@@ -147,7 +148,7 @@ impl BotsManager {
     }
 
     pub async fn stop_all() {
-        for (_, (stop_token, _)) in BOTS_ROUTES.iter() {
+        for (_, (stop_token, _, _)) in BOTS_ROUTES.iter() {
             stop_token.stop();
         }
 

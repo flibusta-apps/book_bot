@@ -102,7 +102,7 @@ pub async fn start_bot(bot_data: &BotData) {
         .dependencies(dptree::deps![bot_data.cache])
         .build();
 
-    let (stop_token, _stop_flag, tx, listener) = get_listener();
+    let (stop_token, stop_flag, tx, listener) = get_listener();
 
     tokio::spawn(async move {
         dispatcher
@@ -114,6 +114,9 @@ pub async fn start_bot(bot_data: &BotData) {
     });
 
     BOTS_ROUTES
-        .insert(token.to_string(), (stop_token, ClosableSender::new(tx)))
+        .insert(
+            token.to_string(),
+            (stop_token, stop_flag, ClosableSender::new(tx)),
+        )
         .await;
 }
