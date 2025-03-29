@@ -128,7 +128,7 @@ impl BotsManager {
         }
     }
 
-    async fn check() {
+    async fn check(only_bot_data: bool) {
         let bots_data = get_bots().await;
 
         let bots_data = match bots_data {
@@ -140,7 +140,10 @@ impl BotsManager {
         };
 
         let _ = BotsManager::check_bots_data(&bots_data).await;
-        let _ = BotsManager::check_unininted(&bots_data).await;
+
+        if !only_bot_data {
+            let _ = BotsManager::check_unininted(&bots_data).await;
+        }
     }
 
     pub async fn stop_all() {
@@ -192,7 +195,7 @@ impl BotsManager {
     }
 
     pub async fn start(running: Arc<AtomicBool>) {
-        BotsManager::check().await;
+        BotsManager::check(true).await;
 
         start_axum_server(running.clone()).await;
 
@@ -207,7 +210,7 @@ impl BotsManager {
             }
 
             if tick_number % 30 == 0 {
-                BotsManager::check().await;
+                BotsManager::check(false).await;
             }
 
             if tick_number % 180 == 60 {
