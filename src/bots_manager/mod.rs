@@ -77,26 +77,31 @@ pub static BOTS_ROUTES: Lazy<Cache<String, StopTokenWithSender>> = Lazy::new(|| 
 });
 
 pub static BOTS_DATA: Lazy<Cache<String, BotData>> = Lazy::new(|| Cache::builder().build());
+pub static INITED_BOTS_IDS: Lazy<Cache<u32, ()>> = Lazy::new(|| Cache::builder().build());
 
 pub struct BotsManager;
 
 impl BotsManager {
-    async fn check() {
-        let bots_data = get_bots().await;
-
-        let bots_data = match bots_data {
-            Ok(v) => v,
-            Err(err) => {
-                log::info!("{:?}", err);
-                return;
+    async fn check_bots_data(bots: &[BotData]) {
+        for bot_data in bots.iter() {
+            if BOTS_DATA.contains_key(&bot_data.token) {
+                continue;
             }
-        };
 
+            let bot_data: BotData = bot_data.clone();
+
+            BOTS_DATA
+                .insert(bot_data.token.clone(), bot_data.clone())
+                .await;
+        }
+    }
+
+    async fn check_unininted(bots_data: &[BotData]) {
         let semaphore = Arc::new(Semaphore::const_new(10));
         let mut set_webhook_tasks = JoinSet::new();
 
         for bot_data in bots_data.iter() {
-            if BOTS_DATA.contains_key(&bot_data.token) {
+            if INITED_BOTS_IDS.contains_key(&bot_data.id) {
                 continue;
             }
 
@@ -109,9 +114,7 @@ impl BotsManager {
                 let webhook_status = set_webhook(&bot_data).await;
 
                 if webhook_status {
-                    BOTS_DATA
-                        .insert(bot_data.token.clone(), bot_data.clone())
-                        .await;
+                    INITED_BOTS_IDS.insert(bot_data.id, ()).await;
                 }
 
                 drop(_permit);
@@ -123,6 +126,21 @@ impl BotsManager {
                 break;
             }
         }
+    }
+
+    async fn check() {
+        let bots_data = get_bots().await;
+
+        let bots_data = match bots_data {
+            Ok(v) => v,
+            Err(err) => {
+                log::info!("{:?}", err);
+                return;
+            }
+        };
+
+        let _ = BotsManager::check_bots_data(&bots_data).await;
+        let _ = BotsManager::check_unininted(&bots_data).await;
     }
 
     pub async fn stop_all() {
