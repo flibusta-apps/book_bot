@@ -324,7 +324,7 @@ async fn send_error_message(bot: CacheMe<Throttle<Bot>>, chat_id: ChatId, messag
 
 async fn send_archive_link(
     bot: CacheMe<Throttle<Bot>>,
-    message: Message,
+    message: Box<Message>,
     task: Task,
 ) -> BotHandlerInternal {
     let link = format!(
