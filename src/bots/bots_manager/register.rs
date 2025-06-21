@@ -83,6 +83,6 @@ pub async fn register(user_id: UserId, message_text: &str) -> RegisterStatus {
             username: bot_username,
         },
         RegisterRequestStatus::LimitExtended => RegisterStatus::LimitExtended,
-        RegisterRequestStatus::UnknownError { .. } => RegisterStatus::RegisterFail,
+        RegisterRequestStatus::UnknownError => RegisterStatus::RegisterFail,
     }
 }

@@ -37,7 +37,6 @@ pub async fn message_handler(
 
 pub fn get_manager_handler() -> Handler<
     'static,
-    dptree::di::DependencyMap,
     Result<(), Box<dyn Error + Send + Sync>>,
     teloxide::dispatching::DpHandlerDescription,
 > {

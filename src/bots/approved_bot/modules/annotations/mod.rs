@@ -73,7 +73,7 @@ where
         if let Ok(v) = image_response {
             let data = v
                 .bytes_stream()
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+                .map_err(std::io::Error::other)
                 .into_async_read()
                 .compat();
 

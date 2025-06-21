@@ -7,12 +7,7 @@ use teloxide::prelude::*;
 
 pub type BotHandlerInternal = Result<(), Box<dyn Error + Send + Sync>>;
 
-type BotHandler = Handler<
-    'static,
-    dptree::di::DependencyMap,
-    BotHandlerInternal,
-    teloxide::dispatching::DpHandlerDescription,
->;
+type BotHandler = Handler<'static, BotHandlerInternal, teloxide::dispatching::DpHandlerDescription>;
 
 type BotCommands = Option<Vec<teloxide::types::BotCommand>>;
 
