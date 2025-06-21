@@ -2,6 +2,7 @@ use crate::bots::BotHandlerInternal;
 
 use teloxide::{
     adaptors::{CacheMe, Throttle},
+    dispatching::UpdateFilterExt,
     prelude::*,
     utils::command::BotCommands,
 };
@@ -57,9 +58,7 @@ pub async fn support_command_handler(
 }
 
 pub fn get_support_handler() -> crate::bots::BotHandler {
-    dptree::entry().branch(
-        Update::filter_message()
-            .filter_command::<SupportCommand>()
-            .endpoint(support_command_handler),
-    )
+    Update::filter_message()
+        .filter_command::<SupportCommand>()
+        .endpoint(support_command_handler)
 }
