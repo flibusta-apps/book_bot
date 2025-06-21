@@ -35,7 +35,7 @@ pub async fn send_donation_notification(
 
     match message {
         MaybeInaccessibleMessage::Regular(message) => {
-            support_command_handler(message, bot).await?;
+            support_command_handler(*message, bot).await?;
         }
         MaybeInaccessibleMessage::Inaccessible(_) => {}
     }

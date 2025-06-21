@@ -15,7 +15,7 @@ enum SupportCommand {
 }
 
 pub async fn support_command_handler(
-    message: Box<Message>,
+    message: Message,
     bot: CacheMe<Throttle<Bot>>,
 ) -> BotHandlerInternal {
     let username = match message.clone().from {
