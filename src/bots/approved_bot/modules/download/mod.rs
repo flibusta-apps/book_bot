@@ -98,7 +98,7 @@ async fn send_cached_message(
             if _send_cached(&message, &bot, cached).await.is_ok() {
                 if need_delete_message {
                     if let MaybeInaccessibleMessage::Regular(message) = message.clone() {
-                        bot.delete_message(message.chat.id, message.id).await?;
+                        let _ = bot.delete_message(message.chat.id, message.id).await;
                     }
                 }
 
@@ -174,7 +174,7 @@ async fn send_with_download_from_channel(
 
     if need_delete_message {
         if let MaybeInaccessibleMessage::Regular(message) = message {
-            bot.delete_message(message.chat.id, message.id).await?;
+            let _ = bot.delete_message(message.chat.id, message.id).await;
         };
     }
 
@@ -440,7 +440,7 @@ async fn wait_archive(
         }
     }
 
-    bot.delete_message(message.chat.id, message.id).await?;
+    let _ = bot.delete_message(message.chat.id, message.id).await;
 
     Ok(())
 }
