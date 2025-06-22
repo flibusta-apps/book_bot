@@ -368,6 +368,7 @@ dependencies = [
 name = "book_bot"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum",
  "axum-prometheus",
  "base64",

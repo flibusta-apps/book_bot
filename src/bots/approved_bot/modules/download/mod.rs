@@ -77,7 +77,7 @@ async fn _send_cached(
         .await
     {
         Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
+        Err(err) => Err(err.into()),
     }
 }
 
@@ -145,7 +145,7 @@ async fn _send_downloaded_file(
         Ok(_) => (),
         Err(err) => {
             log::error!("Download error: {:?} | {:?}", filename, err);
-            return Err(Box::new(err));
+            return Err(err.into());
         }
     }
 
@@ -163,27 +163,22 @@ async fn send_with_download_from_channel(
     download_data: DownloadQueryData,
     need_delete_message: bool,
 ) -> BotHandlerInternal {
-    match download_file(&download_data).await {
-        Ok(v) => {
-            let download_file = match v {
-                Some(v) => v,
-                None => {
-                    return Ok(());
-                }
-            };
-
-            _send_downloaded_file(&message, bot.clone(), download_file).await?;
-
-            if need_delete_message {
-                if let MaybeInaccessibleMessage::Regular(message) = message {
-                    bot.delete_message(message.chat.id, message.id).await?;
-                };
-            }
-
-            Ok(())
+    let downloaded_file = match download_file(&download_data).await? {
+        Some(v) => v,
+        None => {
+            return Ok(());
         }
-        Err(err) => Err(err),
+    };
+
+    _send_downloaded_file(&message, bot.clone(), downloaded_file).await?;
+
+    if need_delete_message {
+        if let MaybeInaccessibleMessage::Regular(message) = message {
+            bot.delete_message(message.chat.id, message.id).await?;
+        };
     }
+
+    Ok(())
 }
 
 async fn download_handler(

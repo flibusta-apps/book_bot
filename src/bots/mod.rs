@@ -1,11 +1,9 @@
 mod approved_bot;
 pub mod bots_manager;
 
-use std::error::Error;
-
 use teloxide::prelude::*;
 
-pub type BotHandlerInternal = Result<(), Box<dyn Error + Send + Sync>>;
+pub type BotHandlerInternal = anyhow::Result<()>;
 
 type BotHandler = Handler<'static, BotHandlerInternal, teloxide::dispatching::DpHandlerDescription>;
 
@@ -27,7 +25,7 @@ fn ignore_user_edited_message() -> crate::bots::BotHandler {
     dptree::entry().branch(Update::filter_edited_message().endpoint(|| async { Ok(()) }))
 }
 
-fn ingore_chat_join_request() -> crate::bots::BotHandler {
+fn ignore_chat_join_request() -> crate::bots::BotHandler {
     dptree::entry().branch(Update::filter_chat_join_request().endpoint(|| async { Ok(()) }))
 }
 

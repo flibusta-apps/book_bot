@@ -46,7 +46,7 @@ pub async fn send_annotation_handler<T, Fut>(
 ) -> BotHandlerInternal
 where
     T: AnnotationFormat,
-    Fut: std::future::Future<Output = Result<T, Box<dyn std::error::Error + Send + Sync>>>,
+    Fut: std::future::Future<Output = anyhow::Result<T>>,
 {
     let id = match command {
         AnnotationCommand::Book { id } => id,
@@ -63,7 +63,7 @@ where
             .await
         {
             Ok(_) => Ok(()),
-            Err(err) => Err(Box::new(err)),
+            Err(err) => Err(err.into()),
         };
     };
 
@@ -87,10 +87,11 @@ where
     };
 
     if !annotation.is_normal_text() {
-        return Err(Box::new(AnnotationFormatError {
+        return Err(AnnotationFormatError {
             _command: command,
             _text: annotation.get_text().to_string(),
-        }));
+        }
+        .into());
     }
 
     let annotation_text = annotation.get_text();
@@ -120,7 +121,7 @@ pub async fn annotation_pagination_handler<T, Fut>(
 ) -> BotHandlerInternal
 where
     T: AnnotationFormat,
-    Fut: std::future::Future<Output = Result<T, Box<dyn std::error::Error + Send + Sync>>>,
+    Fut: std::future::Future<Output = anyhow::Result<T>>,
 {
     let (id, page) = match callback_data {
         AnnotationCallbackData::Book { id, page } => (id, page),

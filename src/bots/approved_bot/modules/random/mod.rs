@@ -70,7 +70,7 @@ async fn random_handler(
 async fn get_random_item_handler_internal<T>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
-    item: Result<T, Box<dyn std::error::Error + Send + Sync>>,
+    item: anyhow::Result<T>,
 ) -> BotHandlerInternal
 where
     T: Format,
@@ -118,7 +118,7 @@ async fn get_random_item_handler<T, Fut>(
 ) -> BotHandlerInternal
 where
     T: Format,
-    Fut: std::future::Future<Output = Result<T, Box<dyn std::error::Error + Send + Sync>>>,
+    Fut: std::future::Future<Output = anyhow::Result<T>>,
 {
     let allowed_langs = get_user_or_default_lang_codes(cq.from.id).await;
 

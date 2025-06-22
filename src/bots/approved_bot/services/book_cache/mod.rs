@@ -43,7 +43,7 @@ pub async fn get_cached_message(
 
 pub async fn download_file(
     download_data: &DownloadQueryData,
-) -> Result<Option<DownloadFile>, Box<dyn std::error::Error + Send + Sync>> {
+) -> anyhow::Result<Option<DownloadFile>> {
     let DownloadQueryData::DownloadData {
         book_id: id,
         file_type: format,
@@ -93,7 +93,7 @@ pub async fn download_file(
 pub async fn download_file_by_link(
     filename: String,
     link: String,
-) -> Result<Option<DownloadFile>, Box<dyn std::error::Error + Send + Sync>> {
+) -> anyhow::Result<Option<DownloadFile>> {
     let response = CLIENT.get(link).send().await?;
 
     if response.status() != StatusCode::OK {

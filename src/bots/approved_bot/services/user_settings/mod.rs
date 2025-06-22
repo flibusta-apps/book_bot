@@ -79,7 +79,7 @@ pub async fn create_or_update_user_settings(
     username: String,
     source: String,
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> Result<UserSettings, Box<dyn std::error::Error + Send + Sync>> {
+) -> anyhow::Result<UserSettings> {
     USER_LANGS_CACHE.invalidate(&user_id).await;
 
     let body = json!({
@@ -103,7 +103,7 @@ pub async fn create_or_update_user_settings(
     Ok(response.json::<UserSettings>().await?)
 }
 
-pub async fn get_langs() -> Result<Vec<Lang>, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn get_langs() -> anyhow::Result<Vec<Lang>> {
     let response = CLIENT
         .get(format!("{}/languages/", &config::CONFIG.user_settings_url))
         .header("Authorization", &config::CONFIG.user_settings_api_key)
@@ -114,9 +114,7 @@ pub async fn get_langs() -> Result<Vec<Lang>, Box<dyn std::error::Error + Send +
     Ok(response.json::<Vec<Lang>>().await?)
 }
 
-pub async fn update_user_activity(
-    user_id: UserId,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn update_user_activity(user_id: UserId) -> anyhow::Result<()> {
     CLIENT
         .post(format!(
             "{}/users/{user_id}/update_activity",
@@ -133,7 +131,7 @@ pub async fn update_user_activity(
 pub async fn is_need_donate_notifications(
     chat_id: ChatId,
     is_private: bool,
-) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+) -> anyhow::Result<bool> {
     let response = CLIENT
         .get(format!(
             "{}/donate_notifications/{chat_id}/is_need_send?is_private={is_private}",
@@ -147,9 +145,7 @@ pub async fn is_need_donate_notifications(
     Ok(response.json::<bool>().await?)
 }
 
-pub async fn mark_donate_notification_sent(
-    chat_id: ChatId,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn mark_donate_notification_sent(chat_id: ChatId) -> anyhow::Result<()> {
     CLIENT
         .post(format!(
             "{}/donate_notifications/{chat_id}",

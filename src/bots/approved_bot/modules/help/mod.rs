@@ -38,7 +38,7 @@ pub async fn help_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotH
         .await
     {
         Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
+        Err(err) => Err(err.into()),
     }
 }
 

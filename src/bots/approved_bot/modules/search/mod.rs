@@ -40,7 +40,7 @@ async fn generic_search_pagination_handler<T, P, Fut>(
 where
     T: Format + Clone + Debug,
     P: FormatTitle + Clone + Debug,
-    Fut: std::future::Future<Output = Result<Page<T, P>, Box<dyn std::error::Error + Send + Sync>>>,
+    Fut: std::future::Future<Output = anyhow::Result<Page<T, P>>>,
 {
     let chat_id = cq.chat_id();
     let user_id = cq.from.id;
@@ -106,11 +106,11 @@ where
             };
     }
 
-    let formated_page = items_page.format(page, 4096);
+    let formatted_page = items_page.format(page, 4096);
 
     let keyboard = generic_get_pagination_keyboard(page, items_page.pages, search_data, true);
 
-    bot.edit_message_text(chat_id, message_id, formated_page)
+    bot.edit_message_text(chat_id, message_id, formatted_page)
         .reply_markup(keyboard)
         .send()
         .await?;

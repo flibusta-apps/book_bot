@@ -1,10 +1,9 @@
+use anyhow;
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
     types::ReplyParameters,
 };
-
-use std::error::Error;
 
 use self::{strings::format_registered_message, utils::get_token};
 
@@ -12,10 +11,7 @@ pub mod register;
 pub mod strings;
 pub mod utils;
 
-pub async fn message_handler(
-    message: Message,
-    bot: CacheMe<Throttle<Bot>>,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
+pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> anyhow::Result<()> {
     let from_user = message.clone().from.unwrap();
     let text = message.text().unwrap_or("");
 
@@ -35,11 +31,8 @@ pub async fn message_handler(
     Ok(())
 }
 
-pub fn get_manager_handler() -> Handler<
-    'static,
-    Result<(), Box<dyn Error + Send + Sync>>,
-    teloxide::dispatching::DpHandlerDescription,
-> {
+pub fn get_manager_handler(
+) -> Handler<'static, anyhow::Result<()>, teloxide::dispatching::DpHandlerDescription> {
     Update::filter_message().branch(
         Message::filter_text()
             .chain(dptree::filter(|message: Message| {

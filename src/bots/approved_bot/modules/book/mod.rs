@@ -39,7 +39,7 @@ async fn send_book_handler<T, P, Fut>(
 where
     T: Format + Clone + Debug,
     P: FormatTitle + Clone + Debug,
-    Fut: std::future::Future<Output = Result<Page<T, P>, Box<dyn std::error::Error + Send + Sync>>>,
+    Fut: std::future::Future<Output = anyhow::Result<Page<T, P>>>,
 {
     let id = match command {
         BookCommand::Author { id } => id,
@@ -59,7 +59,7 @@ where
                 .await
             {
                 Ok(_) => Ok(()),
-                Err(err) => Err(Box::new(err)),
+                Err(err) => Err(err.into()),
             }
         }
     };
@@ -110,7 +110,7 @@ async fn send_pagination_book_handler<T, P, Fut>(
 where
     T: Format + Clone + Debug,
     P: FormatTitle + Clone + Debug,
-    Fut: std::future::Future<Output = Result<Page<T, P>, Box<dyn std::error::Error + Send + Sync>>>,
+    Fut: std::future::Future<Output = anyhow::Result<Page<T, P>>>,
 {
     let (id, page) = match callback_data {
         BookCallbackData::Author { id, page } => (id, page),

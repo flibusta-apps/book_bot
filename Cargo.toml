@@ -54,3 +54,4 @@ smartstring = { version = "1.0.1", features = ["serde"] }
 moka = { version = "0.12.10", features = ["future"] }
 
 sentry = { version = "0.40.0", features = ["debug-images"] }
+anyhow = "1.0.98"

@@ -69,7 +69,7 @@ async fn update_log_command(message: Message, bot: CacheMe<Throttle<Bot>>) -> Bo
         .await
     {
         Ok(_) => Ok(()),
-        Err(err) => Err(Box::new(err)),
+        Err(err) => Err(err.into()),
     }
 }
 

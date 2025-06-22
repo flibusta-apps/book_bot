@@ -43,9 +43,7 @@ pub struct Task {
     pub content_size: Option<u64>,
 }
 
-pub async fn create_task(
-    data: CreateTaskData,
-) -> Result<Task, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn create_task(data: CreateTaskData) -> anyhow::Result<Task> {
     Ok(CLIENT
         .post(format!("{}/api/", &config::CONFIG.batch_downloader_url))
         .body(serde_json::to_string(&data).unwrap())
@@ -58,7 +56,7 @@ pub async fn create_task(
         .await?)
 }
 
-pub async fn get_task(task_id: String) -> Result<Task, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn get_task(task_id: String) -> anyhow::Result<Task> {
     Ok(CLIENT
         .get(format!(
             "{}/api/check_archive/{task_id}",
