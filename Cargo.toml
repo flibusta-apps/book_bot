@@ -21,7 +21,7 @@ tower-http = { version = "0.6.2", features = ["trace"] }
 
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-sentry-tracing = "0.36.0"
+sentry-tracing = "0.41.0"
 
 reqwest = { version = "0.12.15", features = ["json", "stream"] }
 
@@ -53,5 +53,5 @@ smartstring = { version = "1.0.1", features = ["serde"] }
 
 moka = { version = "0.12.10", features = ["future"] }
 
-sentry = { version = "0.40.0", features = ["debug-images"] }
+sentry = { version = "0.41.0", features = ["debug-images"] }
 anyhow = "1.0.98"
