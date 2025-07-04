@@ -47,9 +47,9 @@ pub enum DownloadArchiveCommand {
 impl Display for DownloadArchiveCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DownloadArchiveCommand::Sequence { id } => write!(f, "/da_s_{}", id),
-            DownloadArchiveCommand::Author { id } => write!(f, "/da_a_{}", id),
-            DownloadArchiveCommand::Translator { id } => write!(f, "/da_t_{}", id),
+            DownloadArchiveCommand::Sequence { id } => write!(f, "/da_s_{id}"),
+            DownloadArchiveCommand::Author { id } => write!(f, "/da_a_{id}"),
+            DownloadArchiveCommand::Translator { id } => write!(f, "/da_t_{id}"),
         }
     }
 }

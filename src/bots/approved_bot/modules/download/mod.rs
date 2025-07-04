@@ -104,7 +104,7 @@ async fn send_cached_message(
 
                 match send_donation_notification(bot.clone(), message).await {
                     Ok(_) => (),
-                    Err(err) => log::error!("{:?}", err),
+                    Err(err) => log::error!("{err:?}"),
                 }
 
                 return Ok(());
@@ -144,14 +144,14 @@ async fn _send_downloaded_file(
     {
         Ok(_) => (),
         Err(err) => {
-            log::error!("Download error: {:?} | {:?}", filename, err);
+            log::error!("Download error: {filename:?} | {err:?}");
             return Err(err.into());
         }
     }
 
     match send_donation_notification(bot, message.clone()).await {
         Ok(_) => (),
-        Err(err) => log::error!("{:?}", err),
+        Err(err) => log::error!("{err:?}"),
     };
 
     Ok(())
@@ -333,8 +333,7 @@ async fn send_archive_link(
         message.id,
         format!(
             "Файл не может быть загружен в чат! \n \
-                    Вы можете скачать его <a href=\"{}\">по ссылке</a> (работает 3 часа)",
-            link
+                    Вы можете скачать его <a href=\"{link}\">по ссылке</a> (работает 3 часа)"
         ),
     )
     .parse_mode(ParseMode::Html)
@@ -368,7 +367,7 @@ async fn wait_archive(
             Ok(v) => v,
             Err(err) => {
                 send_error_message(bot, message.chat.id, message.id).await;
-                log::error!("{:?}", err);
+                log::error!("{err:?}");
                 return Err(err);
             }
         };
@@ -421,7 +420,7 @@ async fn wait_archive(
             },
             Err(err) => {
                 send_error_message(bot, message.chat.id, message.id).await;
-                log::error!("{:?}", err);
+                log::error!("{err:?}");
                 return Err(err);
             }
         };
@@ -436,7 +435,7 @@ async fn wait_archive(
         Ok(_) => (),
         Err(err) => {
             send_archive_link(bot.clone(), message.clone(), task).await?;
-            log::error!("{:?}", err);
+            log::error!("{err:?}");
         }
     }
 
@@ -478,7 +477,7 @@ async fn download_archive(
         Ok(v) => v,
         Err(err) => {
             send_error_message(bot, message.chat().id, message.id()).await;
-            log::error!("{:?}", err);
+            log::error!("{err:?}");
             return Err(err);
         }
     };

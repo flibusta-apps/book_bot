@@ -16,7 +16,7 @@ impl Display for DownloadQueryData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DownloadQueryData::DownloadData { book_id, file_type } => {
-                write!(f, "d_{}_{}", book_id, file_type)
+                write!(f, "d_{book_id}_{file_type}")
             }
         }
     }
@@ -51,13 +51,13 @@ impl Display for DownloadArchiveQueryData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DownloadArchiveQueryData::Sequence { id, file_type } => {
-                write!(f, "da_s_{}_{}", id, file_type)
+                write!(f, "da_s_{id}_{file_type}")
             }
             DownloadArchiveQueryData::Author { id, file_type } => {
-                write!(f, "da_a_{}_{}", id, file_type)
+                write!(f, "da_a_{id}_{file_type}")
             }
             DownloadArchiveQueryData::Translator { id, file_type } => {
-                write!(f, "da_t_{}_{}", id, file_type)
+                write!(f, "da_t_{id}_{file_type}")
             }
         }
     }
@@ -82,7 +82,7 @@ impl FromStr for DownloadArchiveQueryData {
                 "s" => DownloadArchiveQueryData::Sequence { id, file_type },
                 "a" => DownloadArchiveQueryData::Author { id, file_type },
                 "t" => DownloadArchiveQueryData::Translator { id, file_type },
-                _ => panic!("Unknown DownloadArchiveQueryData type: {}!", obj_type),
+                _ => panic!("Unknown DownloadArchiveQueryData type: {obj_type}!"),
             })
     }
 }

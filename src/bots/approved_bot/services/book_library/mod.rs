@@ -38,7 +38,7 @@ where
     match response.json::<T>().await {
         Ok(v) => Ok(v),
         Err(err) => {
-            log::error!("Failed serialization: url={:?} err={:?}", url, err);
+            log::error!("Failed serialization: url={url:?} err={err:?}");
             Err(err.into())
         }
     }

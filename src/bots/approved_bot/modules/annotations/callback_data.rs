@@ -31,7 +31,7 @@ impl FromStr for AnnotationCallbackData {
                 |(annotation_type, id, page)| match annotation_type.as_str() {
                     "a" => AnnotationCallbackData::Author { id, page },
                     "b" => AnnotationCallbackData::Book { id, page },
-                    _ => panic!("Unknown AnnotationCallbackData type: {}!", annotation_type),
+                    _ => panic!("Unknown AnnotationCallbackData type: {annotation_type}!"),
                 },
             )
     }
@@ -40,8 +40,8 @@ impl FromStr for AnnotationCallbackData {
 impl Display for AnnotationCallbackData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AnnotationCallbackData::Book { id, page } => write!(f, "b_an_{}_{}", id, page),
-            AnnotationCallbackData::Author { id, page } => write!(f, "a_an_{}_{}", id, page),
+            AnnotationCallbackData::Book { id, page } => write!(f, "b_an_{id}_{page}"),
+            AnnotationCallbackData::Author { id, page } => write!(f, "a_an_{id}_{page}"),
         }
     }
 }

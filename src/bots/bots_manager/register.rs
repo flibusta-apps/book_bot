@@ -25,7 +25,7 @@ async fn get_bot_username(token: &str) -> Option<String> {
     match Bot::new(token).get_me().send().await {
         Ok(v) => v.username.clone(),
         Err(err) => {
-            log::error!("Bot reg (getting username) error: {:?}", err);
+            log::error!("Bot reg (getting username) error: {err:?}");
             None
         }
     }
@@ -72,7 +72,7 @@ pub async fn register(user_id: UserId, message_text: &str) -> RegisterStatus {
     let result = match register_request_status {
         Ok(v) => v,
         Err(err) => {
-            log::error!("Bot reg error: {:?}", err);
+            log::error!("Bot reg error: {err:?}");
 
             return RegisterStatus::RegisterFail;
         }

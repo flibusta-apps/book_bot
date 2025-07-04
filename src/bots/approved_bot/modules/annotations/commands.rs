@@ -27,7 +27,7 @@ impl CommandParse<Self> for AnnotationCommand {
             .map(|(annotation_type, id)| match annotation_type.as_str() {
                 "a" => Ok(AnnotationCommand::Author { id }),
                 "b" => Ok(AnnotationCommand::Book { id }),
-                _ => panic!("Unknown AnnotationCommand type: {}!", annotation_type),
+                _ => panic!("Unknown AnnotationCommand type: {annotation_type}!"),
             })?
     }
 }

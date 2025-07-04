@@ -55,7 +55,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
 
                 match BOTS_ROUTES.get(&token).await {
                     None => {
-                        log::error!("Cannot get a bot with token: {}", token);
+                        log::error!("Cannot get a bot with token: {token}");
                         return StatusCode::SERVICE_UNAVAILABLE;
                     }
                     Some(v) => v,
@@ -83,18 +83,16 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
                 }
 
                 if let Err(err) = tx.send(Ok(update)) {
-                    log::error!("{:?}", err);
+                    log::error!("{err:?}");
                     BOTS_ROUTES.remove(&token).await;
                     return StatusCode::SERVICE_UNAVAILABLE;
                 }
             }
             Err(error) => {
                 log::error!(
-                    "Cannot parse an update.\nError: {:?}\nValue: {}\n\
+                    "Cannot parse an update.\nError: {error:?}\nValue: {input}\n\
                      This is a bug in teloxide-core, please open an issue here: \
-                     https://github.com/teloxide/teloxide/issues.",
-                    error,
-                    input
+                     https://github.com/teloxide/teloxide/issues."
                 );
             }
         };

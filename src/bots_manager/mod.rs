@@ -22,6 +22,8 @@ use teloxide::prelude::*;
 
 use moka::future::Cache;
 
+use crate::bots_manager::bot_manager_client::delete_bot;
+
 use self::axum_server::start_axum_server;
 use self::bot_manager_client::get_bots;
 pub use self::bot_manager_client::{BotCache, BotData};
@@ -67,7 +69,7 @@ pub static BOTS_ROUTES: Lazy<Cache<String, StopTokenWithSender>> = Lazy::new(|| 
         .time_to_idle(Duration::from_secs(60 * 60))
         .max_capacity(100)
         .eviction_listener(|token, value: StopTokenWithSender, _cause| {
-            log::info!("Stop Bot(token={})!", token);
+            log::info!("Stop Bot(token={token})!");
 
             let (stop_token, _stop_flag, mut sender) = value;
 
@@ -135,7 +137,7 @@ impl BotsManager {
         let bots_data = match bots_data {
             Ok(v) => v,
             Err(err) => {
-                log::info!("{:?}", err);
+                log::info!("{err:?}");
                 return;
             }
         };
@@ -185,7 +187,15 @@ impl BotsManager {
                     }
                 }
                 Err(err) => {
-                    log::error!("Error getting webhook info: {:?}", err);
+                    if err.to_string().contains("Api(InvalidToken)") {
+                        BOTS_DATA.invalidate(token.as_str()).await;
+                        if let Err(d_err) = delete_bot(bot_data.id).await {
+                            log::error!("Error deleting bot {}: {:?}", bot_data.id, d_err);
+                        };
+                        continue;
+                    }
+
+                    log::error!("Error getting webhook info: {err:?}");
 
                     WEBHOOK_CHECK_ERRORS_COUNT
                         .insert(bot_data.id, error_count + 1)

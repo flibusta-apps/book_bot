@@ -146,7 +146,7 @@ where
                 .await
             {
                 Ok(_) => (),
-                Err(err) => log::error!("{:?}", err),
+                Err(err) => log::error!("{err:?}"),
             }
             return Err(err);
         }

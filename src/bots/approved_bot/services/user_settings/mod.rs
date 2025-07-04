@@ -66,7 +66,7 @@ pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartS
             langs
         }
         Err(err) => {
-            log::error!("{:?}", err);
+            log::error!("{err:?}");
             default_lang_codes
         }
     }

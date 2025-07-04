@@ -5,7 +5,7 @@ pub struct CallbackQueryParseError;
 
 impl fmt::Display for CallbackQueryParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -16,7 +16,7 @@ pub struct CommandParseError;
 
 impl fmt::Display for CommandParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

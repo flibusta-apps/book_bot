@@ -44,7 +44,7 @@ impl Display for UpdateLogCallbackData {
         let to = self.to.format(date_format);
         let page = self.page;
 
-        write!(f, "update_log_{}_{}_{}", from, to, page)
+        write!(f, "update_log_{from}_{to}_{page}")
     }
 }
 

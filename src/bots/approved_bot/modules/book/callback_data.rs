@@ -33,7 +33,7 @@ impl FromStr for BookCallbackData {
                     "a" => Ok(BookCallbackData::Author { id, page }),
                     "t" => Ok(BookCallbackData::Translator { id, page }),
                     "s" => Ok(BookCallbackData::Sequence { id, page }),
-                    _ => panic!("Unknown BookCallbackData type: {}!", annotation_type),
+                    _ => panic!("Unknown BookCallbackData type: {annotation_type}!"),
                 },
             )?
     }
@@ -42,9 +42,9 @@ impl FromStr for BookCallbackData {
 impl Display for BookCallbackData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BookCallbackData::Author { id, page } => write!(f, "ba_{}_{}", id, page),
-            BookCallbackData::Translator { id, page } => write!(f, "bt_{}_{}", id, page),
-            BookCallbackData::Sequence { id, page } => write!(f, "bs_{}_{}", id, page),
+            BookCallbackData::Author { id, page } => write!(f, "ba_{id}_{page}"),
+            BookCallbackData::Translator { id, page } => write!(f, "bt_{id}_{page}"),
+            BookCallbackData::Sequence { id, page } => write!(f, "bs_{id}_{page}"),
         }
     }
 }

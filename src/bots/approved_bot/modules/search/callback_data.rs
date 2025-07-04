@@ -16,10 +16,10 @@ pub enum SearchCallbackData {
 impl Display for SearchCallbackData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SearchCallbackData::Book { page } => write!(f, "sb_{}", page),
-            SearchCallbackData::Authors { page } => write!(f, "sa_{}", page),
-            SearchCallbackData::Sequences { page } => write!(f, "ss_{}", page),
-            SearchCallbackData::Translators { page } => write!(f, "st_{}", page),
+            SearchCallbackData::Book { page } => write!(f, "sb_{page}"),
+            SearchCallbackData::Authors { page } => write!(f, "sa_{page}"),
+            SearchCallbackData::Sequences { page } => write!(f, "ss_{page}"),
+            SearchCallbackData::Translators { page } => write!(f, "st_{page}"),
         }
     }
 }

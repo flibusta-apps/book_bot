@@ -22,7 +22,7 @@ impl CommandParse<Self> for BookCommand {
                 "a" => Ok(BookCommand::Author { id }),
                 "t" => Ok(BookCommand::Translator { id }),
                 "s" => Ok(BookCommand::Sequence { id }),
-                _ => panic!("Unknown BookCommand type: {}!", annotation_type),
+                _ => panic!("Unknown BookCommand type: {annotation_type}!"),
             })?
     }
 }

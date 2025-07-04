@@ -71,7 +71,7 @@ pub async fn set_webhook(bot_data: &BotData) -> bool {
                 }
             }
 
-            log::error!("Webhook set error: {}", err);
+            log::error!("Webhook set error: {err}");
             false
         }
     }
@@ -95,7 +95,7 @@ pub async fn start_bot(bot_data: &BotData) {
     };
     match set_command_result {
         Ok(_) => (),
-        Err(err) => log::error!("{:?}", err),
+        Err(err) => log::error!("{err:?}"),
     }
 
     let mut dispatcher = Dispatcher::builder(bot.clone(), handler)

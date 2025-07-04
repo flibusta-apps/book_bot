@@ -41,8 +41,8 @@ impl Display for SettingsCallbackData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SettingsCallbackData::Settings => write!(f, "lang_settings"),
-            SettingsCallbackData::On { code } => write!(f, "lang_on_{}", code),
-            SettingsCallbackData::Off { code } => write!(f, "lang_off_{}", code),
+            SettingsCallbackData::On { code } => write!(f, "lang_on_{code}"),
+            SettingsCallbackData::Off { code } => write!(f, "lang_off_{code}"),
         }
     }
 }
