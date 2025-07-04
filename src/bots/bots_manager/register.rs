@@ -24,10 +24,7 @@ pub enum RegisterRequestStatus {
 async fn get_bot_username(token: &str) -> Option<String> {
     match Bot::new(token).get_me().send().await {
         Ok(v) => v.username.clone(),
-        Err(err) => {
-            log::error!("Bot reg (getting username) error: {err:?}");
-            None
-        }
+        Err(_) => None,
     }
 }
 

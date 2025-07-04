@@ -134,25 +134,14 @@ async fn _send_downloaded_file(
         .into_async_read()
         .compat();
 
-    let document: InputFile = InputFile::read(data).file_name(filename.clone());
+    let document = InputFile::read(data).file_name(filename.clone());
 
-    match bot
-        .send_document(message.chat().id, document)
+    bot.send_document(message.chat().id, document)
         .caption(caption)
         .send()
-        .await
-    {
-        Ok(_) => (),
-        Err(err) => {
-            log::error!("Download error: {filename:?} | {err:?}");
-            return Err(err.into());
-        }
-    }
+        .await?;
 
-    match send_donation_notification(bot, message.clone()).await {
-        Ok(_) => (),
-        Err(err) => log::error!("{err:?}"),
-    };
+    send_donation_notification(bot, message.clone()).await?;
 
     Ok(())
 }
