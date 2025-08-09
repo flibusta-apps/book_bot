@@ -74,10 +74,10 @@ pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartS
 
 pub async fn create_or_update_user_settings(
     user_id: UserId,
-    last_name: String,
-    first_name: String,
-    username: String,
-    source: String,
+    last_name: &str,
+    first_name: &str,
+    username: &str,
+    source: &str,
     allowed_langs: SmallVec<[SmartString; 3]>,
 ) -> anyhow::Result<UserSettings> {
     USER_LANGS_CACHE.invalidate(&user_id).await;

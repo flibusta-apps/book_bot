@@ -118,10 +118,10 @@ async fn settings_callback_handler(
 
     if let Err(err) = create_or_update_user_settings(
         user.id,
-        user.last_name.clone().unwrap_or("".to_string()),
-        user.first_name.clone(),
-        user.username.clone().unwrap_or("".to_string()),
-        me.username.clone().unwrap(),
+        &user.last_name.unwrap_or("".to_string()),
+        &user.first_name,
+        &user.username.unwrap_or("".to_string()),
+        &me.username.clone().unwrap(),
         allowed_langs_set.clone().into_iter().collect(),
     )
     .await

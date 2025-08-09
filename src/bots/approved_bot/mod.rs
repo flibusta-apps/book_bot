@@ -41,10 +41,10 @@ async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) 
 
             if create_or_update_user_settings(
                 user.id,
-                user.last_name.clone().unwrap_or("".to_string()),
-                user.first_name.clone(),
-                user.username.clone().unwrap_or("".to_string()),
-                me.username.clone().unwrap(),
+                &user.last_name.unwrap_or("".to_string()),
+                &user.first_name,
+                &user.username.unwrap_or("".to_string()),
+                &me.username.clone().unwrap_or("".to_string()),
                 allowed_langs,
             )
             .await
@@ -64,21 +64,18 @@ async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) 
 
 fn update_user_activity_handler() -> BotHandler {
     dptree::entry()
-        .branch(
-            Update::filter_callback_query().chain(dptree::filter_map_async(
-                |cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>| async move {
-                    _update_activity(bot.get_me().await.unwrap(), cq.from).await
-                },
-            )),
-        )
-        .branch(Update::filter_message().chain(dptree::filter_map_async(
+        .branch(Update::filter_callback_query().inspect_async(
+            |cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>| async move {
+                _update_activity(bot.get_me().await.unwrap(), cq.from).await;
+            },
+        ))
+        .branch(Update::filter_message().inspect_async(
             |message: Message, bot: CacheMe<Throttle<Bot>>| async move {
-                match message.from {
-                    Some(user) => _update_activity(bot.get_me().await.unwrap(), user.clone()).await,
-                    None => None,
+                if let Some(user) = message.from {
+                    _update_activity(bot.get_me().await.unwrap(), user).await;
                 }
             },
-        )))
+        ))
 }
 
 pub fn get_approved_handler() -> (BotHandler, BotCommands) {

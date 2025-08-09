@@ -115,7 +115,7 @@ impl FormatInline for BookTranslator {
     }
 }
 
-fn format_authors(authors: Vec<BookAuthor>, count: usize) -> String {
+fn format_authors(authors: &[BookAuthor], count: usize) -> String {
     if count == 0 {
         return "".to_string();
     }
@@ -139,7 +139,7 @@ fn format_authors(authors: Vec<BookAuthor>, count: usize) -> String {
     }
 }
 
-fn format_translators(translators: Vec<BookTranslator>, count: usize) -> String {
+fn format_translators(translators: &[BookTranslator], count: usize) -> String {
     if count == 0 {
         return "".to_string();
     }
@@ -163,7 +163,7 @@ fn format_translators(translators: Vec<BookTranslator>, count: usize) -> String 
     }
 }
 
-fn format_sequences(sequences: Vec<Sequence>, count: usize) -> String {
+fn format_sequences(sequences: &[Sequence], count: usize) -> String {
     if count == 0 {
         return "".to_string();
     }
@@ -187,7 +187,7 @@ fn format_sequences(sequences: Vec<Sequence>, count: usize) -> String {
     }
 }
 
-fn format_genres(genres: Vec<BookGenre>, count: usize) -> String {
+fn format_genres(genres: &[BookGenre], count: usize) -> String {
     if count == 0 {
         return "".to_string();
     }
@@ -395,117 +395,231 @@ impl FormatVectorsResult {
     }
 }
 
-impl Book {
-    fn format_vectors(&self, max_size: usize) -> FormatVectorsResult {
-        let mut counts = FormatVectorsCounts {
-            authors: self.authors.len(),
-            translators: self.translators.len(),
-            sequences: self.sequences.len(),
-            genres: self.genres.len(),
-        };
+fn format_vectors(
+    authors: &[BookAuthor],
+    translators: &[BookTranslator],
+    sequences: &[Sequence],
+    genres: &[BookGenre],
+    max_size: usize,
+) -> FormatVectorsResult {
+    let mut counts = FormatVectorsCounts {
+        authors: authors.len(),
+        translators: translators.len(),
+        sequences: sequences.len(),
+        genres: genres.len(),
+    };
 
-        let mut result = FormatVectorsResult {
-            authors: format_authors(self.authors.clone(), counts.authors),
-            translators: format_translators(self.translators.clone(), counts.translators),
-            sequences: format_sequences(self.sequences.clone(), counts.sequences),
-            genres: format_genres(self.genres.clone(), counts.genres),
+    let mut result = FormatVectorsResult {
+        authors: format_authors(authors, counts.authors),
+        translators: format_translators(translators, counts.translators),
+        sequences: format_sequences(sequences, counts.sequences),
+        genres: format_genres(genres, counts.genres),
+        max_result_size: 0,
+    };
+
+    let max_result_size = result.len();
+
+    while result.len() > max_size && counts.can_sub() {
+        counts = counts.sub();
+
+        result = FormatVectorsResult {
+            authors: format_authors(authors, counts.authors),
+            translators: format_translators(translators, counts.translators),
+            sequences: format_sequences(sequences, counts.sequences),
+            genres: format_genres(genres, counts.genres),
             max_result_size: 0,
         };
+    }
 
-        let max_result_size = result.len();
+    result.with_max_result_size(max_result_size)
+}
 
-        while result.len() > max_size && counts.can_sub() {
-            counts = counts.sub();
+struct FormatData<'a> {
+    pub id: u32,
+    pub title: &'a str,
+    pub lang: &'a str,
+    pub annotation_exists: bool,
+    pub authors: &'a [BookAuthor],
+    pub translators: &'a [BookTranslator],
+    pub sequences: &'a [Sequence],
+    pub genres: &'a [BookGenre],
+    pub year: i32,
+    pub pages: Option<u32>,
+    pub position: Option<i32>,
+}
 
-            result = FormatVectorsResult {
-                authors: format_authors(self.authors.clone(), counts.authors),
-                translators: format_translators(self.translators.clone(), counts.translators),
-                sequences: format_sequences(self.sequences.clone(), counts.sequences),
-                genres: format_genres(self.genres.clone(), counts.genres),
-                max_result_size: 0,
-            };
+fn format_common(data: FormatData, max_size: usize) -> FormatResult {
+    let FormatData {
+        id,
+        title,
+        lang,
+        annotation_exists,
+        authors,
+        translators,
+        sequences,
+        genres,
+        year,
+        pages,
+        position,
+    } = data;
+
+    let book_title = {
+        let year_part = match year {
+            0 => "".to_string(),
+            v => format!(" | {v}г."),
+        };
+
+        let pages_count = match pages {
+            Some(1) | None => "".to_string(),
+            Some(v) => format!(" | {v}с."),
+        };
+
+        let position_prefix = match position {
+            Some(0) | None => "".to_string(),
+            Some(v) => format!("{v} | "),
+        };
+
+        format!("{position_prefix}📖 {title} | {lang}{year_part}{pages_count}\n")
+    };
+
+    let annotations = match annotation_exists {
+        true => {
+            format!("📝 Аннотация: /b_an_{id}\n")
         }
+        false => "".to_string(),
+    };
 
-        result.with_max_result_size(max_result_size)
+    let download_command = (StartDownloadCommand { id }).to_string();
+    let download_links = format!("Скачать:\n📥{download_command}");
+
+    let required_data_len: usize = format!("{book_title}{annotations}{download_links}").len();
+    let FormatVectorsResult {
+        authors,
+        translators,
+        sequences,
+        genres,
+        max_result_size,
+    } = format_vectors(
+        authors,
+        translators,
+        sequences,
+        genres,
+        max_size - required_data_len,
+    );
+
+    let result = format!(
+        "{book_title}{annotations}{authors}{translators}{sequences}{genres}{download_links}"
+    );
+    let result_len = result.len();
+
+    FormatResult {
+        result,
+        current_size: result_len,
+        max_size: max_result_size + required_data_len,
     }
 }
 
 impl Format for Book {
     fn format(&self, max_size: usize) -> FormatResult {
-        let book_title = {
-            let Book { title, lang, .. } = self;
-
-            let year_part = match self.year {
-                0 => "".to_string(),
-                v => format!(" | {v}г."),
-            };
-
-            let pages_count = match self.pages {
-                Some(1) | None => "".to_string(),
-                Some(v) => format!(" | {v}с."),
-            };
-
-            let position_prefix = match self.position {
-                Some(0) | None => "".to_string(),
-                Some(v) => format!("{v} | "),
-            };
-
-            format!("{position_prefix}📖 {title} | {lang}{year_part}{pages_count}\n")
-        };
-
-        let annotations = match self.annotation_exists {
-            true => {
-                let Book { id, .. } = self;
-                format!("📝 Аннотация: /b_an_{id}\n")
-            }
-            false => "".to_string(),
-        };
-
-        let download_command = (StartDownloadCommand { id: self.id }).to_string();
-        let download_links = format!("Скачать:\n📥{download_command}");
-
-        let required_data_len: usize = format!("{book_title}{annotations}{download_links}").len();
-        let FormatVectorsResult {
-            authors,
-            translators,
-            sequences,
-            genres,
-            max_result_size,
-        } = self.format_vectors(max_size - required_data_len);
-
-        let result = format!(
-            "{book_title}{annotations}{authors}{translators}{sequences}{genres}{download_links}"
-        );
-        let result_len = result.len();
-
-        FormatResult {
-            result,
-            current_size: result_len,
-            max_size: max_result_size + required_data_len,
-        }
+        format_common(
+            FormatData {
+                id: self.id,
+                title: &self.title,
+                lang: &self.lang,
+                annotation_exists: self.annotation_exists,
+                authors: &self.authors,
+                translators: &self.translators,
+                sequences: &self.sequences,
+                genres: &self.genres,
+                year: self.year,
+                pages: self.pages,
+                position: self.position,
+            },
+            max_size,
+        )
     }
 }
 
 impl Format for SearchBook {
     fn format(&self, max_size: usize) -> FormatResult {
-        Into::<Book>::into(self.clone()).format(max_size)
+        format_common(
+            FormatData {
+                id: self.id,
+                title: &self.title,
+                lang: &self.lang,
+                annotation_exists: self.annotation_exists,
+                authors: &self.authors,
+                translators: &self.translators,
+                sequences: &self.sequences,
+                genres: &[],
+                year: self.year,
+                pages: None,
+                position: None,
+            },
+            max_size,
+        )
     }
 }
 
 impl Format for AuthorBook {
     fn format(&self, max_size: usize) -> FormatResult {
-        Into::<Book>::into(self.clone()).format(max_size)
+        format_common(
+            FormatData {
+                id: self.id,
+                title: &self.title,
+                lang: &self.lang,
+                annotation_exists: self.annotation_exists,
+                authors: &[],
+                translators: &self.translators,
+                sequences: &self.sequences,
+                genres: &[],
+                year: self.year,
+                pages: None,
+                position: None,
+            },
+            max_size,
+        )
     }
 }
 
 impl Format for TranslatorBook {
     fn format(&self, max_size: usize) -> FormatResult {
-        Into::<Book>::into(self.clone()).format(max_size)
+        format_common(
+            FormatData {
+                id: self.id,
+                title: &self.title,
+                lang: &self.lang,
+                annotation_exists: self.annotation_exists,
+                authors: &self.authors,
+                translators: &[],
+                sequences: &self.sequences,
+                genres: &[],
+                year: self.year,
+                pages: None,
+                position: None,
+            },
+            max_size,
+        )
     }
 }
 
 impl Format for SequenceBook {
     fn format(&self, max_size: usize) -> FormatResult {
-        Into::<Book>::into(self.clone()).format(max_size)
+        format_common(
+            FormatData {
+                id: self.id,
+                title: &self.title,
+                lang: &self.lang,
+                annotation_exists: self.annotation_exists,
+                authors: &self.authors,
+                translators: &self.translators,
+                sequences: &[],
+                genres: &[],
+                year: self.year,
+                pages: None,
+                position: Some(self.position),
+            },
+            max_size,
+        )
     }
 }

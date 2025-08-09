@@ -149,6 +149,8 @@ where
             .map(|item| item_size - item.current_size)
             .sum();
 
+        use std::borrow::Cow;
+
         self.items
             .iter()
             .enumerate()
@@ -156,17 +158,17 @@ where
                 let already_formated_result = &format_result[index];
 
                 if already_formated_result.current_size == already_formated_result.max_size {
-                    already_formated_result.result.clone()
+                    Cow::Borrowed(already_formated_result.result.as_str())
                 } else {
                     let new_item_size = item_size + free_symbols;
                     let new_formated_result = item.format(new_item_size);
 
                     free_symbols = new_item_size - new_formated_result.current_size;
 
-                    new_formated_result.result
+                    Cow::Owned(new_formated_result.result)
                 }
             })
-            .collect::<Vec<String>>()
+            .collect::<Vec<Cow<str>>>()
             .join(separator)
     }
 }
@@ -192,17 +194,12 @@ pub struct Book {
     pub id: u32,
     pub title: String,
     pub lang: String,
-    // file_type: String,
     pub available_types: SmallVec<[String; 4]>,
-    // uploaded: String,
     pub annotation_exists: bool,
     pub authors: Vec<BookAuthor>,
     pub translators: Vec<BookTranslator>,
     pub sequences: Vec<Sequence>,
     pub genres: Vec<BookGenre>,
-    // source: Source,
-    // remote_id: u32,
-    // id_deleted: bool,
     pub year: i32,
     pub pages: Option<u32>,
     pub position: Option<i32>,
@@ -213,33 +210,11 @@ pub struct SearchBook {
     pub id: u32,
     pub title: String,
     pub lang: String,
-    // file_type: String,
-    pub available_types: SmallVec<[String; 4]>,
-    // uploaded: String,
     pub annotation_exists: bool,
     pub authors: Vec<BookAuthor>,
     pub translators: Vec<BookTranslator>,
     pub sequences: Vec<Sequence>,
     pub year: i32,
-}
-
-impl From<SearchBook> for Book {
-    fn from(value: SearchBook) -> Self {
-        Book {
-            id: value.id,
-            title: value.title,
-            lang: value.lang,
-            available_types: value.available_types,
-            annotation_exists: value.annotation_exists,
-            authors: value.authors,
-            translators: value.translators,
-            sequences: value.sequences,
-            genres: vec![],
-            pages: None,
-            year: value.year,
-            position: None,
-        }
-    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -247,32 +222,10 @@ pub struct AuthorBook {
     pub id: u32,
     pub title: String,
     pub lang: String,
-    // file_type: String,
-    pub available_types: SmallVec<[String; 4]>,
-    // uploaded: String,
     pub annotation_exists: bool,
     pub translators: Vec<BookTranslator>,
     pub sequences: Vec<Sequence>,
     pub year: i32,
-}
-
-impl From<AuthorBook> for Book {
-    fn from(value: AuthorBook) -> Self {
-        Book {
-            id: value.id,
-            title: value.title,
-            lang: value.lang,
-            available_types: value.available_types,
-            annotation_exists: value.annotation_exists,
-            authors: vec![],
-            translators: value.translators,
-            sequences: value.sequences,
-            genres: vec![],
-            pages: None,
-            year: value.year,
-            position: None,
-        }
-    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -280,32 +233,10 @@ pub struct TranslatorBook {
     pub id: u32,
     pub title: String,
     pub lang: String,
-    // file_type: String,
-    pub available_types: SmallVec<[String; 4]>,
-    // uploaded: String,
     pub annotation_exists: bool,
     pub authors: Vec<BookAuthor>,
     pub sequences: Vec<Sequence>,
     pub year: i32,
-}
-
-impl From<TranslatorBook> for Book {
-    fn from(value: TranslatorBook) -> Self {
-        Book {
-            id: value.id,
-            title: value.title,
-            lang: value.lang,
-            available_types: value.available_types,
-            annotation_exists: value.annotation_exists,
-            authors: value.authors,
-            translators: vec![],
-            sequences: value.sequences,
-            genres: vec![],
-            pages: None,
-            year: value.year,
-            position: None,
-        }
-    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -313,31 +244,9 @@ pub struct SequenceBook {
     pub id: u32,
     pub title: String,
     pub lang: String,
-    // file_type: String,
-    pub available_types: SmallVec<[String; 4]>,
-    // uploaded: String,
     pub authors: Vec<BookAuthor>,
     pub translators: Vec<BookTranslator>,
     pub annotation_exists: bool,
     pub year: i32,
     pub position: i32,
-}
-
-impl From<SequenceBook> for Book {
-    fn from(value: SequenceBook) -> Self {
-        Book {
-            id: value.id,
-            title: value.title,
-            lang: value.lang,
-            available_types: value.available_types,
-            annotation_exists: value.annotation_exists,
-            authors: value.authors,
-            translators: value.translators,
-            sequences: vec![],
-            genres: vec![],
-            pages: None,
-            year: value.year,
-            position: Some(value.position),
-        }
-    }
 }

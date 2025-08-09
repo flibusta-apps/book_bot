@@ -97,12 +97,12 @@ async fn send_cached_message(
 
             if _send_cached(&message, &bot, cached).await.is_ok() {
                 if need_delete_message {
-                    if let MaybeInaccessibleMessage::Regular(message) = message.clone() {
+                    if let MaybeInaccessibleMessage::Regular(message) = &message {
                         let _ = bot.delete_message(message.chat.id, message.id).await;
                     }
                 }
 
-                match send_donation_notification(bot.clone(), message).await {
+                match send_donation_notification(&bot, &message).await {
                     Ok(_) => (),
                     Err(err) => log::error!("{err:?}"),
                 }
@@ -119,7 +119,7 @@ async fn send_cached_message(
 
 async fn _send_downloaded_file(
     message: &MaybeInaccessibleMessage,
-    bot: CacheMe<Throttle<Bot>>,
+    bot: &CacheMe<Throttle<Bot>>,
     downloaded_data: DownloadFile,
 ) -> BotHandlerInternal {
     let DownloadFile {
@@ -134,14 +134,14 @@ async fn _send_downloaded_file(
         .into_async_read()
         .compat();
 
-    let document = InputFile::read(data).file_name(filename.clone());
+    let document = InputFile::read(data).file_name(filename);
 
     bot.send_document(message.chat().id, document)
         .caption(caption)
         .send()
         .await?;
 
-    send_donation_notification(bot, message.clone()).await?;
+    send_donation_notification(bot, message).await?;
 
     Ok(())
 }
@@ -159,7 +159,7 @@ async fn send_with_download_from_channel(
         }
     };
 
-    _send_downloaded_file(&message, bot.clone(), downloaded_file).await?;
+    _send_downloaded_file(&message, &bot, downloaded_file).await?;
 
     if need_delete_message {
         if let MaybeInaccessibleMessage::Regular(message) = message {
@@ -240,13 +240,13 @@ async fn get_download_archive_keyboard_handler(
 
     let available_types = match command {
         DownloadArchiveCommand::Sequence { id } => {
-            get_sequence_books_available_types(id, allowed_langs).await
+            get_sequence_books_available_types(id, &allowed_langs).await
         }
         DownloadArchiveCommand::Author { id } => {
-            get_author_books_available_types(id, allowed_langs).await
+            get_author_books_available_types(id, &allowed_langs).await
         }
         DownloadArchiveCommand::Translator { id } => {
-            get_translator_books_available_types(id, allowed_langs).await
+            get_translator_books_available_types(id, &allowed_langs).await
         }
     };
 
@@ -307,19 +307,20 @@ async fn send_error_message(bot: CacheMe<Throttle<Bot>>, chat_id: ChatId, messag
 }
 
 async fn send_archive_link(
-    bot: CacheMe<Throttle<Bot>>,
-    message: Box<Message>,
-    task: Task,
+    bot: &CacheMe<Throttle<Bot>>,
+    chat_id: ChatId,
+    message_id: MessageId,
+    task: &Task,
 ) -> BotHandlerInternal {
     let link = format!(
         "{}/api/download/{}",
-        config::CONFIG.public_batch_downloader_url.clone(),
+        config::CONFIG.public_batch_downloader_url,
         task.id
     );
 
     bot.edit_message_text(
-        message.chat.id,
-        message.id,
+        chat_id,
+        message_id,
         format!(
             "Файл не может быть загружен в чат! \n \
                     Вы можете скачать его <a href=\"{link}\">по ссылке</a> (работает 3 часа)"
@@ -352,7 +353,7 @@ async fn wait_archive(
     let task = loop {
         interval.tick().await;
 
-        let task = match get_task(task_id.clone()).await {
+        let task = match get_task(&task_id).await {
             Ok(v) => v,
             Err(err) => {
                 send_error_message(bot, message.chat.id, message.id).await;
@@ -388,18 +389,18 @@ async fn wait_archive(
     let content_size = task.content_size.unwrap();
 
     if content_size > 1024 * 1024 * 1024 {
-        send_archive_link(bot.clone(), message.clone(), task.clone()).await?;
+        send_archive_link(&bot, message.chat.id, message.id, &task).await?;
         return Ok(());
     }
 
     let link = format!(
         "{}/api/download/{}",
-        config::CONFIG.batch_downloader_url.clone(),
+        config::CONFIG.batch_downloader_url,
         task.id
     );
 
     let downloaded_data =
-        match download_file_by_link(task.clone().result_filename.unwrap(), link).await {
+        match download_file_by_link(&task.clone().result_filename.unwrap(), link).await {
             Ok(v) => match v {
                 Some(v) => v,
                 None => {
@@ -416,14 +417,14 @@ async fn wait_archive(
 
     match _send_downloaded_file(
         &MaybeInaccessibleMessage::Regular(message.clone()),
-        bot.clone(),
+        &bot,
         downloaded_data,
     )
     .await
     {
         Ok(_) => (),
         Err(err) => {
-            send_archive_link(bot.clone(), message.clone(), task).await?;
+            send_archive_link(&bot, message.chat.id, message.id, &task).await?;
             log::error!("{err:?}");
         }
     }

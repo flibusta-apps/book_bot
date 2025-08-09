@@ -13,7 +13,7 @@ use self::commands::HelpCommand;
 pub async fn help_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let name = message
         .from
-        .map(|user| user.first_name.clone())
+        .map(|user| user.first_name)
         .unwrap_or("пользователь".to_string());
 
     match bot

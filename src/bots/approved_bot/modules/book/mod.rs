@@ -66,7 +66,7 @@ where
 
     let allowed_langs = get_user_or_default_lang_codes(user_id).await;
 
-    let items_page = match books_getter(id, 1, allowed_langs.clone()).await {
+    let items_page = match books_getter(id, 1, allowed_langs).await {
         Ok(v) => v,
         Err(err) => {
             bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
@@ -160,7 +160,7 @@ where
     };
 
     if page > items_page.pages {
-        items_page = match books_getter(id, items_page.pages, allowed_langs.clone()).await {
+        items_page = match books_getter(id, items_page.pages, allowed_langs).await {
             Ok(v) => v,
             Err(err) => {
                 bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")

@@ -93,17 +93,16 @@ where
     };
 
     if page > items_page.pages {
-        items_page =
-            match items_getter(query.clone(), items_page.pages, allowed_langs.clone()).await {
-                Ok(v) => v,
-                Err(err) => {
-                    bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
-                        .send()
-                        .await?;
+        items_page = match items_getter(query, items_page.pages, allowed_langs).await {
+            Ok(v) => v,
+            Err(err) => {
+                bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
+                    .send()
+                    .await?;
 
-                    return Err(err);
-                }
-            };
+                return Err(err);
+            }
+        };
     }
 
     let formatted_page = items_page.format(page, 4096);

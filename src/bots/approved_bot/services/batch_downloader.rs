@@ -56,7 +56,7 @@ pub async fn create_task(data: CreateTaskData) -> anyhow::Result<Task> {
         .await?)
 }
 
-pub async fn get_task(task_id: String) -> anyhow::Result<Task> {
+pub async fn get_task(task_id: &str) -> anyhow::Result<Task> {
     Ok(CLIENT
         .get(format!(
             "{}/api/check_archive/{task_id}",

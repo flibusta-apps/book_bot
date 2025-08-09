@@ -16,20 +16,20 @@ enum SupportCommand {
 
 pub async fn support_command_handler(
     message: Message,
-    bot: CacheMe<Throttle<Bot>>,
+    bot: &CacheMe<Throttle<Bot>>,
 ) -> BotHandlerInternal {
     let username = match message.clone().from {
         Some(user) => match user.is_bot {
             true => match message.reply_to_message() {
                 Some(v) => match &v.from {
-                    Some(v) => v.first_name.clone(),
-                    None => "пользователь".to_string(),
+                    Some(v) => &v.first_name,
+                    None => "пользователь",
                 },
-                None => "пользователь".to_string(),
+                None => "пользователь",
             },
-            false => user.first_name,
+            false => &user.first_name.clone(),
         },
-        None => "пользователь".to_string(),
+        None => "пользователь",
     };
 
     let message_text = format!(

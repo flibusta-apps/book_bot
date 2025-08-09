@@ -12,8 +12,8 @@ use crate::{
 use super::user_settings::{is_need_donate_notifications, mark_donate_notification_sent};
 
 pub async fn send_donation_notification(
-    bot: CacheMe<Throttle<Bot>>,
-    message: MaybeInaccessibleMessage,
+    bot: &CacheMe<Throttle<Bot>>,
+    message: &MaybeInaccessibleMessage,
 ) -> BotHandlerInternal {
     if CHAT_DONATION_NOTIFICATIONS_CACHE
         .get(&message.chat().id)
@@ -31,7 +31,7 @@ pub async fn send_donation_notification(
         mark_donate_notification_sent(message.chat().id).await?;
 
         if let MaybeInaccessibleMessage::Regular(message) = message {
-            support_command_handler(*message, bot).await?;
+            support_command_handler(*message.clone(), bot).await?;
         }
     };
 

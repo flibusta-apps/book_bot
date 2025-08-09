@@ -91,7 +91,7 @@ pub async fn download_file(
 }
 
 pub async fn download_file_by_link(
-    filename: String,
+    filename: &str,
     link: String,
 ) -> anyhow::Result<Option<DownloadFile>> {
     let response = CLIENT.get(link).send().await?;
@@ -102,7 +102,7 @@ pub async fn download_file_by_link(
 
     Ok(Some(DownloadFile {
         response,
-        filename,
+        filename: filename.to_string(),
         caption: "".to_string(),
     }))
 }

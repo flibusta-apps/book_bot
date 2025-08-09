@@ -42,9 +42,9 @@ async fn make_register_request(
     });
 
     let result = reqwest::Client::new()
-        .post(config::CONFIG.manager_url.clone())
+        .post(&config::CONFIG.manager_url)
         .body(body.to_string())
-        .header("Authorization", config::CONFIG.manager_api_key.clone())
+        .header("Authorization", &config::CONFIG.manager_api_key)
         .header("Content-Type", "application/json")
         .send()
         .await?;

@@ -93,9 +93,7 @@ impl BotsManager {
 
             let bot_data: BotData = bot_data.clone();
 
-            BOTS_DATA
-                .insert(bot_data.token.clone(), bot_data.clone())
-                .await;
+            BOTS_DATA.insert(bot_data.token.clone(), bot_data).await;
         }
     }
 
@@ -110,9 +108,9 @@ impl BotsManager {
 
             let bot_data: BotData = bot_data.clone();
 
-            let semphore = semaphore.clone();
+            let semaphore = semaphore.clone();
             set_webhook_tasks.spawn(async move {
-                let _permit = semphore.acquire().await.unwrap();
+                let _permit = semaphore.acquire().await.unwrap();
 
                 let webhook_status = set_webhook(&bot_data).await;
 
