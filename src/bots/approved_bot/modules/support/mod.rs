@@ -60,5 +60,7 @@ pub async fn support_command_handler(
 pub fn get_support_handler() -> crate::bots::BotHandler {
     Update::filter_message()
         .filter_command::<SupportCommand>()
-        .endpoint(support_command_handler)
+        .endpoint(|message: Message, bot: CacheMe<Throttle<Bot>>| async move {
+            support_command_handler(message, &bot).await
+        })
 }
