@@ -174,7 +174,7 @@ impl BotsManager {
 
             match result {
                 Ok(webhook_info) => {
-                    if webhook_info.pending_update_count != 0 {
+                    if webhook_info.pending_update_count == 0 {
                         continue;
                     }
 
