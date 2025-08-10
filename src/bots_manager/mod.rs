@@ -187,7 +187,7 @@ impl BotsManager {
                 Err(err) => {
                     let error_message = err.to_string();
 
-                    if error_message.contains("Api(InvalidToken)") {
+                    if error_message.contains("Invalid bot token") {
                         BOTS_DATA.invalidate(token.as_str()).await;
                         if let Err(d_err) = delete_bot(bot_data.id).await {
                             log::error!("Error deleting bot {}: {:?}", bot_data.id, d_err);
