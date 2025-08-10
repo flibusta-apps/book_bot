@@ -97,7 +97,7 @@ impl BotsManager {
         }
     }
 
-    async fn check_unininted(bots_data: &[BotData]) {
+    async fn check_uninited(bots_data: &[BotData]) {
         let semaphore = Arc::new(Semaphore::const_new(5));
         let mut set_webhook_tasks = JoinSet::new();
 
@@ -143,7 +143,7 @@ impl BotsManager {
         let _ = BotsManager::check_bots_data(&bots_data).await;
 
         if !only_bot_data {
-            let _ = BotsManager::check_unininted(&bots_data).await;
+            let _ = BotsManager::check_uninited(&bots_data).await;
         }
     }
 
@@ -185,7 +185,9 @@ impl BotsManager {
                     }
                 }
                 Err(err) => {
-                    if err.to_string().contains("Api(InvalidToken)") {
+                    let error_message = err.to_string();
+
+                    if error_message.contains("Api(InvalidToken)") {
                         BOTS_DATA.invalidate(token.as_str()).await;
                         if let Err(d_err) = delete_bot(bot_data.id).await {
                             log::error!("Error deleting bot {}: {:?}", bot_data.id, d_err);
@@ -193,7 +195,7 @@ impl BotsManager {
                         continue;
                     }
 
-                    log::error!("Error getting webhook info: {err:?}");
+                    log::error!("Error getting webhook info: {error_message}");
 
                     WEBHOOK_CHECK_ERRORS_COUNT
                         .insert(bot_data.id, error_count + 1)
