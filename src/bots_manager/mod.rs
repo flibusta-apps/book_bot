@@ -224,11 +224,11 @@ impl BotsManager {
                 BotsManager::check(false).await;
             }
 
-            if tick_number % 180 == 60 {
+            if tick_number % 1800 == 600 {
                 BotsManager::check_pending_updates().await;
             }
 
-            tick_number = (tick_number + 1) % 180;
+            tick_number = (tick_number + 1) % 1800;
         }
     }
 }
