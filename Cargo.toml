@@ -27,7 +27,7 @@ tokio-stream = "0.1.17"
 futures = "0.3.31"
 
 axum = "0.8.3"
-axum-prometheus = "0.8.0"
+axum-prometheus = "0.9.0"
 
 tower = "0.5.2"
 tower-http = { version = "0.6.2", features = ["trace"] }
