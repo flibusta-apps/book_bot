@@ -33,12 +33,6 @@ impl BookGenre {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct Source {
-    // id: u32,
-    // name: String
-}
-
-#[derive(Deserialize, Debug, Clone)]
 pub struct Author {
     pub id: u32,
     pub last_name: String,
