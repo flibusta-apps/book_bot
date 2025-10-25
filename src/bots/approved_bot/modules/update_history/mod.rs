@@ -4,7 +4,10 @@ pub mod commands;
 use chrono::{prelude::*, Duration};
 
 use crate::bots::{
-    approved_bot::{services::book_library::get_uploaded_books, tools::filter_callback_query},
+    approved_bot::{
+        modules::utils::message_text::is_message_text_equals,
+        services::book_library::get_uploaded_books, tools::filter_callback_query,
+    },
     BotHandlerInternal,
 };
 
@@ -78,7 +81,7 @@ async fn update_log_pagination_handler(
     bot: CacheMe<Throttle<Bot>>,
     update_callback_data: UpdateLogCallbackData,
 ) -> BotHandlerInternal {
-    let message = match cq.message {
+    let message = match cq.message.clone() {
         Some(v) => v,
         None => {
             bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(")
@@ -138,14 +141,20 @@ async fn update_log_pagination_handler(
     let formatted_page = items_page.format(page, 4096);
 
     let message_text = format!("{header}{formatted_page}");
+    if is_message_text_equals(cq.message, &message_text) {
+        return Ok(());
+    }
 
     let keyboard = generic_get_pagination_keyboard(page, total_pages, update_callback_data, true);
-    bot.edit_message_text(message.chat().id, message.id(), message_text)
+    match bot
+        .edit_message_text(message.chat().id, message.id(), message_text)
         .reply_markup(keyboard)
         .send()
-        .await?;
-
-    Ok(())
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err.into()),
+    }
 }
 
 pub fn get_update_log_handler() -> crate::bots::BotHandler {

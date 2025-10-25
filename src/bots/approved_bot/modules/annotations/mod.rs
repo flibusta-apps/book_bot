@@ -18,7 +18,9 @@ use tokio_util::compat::FuturesAsyncReadCompatExt;
 
 use crate::bots::{
     approved_bot::{
-        modules::utils::pagination::generic_get_pagination_keyboard,
+        modules::utils::{
+            message_text::is_message_text_equals, pagination::generic_get_pagination_keyboard,
+        },
         services::book_library::{get_author_annotation, get_book_annotation},
         tools::filter_callback_query,
     },
@@ -145,17 +147,24 @@ where
     } else {
         chunked_text.len()
     };
-    let current_text = chunked_text.get(page_index - 1).unwrap();
+    let new_text = chunked_text.get(page_index - 1).unwrap();
 
     let keyboard =
         generic_get_pagination_keyboard(page, chunked_text.len().try_into()?, callback_data, false);
 
-    bot.edit_message_text(message.chat().id, message.id(), current_text)
+    if is_message_text_equals(Some(message.clone()), new_text) {
+        return Ok(());
+    }
+
+    match bot
+        .edit_message_text(message.chat().id, message.id(), new_text)
         .reply_markup(keyboard)
         .send()
-        .await?;
-
-    Ok(())
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err.into()),
+    }
 }
 
 pub fn get_annotations_handler() -> crate::bots::BotHandler {

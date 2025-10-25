@@ -14,6 +14,7 @@ use teloxide::{
 
 use crate::bots::{
     approved_bot::{
+        modules::utils::message_text::is_message_text_equals,
         services::{
             book_library::{
                 formatters::{Format, FormatTitle},
@@ -45,7 +46,7 @@ where
     let chat_id = cq.chat_id();
     let user_id = cq.from.id;
     let message_id = cq.message.as_ref().map(|message| message.id());
-    let query = get_query(cq);
+    let query = get_query(cq.clone());
 
     let (chat_id, query, message_id) = match (chat_id, query, message_id) {
         (Some(chat_id), Some(query), Some(message_id)) => (chat_id, query, message_id),
@@ -106,15 +107,20 @@ where
     }
 
     let formatted_page = items_page.format(page, 4096);
+    if is_message_text_equals(cq.message, &formatted_page) {
+        return Ok(());
+    }
 
     let keyboard = generic_get_pagination_keyboard(page, items_page.pages, search_data, true);
-
-    bot.edit_message_text(chat_id, message_id, formatted_page)
+    match bot
+        .edit_message_text(chat_id, message_id, formatted_page)
         .reply_markup(keyboard)
         .send()
-        .await?;
-
-    Ok(())
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err.into()),
+    }
 }
 
 pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {

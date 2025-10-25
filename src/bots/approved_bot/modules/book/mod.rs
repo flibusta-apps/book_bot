@@ -15,6 +15,7 @@ use teloxide::{
 use tracing::log;
 
 use crate::bots::approved_bot::{
+    modules::utils::message_text::is_message_text_equals,
     services::{
         book_library::{
             formatters::{Format, FormatTitle},
@@ -176,12 +177,19 @@ where
 
     let keyboard = generic_get_pagination_keyboard(page, items_page.pages, callback_data, true);
 
-    bot.edit_message_text(chat_id, message_id, formatted_page)
+    if is_message_text_equals(cq.message, &formatted_page) {
+        return Ok(());
+    }
+
+    match bot
+        .edit_message_text(chat_id, message_id, formatted_page)
         .reply_markup(keyboard)
         .send()
-        .await?;
-
-    Ok(())
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err.into()),
+    }
 }
 
 pub fn get_book_handler() -> crate::bots::BotHandler {
