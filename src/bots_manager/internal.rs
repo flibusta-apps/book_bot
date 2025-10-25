@@ -1,6 +1,7 @@
+use super::custom_error_handler::CustomErrorHandler;
 use teloxide::adaptors::throttle::Limits;
 use teloxide::dispatching::Dispatcher;
-use teloxide::error_handlers::LoggingErrorHandler;
+
 use teloxide::requests::{Request, Requester, RequesterExt};
 use teloxide::stop::StopToken;
 use teloxide::stop::{mk_stop_token, StopFlag};
@@ -108,7 +109,7 @@ pub async fn start_bot(bot_data: &BotData) {
         dispatcher
             .dispatch_with_listener(
                 listener,
-                LoggingErrorHandler::with_custom_text("An error from the update listener"),
+                CustomErrorHandler::with_custom_text("An error from the update listener"),
             )
             .await;
     });
