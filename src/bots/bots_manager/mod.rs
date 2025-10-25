@@ -19,9 +19,10 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> a
 
     let message_text = match result {
         register::RegisterStatus::Success { ref username } => format_registered_message(username),
-        register::RegisterStatus::RegisterFail => strings::ALREADY_REGISTERED.to_string(),
+        register::RegisterStatus::RegisterFail => strings::MAY_BE_ALREADY_REGISTERED.to_string(),
         register::RegisterStatus::LimitExtended => strings::LIMIT_EXTENDED_MESSAGE.to_string(),
         register::RegisterStatus::WrongToken => strings::ERROR_MESSAGE.to_string(),
+        register::RegisterStatus::AlreadyExists => strings::ALREADY_EXISTS_MESSAGE.to_string(),
     };
 
     bot.send_message(message.chat.id, message_text)

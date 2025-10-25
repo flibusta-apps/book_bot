@@ -12,12 +12,14 @@ pub enum RegisterStatus {
     WrongToken,
     RegisterFail,
     LimitExtended,
+    AlreadyExists,
 }
 
 #[derive(Debug)]
 pub enum RegisterRequestStatus {
     Success,
     LimitExtended,
+    AlreadyExists,
     UnknownError,
 }
 
@@ -52,6 +54,7 @@ async fn make_register_request(
     Ok(match result.status().as_u16() {
         200 => RegisterRequestStatus::Success,
         402 => RegisterRequestStatus::LimitExtended,
+        409 => RegisterRequestStatus::AlreadyExists,
         _ => RegisterRequestStatus::UnknownError,
     })
 }
@@ -81,5 +84,6 @@ pub async fn register(user_id: UserId, message_text: &str) -> RegisterStatus {
         },
         RegisterRequestStatus::LimitExtended => RegisterStatus::LimitExtended,
         RegisterRequestStatus::UnknownError => RegisterStatus::RegisterFail,
+        RegisterRequestStatus::AlreadyExists => RegisterStatus::AlreadyExists,
     }
 }
