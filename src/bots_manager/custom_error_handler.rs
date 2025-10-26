@@ -32,7 +32,46 @@ where
                 return;
             }
 
-            log::error!("{}: {:?}", self.text, error);
+            let backtrace = std::backtrace::Backtrace::force_capture();
+
+            let error_chain = if let Some(std_error) =
+                (&error as &dyn std::any::Any).downcast_ref::<Box<dyn std::error::Error>>()
+            {
+                let mut chain = Vec::new();
+                let mut source = std_error.source();
+                while let Some(err) = source {
+                    chain.push(format!("  Caused by: {}", err));
+                    source = err.source();
+                }
+                if chain.is_empty() {
+                    String::new()
+                } else {
+                    format!("\nError chain:\n{}", chain.join("\n"))
+                }
+            } else {
+                String::new()
+            };
+
+            let backtrace_info = match backtrace.status() {
+                std::backtrace::BacktraceStatus::Captured => {
+                    format!("\nBacktrace:\n{}", backtrace)
+                }
+                std::backtrace::BacktraceStatus::Disabled => {
+                    "\nBacktrace: disabled (compile with debug info for stack traces)".to_string()
+                }
+                std::backtrace::BacktraceStatus::Unsupported => {
+                    "\nBacktrace: unsupported on this platform".to_string()
+                }
+                _ => String::new(),
+            };
+
+            log::error!(
+                "{}: {:?}{}{}",
+                self.text,
+                error,
+                error_chain,
+                backtrace_info
+            );
         })
     }
 }
