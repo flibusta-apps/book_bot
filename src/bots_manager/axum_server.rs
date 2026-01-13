@@ -109,8 +109,9 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
         .with_state(start_bot_mutex)
         .layer(prometheus_layer);
 
-    let metric_router =
-        axum::Router::new().route("/metrics", get(|| async move { metric_handle.render() }));
+    let metric_router = axum::Router::new()
+        .route("/metrics", get(|| async move { metric_handle.render() }))
+        .route("/health", get(|| async { StatusCode::OK }));
 
     let router = axum::Router::new()
         .merge(app_router)
