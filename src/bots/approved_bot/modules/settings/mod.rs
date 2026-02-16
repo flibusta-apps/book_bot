@@ -57,7 +57,7 @@ fn get_lang_keyboard(
     all_langs: Vec<Lang>,
     allowed_langs: HashSet<SmartString>,
 ) -> InlineKeyboardMarkup {
-    let buttons = all_langs
+    let mut buttons: Vec<Vec<InlineKeyboardButton>> = all_langs
         .into_iter()
         .map(|lang| {
             let (emoji, callback_data) = match allowed_langs.contains(&lang.code) {
@@ -77,6 +77,13 @@ fn get_lang_keyboard(
             }]
         })
         .collect();
+
+    buttons.push(vec![InlineKeyboardButton {
+        text: "← Назад".to_string(),
+        kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
+            SettingsCallbackData::LangSettingsBack.to_string(),
+        ),
+    }]);
 
     InlineKeyboardMarkup {
         inline_keyboard: buttons,
@@ -180,6 +187,14 @@ async fn settings_callback_handler(
             bot.answer_callback_query(cq.id).send().await?;
             return Ok(());
         }
+        SettingsCallbackData::LangSettingsBack => {
+            bot.edit_message_text(message.chat().id, message.id(), "Настройки")
+                .reply_markup(get_main_settings_keyboard())
+                .send()
+                .await?;
+            bot.answer_callback_query(cq.id).send().await?;
+            return Ok(());
+        }
         SettingsCallbackData::DefaultSearch { value } => {
             let current = get_user_settings(user.id).await.ok().flatten();
             let allowed_langs: SmallVec<[SmartString; 3]> = match current {
@@ -233,15 +248,18 @@ async fn settings_callback_handler(
         allowed_langs_set.insert(v);
     });
 
-    match callback_data {
+    match &callback_data {
         SettingsCallbackData::Settings => (),
         SettingsCallbackData::On { code } => {
-            allowed_langs_set.insert(code);
+            allowed_langs_set.insert(code.clone());
         }
         SettingsCallbackData::Off { code } => {
-            allowed_langs_set.remove(&code);
+            allowed_langs_set.remove(code);
         }
-        _ => {}
+        SettingsCallbackData::LangSettingsBack
+        | SettingsCallbackData::DefaultSearchBack
+        | SettingsCallbackData::DefaultSearchMenu
+        | SettingsCallbackData::DefaultSearch { .. } => {}
     };
 
     if allowed_langs_set.is_empty() {

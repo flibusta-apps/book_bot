@@ -20,6 +20,8 @@ pub enum SettingsCallbackData {
     },
     /// Return from default search submenu to main settings
     DefaultSearchBack,
+    /// Return from languages submenu to main settings
+    LangSettingsBack,
 }
 
 impl FromStr for SettingsCallbackData {
@@ -34,6 +36,9 @@ impl FromStr for SettingsCallbackData {
         }
         if s == "defsearch_back" {
             return Ok(SettingsCallbackData::DefaultSearchBack);
+        }
+        if s == "lang_settings_back" {
+            return Ok(SettingsCallbackData::LangSettingsBack);
         }
         if let Some(value) = s.strip_prefix("defsearch_") {
             return Ok(SettingsCallbackData::DefaultSearch {
@@ -69,6 +74,7 @@ impl Display for SettingsCallbackData {
             SettingsCallbackData::DefaultSearchMenu => write!(f, "defsearch"),
             SettingsCallbackData::DefaultSearch { value } => write!(f, "defsearch_{value}"),
             SettingsCallbackData::DefaultSearchBack => write!(f, "defsearch_back"),
+            SettingsCallbackData::LangSettingsBack => write!(f, "lang_settings_back"),
         }
     }
 }
