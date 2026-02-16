@@ -6,8 +6,20 @@ use smartstring::alias::String as SmartString;
 #[derive(Clone)]
 pub enum SettingsCallbackData {
     Settings,
-    On { code: SmartString },
-    Off { code: SmartString },
+    On {
+        code: SmartString,
+    },
+    Off {
+        code: SmartString,
+    },
+    /// Open "default search type" submenu
+    DefaultSearchMenu,
+    /// Set default search: value is "book"|"author"|"series"|"translator"|"none"
+    DefaultSearch {
+        value: SmartString,
+    },
+    /// Return from default search submenu to main settings
+    DefaultSearchBack,
 }
 
 impl FromStr for SettingsCallbackData {
@@ -16,6 +28,17 @@ impl FromStr for SettingsCallbackData {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s == SettingsCallbackData::Settings.to_string().as_str() {
             return Ok(SettingsCallbackData::Settings);
+        }
+        if s == "defsearch" {
+            return Ok(SettingsCallbackData::DefaultSearchMenu);
+        }
+        if s == "defsearch_back" {
+            return Ok(SettingsCallbackData::DefaultSearchBack);
+        }
+        if let Some(value) = s.strip_prefix("defsearch_") {
+            return Ok(SettingsCallbackData::DefaultSearch {
+                value: value.to_string().into(),
+            });
         }
 
         let re = Regex::new(r"^lang_(?P<action>(off)|(on))_(?P<code>[a-zA-z]+)$").unwrap();
@@ -43,6 +66,9 @@ impl Display for SettingsCallbackData {
             SettingsCallbackData::Settings => write!(f, "lang_settings"),
             SettingsCallbackData::On { code } => write!(f, "lang_on_{code}"),
             SettingsCallbackData::Off { code } => write!(f, "lang_off_{code}"),
+            SettingsCallbackData::DefaultSearchMenu => write!(f, "defsearch"),
+            SettingsCallbackData::DefaultSearch { value } => write!(f, "defsearch_{value}"),
+            SettingsCallbackData::DefaultSearchBack => write!(f, "defsearch_back"),
         }
     }
 }

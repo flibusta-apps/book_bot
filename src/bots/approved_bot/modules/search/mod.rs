@@ -21,14 +21,17 @@ use crate::bots::{
                 search_author, search_book, search_sequence, search_translator,
                 types::Page,
             },
-            user_settings::get_user_or_default_lang_codes,
+            user_settings::{get_user_default_search, get_user_or_default_lang_codes},
         },
         tools::filter_callback_query,
     },
     BotHandlerInternal,
 };
 
-use self::{callback_data::SearchCallbackData, utils::get_query};
+use self::{
+    callback_data::{default_search_to_callback_data, SearchCallbackData},
+    utils::get_query,
+};
 
 use super::utils::pagination::generic_get_pagination_keyboard;
 
@@ -124,8 +127,103 @@ where
 }
 
 pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
-    let message_text = "Что ищем?";
+    let query = message.text().map(|t| t.trim()).filter(|t| !t.is_empty());
+    let user_id = message.from.as_ref().map(|u| u.id);
 
+    if let (Some(user_id), Some(query)) = (user_id, query) {
+        if let Some(default_type) = get_user_default_search(user_id).await {
+            let search_data = default_search_to_callback_data(default_type);
+            let allowed_langs = get_user_or_default_lang_codes(user_id).await;
+            let query_owned = query.to_string();
+            let chat_id = message.chat.id;
+            let reply_params = ReplyParameters::new(message.id);
+
+            let (formatted, pages) = match &search_data {
+                SearchCallbackData::Book { .. } => {
+                    match search_book(query_owned, 1, allowed_langs).await {
+                        Ok(p) if p.pages == 0 => {
+                            bot.send_message(chat_id, "Книги не найдены!")
+                                .reply_parameters(reply_params)
+                                .send()
+                                .await?;
+                            return Ok(());
+                        }
+                        Ok(p) => (p.format(1, 4096), p.pages),
+                        Err(_) => {
+                            bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
+                                .send()
+                                .await?;
+                            return Ok(());
+                        }
+                    }
+                }
+                SearchCallbackData::Authors { .. } => {
+                    match search_author(query_owned, 1, allowed_langs).await {
+                        Ok(p) if p.pages == 0 => {
+                            bot.send_message(chat_id, "Авторы не найдены!")
+                                .reply_parameters(reply_params)
+                                .send()
+                                .await?;
+                            return Ok(());
+                        }
+                        Ok(p) => (p.format(1, 4096), p.pages),
+                        Err(_) => {
+                            bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
+                                .send()
+                                .await?;
+                            return Ok(());
+                        }
+                    }
+                }
+                SearchCallbackData::Sequences { .. } => {
+                    match search_sequence(query_owned, 1, allowed_langs).await {
+                        Ok(p) if p.pages == 0 => {
+                            bot.send_message(chat_id, "Серии не найдены!")
+                                .reply_parameters(reply_params)
+                                .send()
+                                .await?;
+                            return Ok(());
+                        }
+                        Ok(p) => (p.format(1, 4096), p.pages),
+                        Err(_) => {
+                            bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
+                                .send()
+                                .await?;
+                            return Ok(());
+                        }
+                    }
+                }
+                SearchCallbackData::Translators { .. } => {
+                    match search_translator(query_owned, 1, allowed_langs).await {
+                        Ok(p) if p.pages == 0 => {
+                            bot.send_message(chat_id, "Переводчики не найдены!")
+                                .reply_parameters(reply_params)
+                                .send()
+                                .await?;
+                            return Ok(());
+                        }
+                        Ok(p) => (p.format(1, 4096), p.pages),
+                        Err(_) => {
+                            bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
+                                .send()
+                                .await?;
+                            return Ok(());
+                        }
+                    }
+                }
+            };
+
+            let keyboard = generic_get_pagination_keyboard(1, pages, search_data, true);
+            bot.send_message(chat_id, formatted)
+                .reply_parameters(reply_params)
+                .reply_markup(keyboard)
+                .send()
+                .await?;
+            return Ok(());
+        }
+    }
+
+    let message_text = "Что ищем?";
     let keyboard = InlineKeyboardMarkup {
         inline_keyboard: vec![
             vec![InlineKeyboardButton {

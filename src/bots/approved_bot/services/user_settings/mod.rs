@@ -1,6 +1,6 @@
 use once_cell::sync::Lazy;
 use reqwest::StatusCode;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use smallvec::{smallvec, SmallVec};
 use smartstring::alias::String as SmartString;
@@ -10,6 +10,45 @@ use tracing::log;
 use crate::{bots_manager::USER_LANGS_CACHE, config};
 
 pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+
+/// API values: "book" | "author" | "series" | "translator"
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DefaultSearchType {
+    Book,
+    Author,
+    Series,
+    Translator,
+}
+
+impl DefaultSearchType {
+    pub fn as_api_str(self) -> &'static str {
+        match self {
+            DefaultSearchType::Book => "book",
+            DefaultSearchType::Author => "author",
+            DefaultSearchType::Series => "series",
+            DefaultSearchType::Translator => "translator",
+        }
+    }
+
+    pub fn from_api_str(s: &str) -> Option<Self> {
+        match s {
+            "book" => Some(DefaultSearchType::Book),
+            "author" => Some(DefaultSearchType::Author),
+            "series" => Some(DefaultSearchType::Series),
+            "translator" => Some(DefaultSearchType::Translator),
+            _ => None,
+        }
+    }
+}
+
+fn deserialize_optional_default_search<'de, D>(d: D) -> Result<Option<DefaultSearchType>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(d)?;
+    Ok(opt.and_then(|s| DefaultSearchType::from_api_str(&s)))
+}
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Lang {
@@ -26,6 +65,8 @@ pub struct UserSettings {
     // pub username: SmartString,
     // pub source: SmartString,
     pub allowed_langs: SmallVec<[Lang; 3]>,
+    #[serde(default, deserialize_with = "deserialize_optional_default_search")]
+    pub default_search: Option<DefaultSearchType>,
 }
 
 pub async fn get_user_settings(
@@ -79,16 +120,22 @@ pub async fn create_or_update_user_settings(
     username: &str,
     source: &str,
     allowed_langs: SmallVec<[SmartString; 3]>,
+    default_search: Option<DefaultSearchType>,
 ) -> anyhow::Result<UserSettings> {
     USER_LANGS_CACHE.invalidate(&user_id).await;
 
+    let default_search_json = match &default_search {
+        Some(t) => serde_json::Value::String(t.as_api_str().to_string()),
+        None => serde_json::Value::Null,
+    };
     let body = json!({
         "user_id": user_id,
         "last_name": last_name,
         "first_name": first_name,
         "username": username,
         "source": source,
-        "allowed_langs": allowed_langs.into_vec()
+        "allowed_langs": allowed_langs.into_vec(),
+        "default_search": default_search_json
     });
 
     let response = CLIENT
@@ -101,6 +148,14 @@ pub async fn create_or_update_user_settings(
         .error_for_status()?;
 
     Ok(response.json::<UserSettings>().await?)
+}
+
+/// Returns user's default search type from API. None if not set or on error.
+pub async fn get_user_default_search(user_id: UserId) -> Option<DefaultSearchType> {
+    match get_user_settings(user_id).await {
+        Ok(Some(s)) => s.default_search,
+        _ => None,
+    }
 }
 
 pub async fn get_langs() -> anyhow::Result<Vec<Lang>> {

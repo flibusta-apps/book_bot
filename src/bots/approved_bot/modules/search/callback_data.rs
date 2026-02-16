@@ -3,7 +3,10 @@ use std::{fmt::Display, str::FromStr};
 use regex::Regex;
 use strum_macros::EnumIter;
 
-use crate::bots::approved_bot::modules::utils::pagination::GetPaginationCallbackData;
+use crate::bots::approved_bot::{
+    modules::utils::pagination::GetPaginationCallbackData,
+    services::user_settings::DefaultSearchType,
+};
 
 #[derive(Clone, EnumIter)]
 pub enum SearchCallbackData {
@@ -49,6 +52,16 @@ impl FromStr for SearchCallbackData {
             "st" => Ok(SearchCallbackData::Translators { page }),
             _ => Err(strum::ParseError::VariantNotFound),
         }
+    }
+}
+
+/// Converts default search type to SearchCallbackData with page 1.
+pub fn default_search_to_callback_data(t: DefaultSearchType) -> SearchCallbackData {
+    match t {
+        DefaultSearchType::Book => SearchCallbackData::Book { page: 1 },
+        DefaultSearchType::Author => SearchCallbackData::Authors { page: 1 },
+        DefaultSearchType::Series => SearchCallbackData::Sequences { page: 1 },
+        DefaultSearchType::Translator => SearchCallbackData::Translators { page: 1 },
     }
 }
 

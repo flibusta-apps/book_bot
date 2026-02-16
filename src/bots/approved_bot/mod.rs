@@ -9,7 +9,9 @@ use teloxide::{
 };
 
 use crate::{
-    bots::approved_bot::services::user_settings::create_or_update_user_settings,
+    bots::approved_bot::services::user_settings::{
+        create_or_update_user_settings, get_user_settings,
+    },
     bots_manager::USER_ACTIVITY_CACHE,
 };
 
@@ -38,6 +40,8 @@ async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) 
 
         if update_result.is_err() {
             let allowed_langs = get_user_or_default_lang_codes(user.id).await;
+            let current = get_user_settings(user.id).await.ok().flatten();
+            let default_search = current.as_ref().and_then(|s| s.default_search);
 
             if create_or_update_user_settings(
                 user.id,
@@ -46,6 +50,7 @@ async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) 
                 &user.username.unwrap_or("".to_string()),
                 &me.username.clone().unwrap_or("".to_string()),
                 allowed_langs,
+                default_search,
             )
             .await
             .is_ok()
