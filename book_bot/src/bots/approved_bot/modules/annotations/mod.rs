@@ -3,6 +3,8 @@ pub mod commands;
 pub mod errors;
 pub mod formatter;
 
+use book_bot_macros::log_handler;
+
 use std::convert::TryInto;
 
 use futures::TryStreamExt;
@@ -40,6 +42,7 @@ async fn download_image(
     Ok(reqwest::get(file).await?.error_for_status()?)
 }
 
+#[log_handler("annotations")]
 pub async fn send_annotation_handler<T, Fut>(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
@@ -115,6 +118,7 @@ where
     Ok(())
 }
 
+#[log_handler("annotations")]
 pub async fn annotation_pagination_handler<T, Fut>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,

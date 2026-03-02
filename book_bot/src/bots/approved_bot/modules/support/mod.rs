@@ -1,4 +1,5 @@
 use crate::bots::BotHandlerInternal;
+use book_bot_macros::log_handler;
 
 use teloxide::{
     adaptors::{CacheMe, Throttle},
@@ -14,6 +15,7 @@ enum SupportCommand {
     Donate,
 }
 
+#[log_handler("support")]
 pub async fn support_command_handler(
     message: Message,
     bot: &CacheMe<Throttle<Bot>>,

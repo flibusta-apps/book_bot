@@ -1,6 +1,8 @@
 pub mod callback_data;
 pub mod commands;
 
+use book_bot_macros::log_handler;
+
 use core::fmt::Debug;
 
 use smartstring::alias::String as SmartString;
@@ -31,6 +33,7 @@ use self::{callback_data::BookCallbackData, commands::BookCommand};
 
 use super::utils::{filter_command::filter_command, pagination::generic_get_pagination_keyboard};
 
+#[log_handler("book")]
 async fn send_book_handler<T, P, Fut>(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
@@ -49,9 +52,7 @@ where
     };
 
     let chat_id = message.chat.id;
-    let user_id = message.from.map(|from| from.id);
-
-    let user_id = match user_id {
+    let user_id = match message.from.map(|from| from.id) {
         Some(v) => v,
         None => {
             return match bot
@@ -102,6 +103,7 @@ where
     Ok(())
 }
 
+#[log_handler("book")]
 async fn send_pagination_book_handler<T, P, Fut>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,

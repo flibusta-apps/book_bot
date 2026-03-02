@@ -1,6 +1,7 @@
 pub mod callback_data;
 pub mod commands;
 
+use book_bot_macros::log_handler;
 use chrono::{prelude::*, Duration};
 
 use crate::bots::{
@@ -21,6 +22,7 @@ use self::{callback_data::UpdateLogCallbackData, commands::UpdateLogCommand};
 
 use super::utils::pagination::generic_get_pagination_keyboard;
 
+#[log_handler("update_history")]
 async fn update_log_command(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let now = Utc::now().date_naive();
     let d3 = now - Duration::days(3);
@@ -76,6 +78,7 @@ async fn update_log_command(message: Message, bot: CacheMe<Throttle<Bot>>) -> Bo
     }
 }
 
+#[log_handler("update_history")]
 async fn update_log_pagination_handler(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,

@@ -1,4 +1,5 @@
 use anyhow;
+use book_bot_macros::log_handler;
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
@@ -11,8 +12,10 @@ pub mod register;
 pub mod strings;
 pub mod utils;
 
+#[log_handler("manager")]
 pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> anyhow::Result<()> {
     let from_user = message.clone().from.unwrap();
+
     let text = message.text().unwrap_or("");
 
     let result = register::register(from_user.id, text).await;

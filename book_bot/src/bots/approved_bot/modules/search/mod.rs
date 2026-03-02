@@ -1,6 +1,8 @@
 pub mod callback_data;
 pub mod utils;
 
+use book_bot_macros::log_handler;
+
 use core::fmt::Debug;
 use smartstring::alias::String as SmartString;
 
@@ -35,6 +37,7 @@ use self::{
 
 use super::utils::pagination::generic_get_pagination_keyboard;
 
+#[log_handler("search")]
 async fn generic_search_pagination_handler<T, P, Fut>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
@@ -126,6 +129,7 @@ where
     }
 }
 
+#[log_handler("search")]
 pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let query = message.text().map(|t| t.trim()).filter(|t| !t.is_empty());
     let user_id = message.from.as_ref().map(|u| u.id);

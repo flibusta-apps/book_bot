@@ -1,6 +1,8 @@
 pub mod callback_data;
 pub mod commands;
 
+use book_bot_macros::log_handler;
+
 use smallvec::SmallVec;
 use smartstring::alias::String as SmartString;
 use teloxide::{
@@ -23,6 +25,7 @@ use crate::bots::{
 
 use self::commands::RandomCommand;
 
+#[log_handler("random")]
 async fn random_handler(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
@@ -111,6 +114,7 @@ where
     }
 }
 
+#[log_handler("random")]
 async fn get_random_item_handler<T, Fut>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
@@ -127,6 +131,7 @@ where
     get_random_item_handler_internal(cq, bot, item).await
 }
 
+#[log_handler("random")]
 async fn get_genre_metas_handler(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
@@ -169,6 +174,7 @@ async fn get_genre_metas_handler(
     Ok(())
 }
 
+#[log_handler("random")]
 async fn get_genres_by_meta_handler(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
@@ -233,6 +239,7 @@ async fn get_genres_by_meta_handler(
     Ok(())
 }
 
+#[log_handler("random")]
 async fn get_random_book_by_genre(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,

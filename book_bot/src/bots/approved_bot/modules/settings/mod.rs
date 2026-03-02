@@ -1,6 +1,8 @@
 pub mod callback_data;
 pub mod commands;
 
+use book_bot_macros::log_handler;
+
 use std::collections::HashSet;
 
 use smallvec::SmallVec;
@@ -44,6 +46,7 @@ fn get_main_settings_keyboard() -> InlineKeyboardMarkup {
     }
 }
 
+#[log_handler("settings")]
 async fn settings_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     bot.send_message(message.chat.id, "Настройки")
         .reply_markup(get_main_settings_keyboard())
@@ -149,6 +152,7 @@ fn get_default_search_keyboard(current: Option<DefaultSearchType>) -> InlineKeyb
     }
 }
 
+#[log_handler("settings")]
 async fn settings_callback_handler(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,

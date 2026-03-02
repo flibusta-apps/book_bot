@@ -1,0 +1,78 @@
+[package]
+name = "book_bot"
+version = "0.1.0"
+edition = "2021"
+description = "Binary crate for the book_bot application."
+
+[dependencies]
+# Local procedural-macro crate (path is relative to this crate directory)
+book_bot_macros = { path = "../book_bot_macros" }
+
+# Core runtime / async
+once_cell = "1.21.3"
+tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros"] }
+tokio-util = { version = "0.7.14", features = ["compat"] }
+tokio-stream = "0.1.17"
+futures = "0.3.31"
+
+# Web / server / metrics
+axum = "0.8.3"
+axum-prometheus = "0.9.0"
+
+# Middleware / tower
+tower = "0.5.2"
+tower-http = { version = "0.6.2", features = ["trace"] }
+
+# Observability
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+sentry-tracing = "0.42.0"
+sentry = { version = "0.42.0", features = ["debug-images"] }
+
+# HTTP client
+reqwest = { version = "0.12.15", features = ["json", "stream"] }
+
+# Serialization
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+
+# Telegram bot framework
+teloxide = { version = "0.17.0", features = [
+    "macros",
+    "webhooks-axum",
+    "cache-me",
+    "throttle",
+] }
+
+# Utilities and helpers
+url = "2.5.4"
+ctrlc = { version = "3.4.5", features = ["termination"] }
+
+strum = "0.27.1"
+strum_macros = "0.27.1"
+
+base64 = "0.22.1"
+textwrap = "0.16.2"
+regex = "1.11.1"
+chrono = "0.4.40"
+dateparser = "0.2.1"
+
+smallvec = { version = "1.14.0", features = ["serde"] }
+smartstring = { version = "1.0.1", features = ["serde"] }
+
+moka = { version = "0.12.10", features = ["future"] }
+
+anyhow = "1.0.98"
+
+[profile.release]
+opt-level = 3
+debug = false
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = false

@@ -1,6 +1,8 @@
 pub mod callback_data;
 pub mod commands;
 
+use book_bot_macros::log_handler;
+
 use std::time::Duration;
 
 use chrono::Utc;
@@ -187,6 +189,7 @@ async fn download_handler(
     }
 }
 
+#[log_handler("download")]
 async fn get_download_keyboard_handler(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
@@ -231,6 +234,7 @@ async fn get_download_keyboard_handler(
     Ok(())
 }
 
+#[log_handler("download")]
 async fn get_download_archive_keyboard_handler(
     message: Message,
     bot: CacheMe<Throttle<Bot>>,
@@ -434,6 +438,7 @@ async fn wait_archive(
     Ok(())
 }
 
+#[log_handler("download")]
 async fn download_archive(
     cq: CallbackQuery,
     download_archive_query_data: DownloadArchiveQueryData,
@@ -482,6 +487,16 @@ async fn download_archive(
     Ok(())
 }
 
+#[log_handler("download")]
+async fn download_query_handler(
+    cq: CallbackQuery,
+    download_query_data: DownloadQueryData,
+    bot: CacheMe<Throttle<Bot>>,
+    cache: BotCache,
+) -> BotHandlerInternal {
+    download_handler(cq.message.unwrap(), bot, cache, download_query_data, true).await
+}
+
 pub fn get_download_handler() -> crate::bots::BotHandler {
     dptree::entry()
         .branch(
@@ -492,21 +507,7 @@ pub fn get_download_handler() -> crate::bots::BotHandler {
         .branch(
             Update::filter_callback_query()
                 .chain(filter_callback_query::<DownloadQueryData>())
-                .endpoint(
-                    |cq: CallbackQuery,
-                     download_query_data: DownloadQueryData,
-                     bot: CacheMe<Throttle<Bot>>,
-                     cache: BotCache| async move {
-                        download_handler(
-                            cq.message.unwrap(),
-                            bot,
-                            cache,
-                            download_query_data,
-                            true,
-                        )
-                        .await
-                    },
-                ),
+                .endpoint(download_query_handler),
         )
         .branch(
             Update::filter_message()

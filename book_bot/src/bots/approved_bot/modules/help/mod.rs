@@ -1,6 +1,7 @@
 pub mod commands;
 
 use crate::bots::BotHandlerInternal;
+use book_bot_macros::log_handler;
 
 use teloxide::{
     adaptors::{CacheMe, Throttle},
@@ -10,6 +11,7 @@ use teloxide::{
 
 use self::commands::HelpCommand;
 
+#[log_handler("help")]
 pub async fn help_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let name = message
         .from

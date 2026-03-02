@@ -372,6 +372,7 @@ dependencies = [
  "axum",
  "axum-prometheus",
  "base64",
+ "book_bot_macros",
  "chrono",
  "ctrlc",
  "dateparser",
@@ -398,6 +399,15 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+]
+
+[[package]]
+name = "book_bot_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
