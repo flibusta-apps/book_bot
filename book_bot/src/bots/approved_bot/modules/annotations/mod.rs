@@ -16,7 +16,6 @@ use teloxide::{
     prelude::*,
     types::*,
 };
-use tokio_util::compat::FuturesAsyncReadCompatExt;
 
 use crate::bots::{
     approved_bot::{
@@ -76,11 +75,8 @@ where
         let image_response = download_image(file).await;
 
         if let Ok(v) = image_response {
-            let data = v
-                .bytes_stream()
-                .map_err(std::io::Error::other)
-                .into_async_read()
-                .compat();
+            let stream = v.bytes_stream().map_err(std::io::Error::other);
+            let data = tokio_util::io::StreamReader::new(stream);
 
             #[allow(unused_must_use)]
             {

@@ -16,7 +16,6 @@ use teloxide::{
     types::*,
 };
 use tokio::time::{self};
-use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tracing::log;
 
 use crate::{
@@ -130,11 +129,8 @@ async fn _send_downloaded_file(
         caption,
     } = downloaded_data;
 
-    let data = response
-        .bytes_stream()
-        .map_err(std::io::Error::other)
-        .into_async_read()
-        .compat();
+    let stream = response.bytes_stream().map_err(std::io::Error::other);
+    let data = tokio_util::io::StreamReader::new(stream);
 
     let document = InputFile::read(data).file_name(filename);
 
