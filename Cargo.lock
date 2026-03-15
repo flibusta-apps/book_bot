@@ -377,6 +377,7 @@ dependencies = [
  "ctrlc",
  "dateparser",
  "futures",
+ "metrics",
  "moka",
  "regex",
  "reqwest",

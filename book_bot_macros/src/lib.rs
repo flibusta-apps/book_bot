@@ -18,7 +18,12 @@ pub fn log_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
         #(#fn_attrs)*
         #fn_vis #fn_sig {
             #log_stmt
-            #fn_block
+            let mut __metrics_guard = crate::handler_metrics::HandlerMetricsGuard::new(#handler_name);
+            let __result: anyhow::Result<()> = #fn_block;
+            if __result.is_err() {
+                __metrics_guard.set_error();
+            }
+            __result
         }
     }
     .into()

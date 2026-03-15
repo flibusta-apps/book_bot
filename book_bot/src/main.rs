@@ -13,6 +13,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 mod bots;
 mod bots_manager;
 mod config;
+pub mod handler_metrics;
 
 #[tokio::main]
 async fn main() {
