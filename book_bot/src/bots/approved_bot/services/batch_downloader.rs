@@ -1,12 +1,17 @@
-use once_cell::sync::Lazy;
 use smallvec::SmallVec;
 use smartstring::alias::String as SmartString;
+use std::sync::LazyLock;
 
 use serde::{Deserialize, Serialize};
 
 use crate::config;
 
-pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+pub static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .expect("Failed to create HTTP client")
+});
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

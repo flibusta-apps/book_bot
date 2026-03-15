@@ -1,11 +1,18 @@
 use std::fmt::Display;
 
 use regex::Regex;
+use std::sync::LazyLock;
 use strum_macros::EnumIter;
 
 use crate::bots::approved_bot::modules::utils::{
     errors::CommandParseError, filter_command::CommandParse,
 };
+
+static RE_DOWNLOAD: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^/d_(?P<book_id>\d+)$").unwrap());
+
+static RE_ARCHIVE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^/da_(?P<type>[sat])_(?P<id>\d+)$").unwrap());
 
 #[derive(Clone)]
 pub struct StartDownloadCommand {
@@ -20,18 +27,10 @@ impl Display for StartDownloadCommand {
 
 impl CommandParse<Self> for StartDownloadCommand {
     fn parse(s: &str, bot_name: &str) -> Result<Self, CommandParseError> {
-        let re = Regex::new(r"^/d_(?P<book_id>\d+)$").unwrap();
+        let input = s.replace(&format!("@{bot_name}"), "");
+        let caps = RE_DOWNLOAD.captures(&input).ok_or(CommandParseError)?;
 
-        let full_bot_name = format!("@{bot_name}");
-        let after_replace = s.replace(&full_bot_name, "");
-
-        let caps = re.captures(&after_replace);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(CommandParseError),
-        };
-
-        let book_id: u32 = caps["book_id"].parse().unwrap();
+        let book_id: u32 = caps["book_id"].parse().map_err(|_| CommandParseError)?;
 
         Ok(StartDownloadCommand { id: book_id })
     }
@@ -56,23 +55,15 @@ impl Display for DownloadArchiveCommand {
 
 impl CommandParse<Self> for DownloadArchiveCommand {
     fn parse(s: &str, bot_name: &str) -> Result<Self, CommandParseError> {
-        let re = Regex::new(r"^/da_(?P<type>[sat])_(?P<id>\d+)$").unwrap();
+        let input = s.replace(&format!("@{bot_name}"), "");
+        let caps = RE_ARCHIVE.captures(&input).ok_or(CommandParseError)?;
 
-        let full_bot_name = format!("@{bot_name}");
-        let after_replace = s.replace(&full_bot_name, "");
-
-        let caps = re.captures(&after_replace);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(CommandParseError),
-        };
-
-        let obj_id: u32 = caps["id"].parse().unwrap();
+        let id: u32 = caps["id"].parse().map_err(|_| CommandParseError)?;
 
         match &caps["type"] {
-            "s" => Ok(DownloadArchiveCommand::Sequence { id: obj_id }),
-            "a" => Ok(DownloadArchiveCommand::Author { id: obj_id }),
-            "t" => Ok(DownloadArchiveCommand::Translator { id: obj_id }),
+            "s" => Ok(DownloadArchiveCommand::Sequence { id }),
+            "a" => Ok(DownloadArchiveCommand::Author { id }),
+            "t" => Ok(DownloadArchiveCommand::Translator { id }),
             _ => Err(CommandParseError),
         }
     }

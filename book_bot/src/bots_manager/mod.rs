@@ -5,8 +5,8 @@ pub mod custom_error_handler;
 pub mod internal;
 pub mod utils;
 
-use once_cell::sync::Lazy;
 use smartstring::alias::String as SmartString;
+use std::sync::LazyLock;
 use teloxide::adaptors::throttle::Limits;
 use teloxide::stop::{StopFlag, StopToken};
 use tokio::task::JoinSet;
@@ -31,28 +31,29 @@ pub use self::bot_manager_client::{BotCache, BotData};
 use self::closable_sender::ClosableSender;
 use self::internal::set_webhook;
 
-pub static USER_ACTIVITY_CACHE: Lazy<Cache<UserId, ()>> = Lazy::new(|| {
+pub static USER_ACTIVITY_CACHE: LazyLock<Cache<UserId, ()>> = LazyLock::new(|| {
     Cache::builder()
         .time_to_idle(Duration::from_secs(30 * 60))
         .max_capacity(4096)
         .build()
 });
 
-pub static USER_LANGS_CACHE: Lazy<Cache<UserId, SmallVec<[SmartString; 3]>>> = Lazy::new(|| {
-    Cache::builder()
-        .time_to_idle(Duration::from_secs(30 * 60))
-        .max_capacity(4096)
-        .build()
-});
+pub static USER_LANGS_CACHE: LazyLock<Cache<UserId, SmallVec<[SmartString; 3]>>> =
+    LazyLock::new(|| {
+        Cache::builder()
+            .time_to_idle(Duration::from_secs(30 * 60))
+            .max_capacity(4096)
+            .build()
+    });
 
-pub static CHAT_DONATION_NOTIFICATIONS_CACHE: Lazy<Cache<ChatId, ()>> = Lazy::new(|| {
+pub static CHAT_DONATION_NOTIFICATIONS_CACHE: LazyLock<Cache<ChatId, ()>> = LazyLock::new(|| {
     Cache::builder()
         .time_to_idle(Duration::from_secs(24 * 60 * 60))
-        .max_capacity(4098)
+        .max_capacity(4096)
         .build()
 });
 
-pub static WEBHOOK_CHECK_ERRORS_COUNT: Lazy<Cache<u32, u32>> = Lazy::new(|| {
+pub static WEBHOOK_CHECK_ERRORS_COUNT: LazyLock<Cache<u32, u32>> = LazyLock::new(|| {
     Cache::builder()
         .time_to_idle(Duration::from_secs(600))
         .max_capacity(128)
@@ -65,7 +66,7 @@ type StopTokenWithSender = (
     ClosableSender<Result<Update, std::convert::Infallible>>,
 );
 
-pub static BOTS_ROUTES: Lazy<Cache<String, StopTokenWithSender>> = Lazy::new(|| {
+pub static BOTS_ROUTES: LazyLock<Cache<String, StopTokenWithSender>> = LazyLock::new(|| {
     Cache::builder()
         .time_to_idle(Duration::from_secs(60 * 60))
         .max_capacity(100)
@@ -80,8 +81,8 @@ pub static BOTS_ROUTES: Lazy<Cache<String, StopTokenWithSender>> = Lazy::new(|| 
         .build()
 });
 
-pub static BOTS_DATA: Lazy<Cache<String, BotData>> = Lazy::new(|| Cache::builder().build());
-pub static INITED_BOTS_IDS: Lazy<Cache<u32, ()>> = Lazy::new(|| Cache::builder().build());
+pub static BOTS_DATA: LazyLock<Cache<String, BotData>> = LazyLock::new(|| Cache::builder().build());
+pub static INITED_BOTS_IDS: LazyLock<Cache<u32, ()>> = LazyLock::new(|| Cache::builder().build());
 
 pub struct BotsManager;
 
@@ -169,7 +170,9 @@ impl BotsManager {
                 continue;
             }
 
-            let bot = Bot::new(token.clone().as_str()).throttle(Limits::default());
+            let bot = Bot::new(token.clone().as_str())
+                .set_api_url(crate::config::CONFIG.telegram_bot_api.clone())
+                .throttle(Limits::default());
 
             let result = bot.get_webhook_info().send().await;
 

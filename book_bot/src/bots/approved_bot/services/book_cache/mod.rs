@@ -1,6 +1,6 @@
 use base64::{engine::general_purpose, Engine};
-use once_cell::sync::Lazy;
 use reqwest::StatusCode;
+use std::sync::LazyLock;
 
 use crate::{
     bots::approved_bot::modules::download::callback_data::DownloadQueryData,
@@ -11,12 +11,17 @@ use self::types::{CachedMessage, DownloadFile};
 
 pub mod types;
 
-pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+pub static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .expect("Failed to create HTTP client")
+});
 
 pub async fn get_cached_message(
     download_data: &DownloadQueryData,
     bot_cache: BotCache,
-) -> Result<Option<CachedMessage>, Box<dyn std::error::Error + Send + Sync>> {
+) -> anyhow::Result<Option<CachedMessage>> {
     let DownloadQueryData::DownloadData {
         book_id: id,
         file_type: format,

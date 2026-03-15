@@ -3,6 +3,8 @@ pub mod commands;
 
 use book_bot_macros::log_handler;
 
+use super::utils::constants::*;
+
 use core::fmt::Debug;
 
 use smartstring::alias::String as SmartString;
@@ -55,11 +57,7 @@ where
     let user_id = match message.from.map(|from| from.id) {
         Some(v) => v,
         None => {
-            return match bot
-                .send_message(chat_id, "Повторите запрос сначала")
-                .send()
-                .await
-            {
+            return match bot.send_message(chat_id, REPEAT_REQUEST).send().await {
                 Ok(_) => Ok(()),
                 Err(err) => Err(err.into()),
             }
@@ -71,21 +69,17 @@ where
     let items_page = match books_getter(id, 1, allowed_langs).await {
         Ok(v) => v,
         Err(err) => {
-            bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
-                .send()
-                .await?;
+            bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
             return Err(err);
         }
     };
 
     if items_page.pages == 0 {
-        bot.send_message(chat_id, "Книги не найдены!")
-            .send()
-            .await?;
+        bot.send_message(chat_id, BOOKS_NOT_FOUND).send().await?;
         return Ok(());
     };
 
-    let formatted_page = items_page.format(1, 4096);
+    let formatted_page = items_page.format(1, TELEGRAM_MESSAGE_MAX_LENGTH);
 
     let callback_data = match command {
         BookCommand::Author { id } => BookCallbackData::Author { id, page: 1 },
@@ -128,9 +122,7 @@ where
     let (chat_id, message_id) = match (chat_id, message_id) {
         (Some(chat_id), Some(message_id)) => (chat_id, message_id),
         (Some(chat_id), None) => {
-            bot.send_message(chat_id, "Повторите поиск сначала")
-                .send()
-                .await?;
+            bot.send_message(chat_id, REPEAT_SEARCH).send().await?;
             return Ok(());
         }
         _ => {
@@ -143,11 +135,7 @@ where
     let mut items_page = match books_getter(id, page, allowed_langs.clone()).await {
         Ok(v) => v,
         Err(err) => {
-            match bot
-                .send_message(chat_id, "Ошибка! Попробуйте позже :(")
-                .send()
-                .await
-            {
+            match bot.send_message(chat_id, ERROR_TRY_LATER).send().await {
                 Ok(_) => (),
                 Err(err) => log::error!("{err:?}"),
             }
@@ -156,9 +144,7 @@ where
     };
 
     if items_page.pages == 0 {
-        bot.send_message(chat_id, "Книги не найдены!")
-            .send()
-            .await?;
+        bot.send_message(chat_id, BOOKS_NOT_FOUND).send().await?;
         return Ok(());
     };
 
@@ -166,16 +152,14 @@ where
         items_page = match books_getter(id, items_page.pages, allowed_langs).await {
             Ok(v) => v,
             Err(err) => {
-                bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
-                    .send()
-                    .await?;
+                bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
 
                 return Err(err);
             }
         };
     }
 
-    let formatted_page = items_page.format(page, 4096);
+    let formatted_page = items_page.format(page, TELEGRAM_MESSAGE_MAX_LENGTH);
 
     let keyboard = generic_get_pagination_keyboard(page, items_page.pages, callback_data, true);
 

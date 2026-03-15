@@ -1,15 +1,20 @@
-use once_cell::sync::Lazy;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use smallvec::{smallvec, SmallVec};
 use smartstring::alias::String as SmartString;
+use std::sync::LazyLock;
 use teloxide::types::{ChatId, UserId};
 use tracing::log;
 
 use crate::{bots_manager::USER_LANGS_CACHE, config};
 
-pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+pub static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .expect("Failed to create HTTP client")
+});
 
 /// API values: "book" | "author" | "series" | "translator"
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,9 +74,7 @@ pub struct UserSettings {
     pub default_search: Option<DefaultSearchType>,
 }
 
-pub async fn get_user_settings(
-    user_id: UserId,
-) -> Result<Option<UserSettings>, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn get_user_settings(user_id: UserId) -> anyhow::Result<Option<UserSettings>> {
     let response = CLIENT
         .get(format!(
             "{}/users/{}",

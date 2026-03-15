@@ -1,12 +1,16 @@
 use std::{fmt::Display, str::FromStr};
 
 use regex::Regex;
+use std::sync::LazyLock;
 use strum_macros::EnumIter;
 
 use crate::bots::approved_bot::{
     modules::utils::pagination::GetPaginationCallbackData,
     services::user_settings::DefaultSearchType,
 };
+
+static RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?P<search_type>s[abst])_(?P<page>\d+)$").unwrap());
 
 #[derive(Clone, EnumIter)]
 pub enum SearchCallbackData {
@@ -31,16 +35,12 @@ impl FromStr for SearchCallbackData {
     type Err = strum::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"^(?P<search_type>s[abst])_(?P<page>\d+)$").unwrap();
-
-        let caps = re.captures(s);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
+        let caps = RE.captures(s).ok_or(strum::ParseError::VariantNotFound)?;
 
         let search_type = &caps["search_type"];
-        let page: u32 = caps["page"].parse::<u32>().unwrap();
+        let page: u32 = caps["page"]
+            .parse()
+            .map_err(|_| strum::ParseError::VariantNotFound)?;
 
         // Fix for migrate from old bot implementation
         let page: u32 = std::cmp::max(1, page);

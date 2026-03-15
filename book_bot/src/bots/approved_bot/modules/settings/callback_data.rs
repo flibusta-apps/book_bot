@@ -2,6 +2,10 @@ use std::{fmt::Display, str::FromStr};
 
 use regex::Regex;
 use smartstring::alias::String as SmartString;
+use std::sync::LazyLock;
+
+static RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^lang_(?P<action>(off)|(on))_(?P<code>[a-zA-z]+)$").unwrap());
 
 #[derive(Clone)]
 pub enum SettingsCallbackData {
@@ -46,13 +50,7 @@ impl FromStr for SettingsCallbackData {
             });
         }
 
-        let re = Regex::new(r"^lang_(?P<action>(off)|(on))_(?P<code>[a-zA-z]+)$").unwrap();
-
-        let caps = re.captures(s);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
+        let caps = RE.captures(s).ok_or(strum::ParseError::VariantNotFound)?;
 
         let action = &caps["action"];
         let code = caps["code"].to_string();

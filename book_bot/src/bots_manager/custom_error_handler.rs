@@ -34,24 +34,6 @@ where
 
             let backtrace = std::backtrace::Backtrace::force_capture();
 
-            let error_chain = if let Some(std_error) =
-                (&error as &dyn std::any::Any).downcast_ref::<Box<dyn std::error::Error>>()
-            {
-                let mut chain = Vec::new();
-                let mut source = std_error.source();
-                while let Some(err) = source {
-                    chain.push(format!("  Caused by: {}", err));
-                    source = err.source();
-                }
-                if chain.is_empty() {
-                    String::new()
-                } else {
-                    format!("\nError chain:\n{}", chain.join("\n"))
-                }
-            } else {
-                String::new()
-            };
-
             let backtrace_info = match backtrace.status() {
                 std::backtrace::BacktraceStatus::Captured => {
                     format!("\nBacktrace:\n{}", backtrace)
@@ -65,13 +47,7 @@ where
                 _ => String::new(),
             };
 
-            log::error!(
-                "{}: {:?}{}{}",
-                self.text,
-                error,
-                error_chain,
-                backtrace_info
-            );
+            log::error!("{}: {:?}{}", self.text, error, backtrace_info);
         })
     }
 }

@@ -1,9 +1,14 @@
-use once_cell::sync::Lazy;
 use serde::Deserialize;
+use std::sync::LazyLock;
 
 use crate::config;
 
-pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+pub static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .expect("Failed to create HTTP client")
+});
 
 #[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum BotCache {

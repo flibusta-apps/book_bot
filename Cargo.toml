@@ -7,3 +7,16 @@ tracing = "0.1.41"
 syn = { version = "2.0", features = ["full"] }
 quote = "1.0"
 proc-macro2 = "1.0"
+
+[profile.release]
+opt-level = 3
+debug = false
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = false

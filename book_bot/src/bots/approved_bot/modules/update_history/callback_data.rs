@@ -3,8 +3,14 @@ use std::{fmt::Display, str::FromStr};
 use chrono::NaiveDate;
 use dateparser::parse;
 use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::bots::approved_bot::modules::utils::pagination::GetPaginationCallbackData;
+
+static RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^update_log_(?P<from>\d{4}-\d{2}-\d{2})_(?P<to>\d{4}-\d{2}-\d{2})_(?P<page>\d+)$")
+        .unwrap()
+});
 
 #[derive(Clone, Copy)]
 pub struct UpdateLogCallbackData {
@@ -17,20 +23,17 @@ impl FromStr for UpdateLogCallbackData {
     type Err = strum::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(
-            r"^update_log_(?P<from>\d{4}-\d{2}-\d{2})_(?P<to>\d{4}-\d{2}-\d{2})_(?P<page>\d+)$",
-        )
-        .unwrap();
+        let caps = RE.captures(s).ok_or(strum::ParseError::VariantNotFound)?;
 
-        let caps = re.captures(s);
-        let caps = match caps {
-            Some(v) => v,
-            None => return Err(strum::ParseError::VariantNotFound),
-        };
-
-        let from: NaiveDate = parse(&caps["from"]).unwrap().date_naive();
-        let to: NaiveDate = parse(&caps["to"]).unwrap().date_naive();
-        let page: u32 = caps["page"].parse().unwrap();
+        let from: NaiveDate = parse(&caps["from"])
+            .map_err(|_| strum::ParseError::VariantNotFound)?
+            .date_naive();
+        let to: NaiveDate = parse(&caps["to"])
+            .map_err(|_| strum::ParseError::VariantNotFound)?
+            .date_naive();
+        let page: u32 = caps["page"]
+            .parse()
+            .map_err(|_| strum::ParseError::VariantNotFound)?;
 
         Ok(UpdateLogCallbackData { from, to, page })
     }

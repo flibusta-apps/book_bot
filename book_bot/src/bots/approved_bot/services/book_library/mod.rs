@@ -1,8 +1,8 @@
 pub mod formatters;
 pub mod types;
 
-use once_cell::sync::Lazy;
 use smartstring::alias::String as SmartString;
+use std::sync::LazyLock;
 
 use serde::de::DeserializeOwned;
 use smallvec::SmallVec;
@@ -10,9 +10,18 @@ use tracing::log;
 
 use crate::config;
 
+fn encode_path_segment(s: &str) -> String {
+    url::form_urlencoded::byte_serialize(s.as_bytes()).collect()
+}
+
 use self::types::Empty;
 
-pub static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+pub static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .expect("Failed to create HTTP client")
+});
 
 fn get_allowed_langs_params(
     allowed_langs: &SmallVec<[SmartString; 3]>,
@@ -105,7 +114,11 @@ pub async fn search_book(
     params.push(("page", page.to_string().into()));
     params.push(("size", PAGE_SIZE.to_string().into()));
 
-    _make_request(format!("/api/v1/books/search/{query}").as_str(), params).await
+    _make_request(
+        format!("/api/v1/books/search/{}", encode_path_segment(&query)).as_str(),
+        params,
+    )
+    .await
 }
 
 pub async fn search_author(
@@ -118,7 +131,11 @@ pub async fn search_author(
     params.push(("page", page.to_string().into()));
     params.push(("size", PAGE_SIZE.to_string().into()));
 
-    _make_request(format!("/api/v1/authors/search/{query}").as_str(), params).await
+    _make_request(
+        format!("/api/v1/authors/search/{}", encode_path_segment(&query)).as_str(),
+        params,
+    )
+    .await
 }
 
 pub async fn search_sequence(
@@ -131,7 +148,11 @@ pub async fn search_sequence(
     params.push(("page", page.to_string().into()));
     params.push(("size", PAGE_SIZE.to_string().into()));
 
-    _make_request(format!("/api/v1/sequences/search/{query}").as_str(), params).await
+    _make_request(
+        format!("/api/v1/sequences/search/{}", encode_path_segment(&query)).as_str(),
+        params,
+    )
+    .await
 }
 
 pub async fn search_translator(
@@ -145,7 +166,7 @@ pub async fn search_translator(
     params.push(("size", PAGE_SIZE.to_string().into()));
 
     _make_request(
-        format!("/api/v1/translators/search/{query}").as_str(),
+        format!("/api/v1/translators/search/{}", encode_path_segment(&query)).as_str(),
         params,
     )
     .await

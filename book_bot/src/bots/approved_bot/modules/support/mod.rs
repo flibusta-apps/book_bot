@@ -8,6 +8,12 @@ use teloxide::{
     utils::command::BotCommands,
 };
 
+fn escape_html(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase")]
 enum SupportCommand {
@@ -20,18 +26,16 @@ pub async fn support_command_handler(
     message: Message,
     bot: &CacheMe<Throttle<Bot>>,
 ) -> BotHandlerInternal {
-    let username = match message.clone().from {
-        Some(user) => match user.is_bot {
-            true => match message.reply_to_message() {
-                Some(v) => match &v.from {
-                    Some(v) => &v.first_name,
-                    None => "пользователь",
-                },
-                None => "пользователь",
+    let username = match message.from.as_ref() {
+        Some(user) if !user.is_bot => escape_html(&user.first_name),
+        Some(user) if user.is_bot => match message.reply_to_message() {
+            Some(v) => match &v.from {
+                Some(v) => escape_html(&v.first_name),
+                None => "пользователь".to_string(),
             },
-            false => &user.first_name.clone(),
+            None => "пользователь".to_string(),
         },
-        None => "пользователь",
+        _ => "пользователь".to_string(),
     };
 
     let message_text = format!(

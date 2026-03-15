@@ -6,8 +6,12 @@ use chrono::{prelude::*, Duration};
 
 use crate::bots::{
     approved_bot::{
-        modules::utils::message_text::is_message_text_equals,
-        services::book_library::get_uploaded_books, tools::filter_callback_query,
+        modules::utils::{
+            constants::{ERROR_TRY_AGAIN, TELEGRAM_MESSAGE_MAX_LENGTH},
+            message_text::is_message_text_equals,
+        },
+        services::book_library::get_uploaded_books,
+        tools::filter_callback_query,
     },
     BotHandlerInternal,
 };
@@ -87,9 +91,7 @@ async fn update_log_pagination_handler(
     let message = match cq.message.clone() {
         Some(v) => v,
         None => {
-            bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(")
-                .send()
-                .await?;
+            bot.send_message(cq.from.id, ERROR_TRY_AGAIN).send().await?;
             return Ok(());
         }
     };
@@ -141,7 +143,7 @@ async fn update_log_pagination_handler(
     let page = update_callback_data.page;
     let total_pages = items_page.pages;
 
-    let formatted_page = items_page.format(page, 4096);
+    let formatted_page = items_page.format(page, TELEGRAM_MESSAGE_MAX_LENGTH);
 
     let message_text = format!("{header}{formatted_page}");
     if is_message_text_equals(cq.message, &message_text) {

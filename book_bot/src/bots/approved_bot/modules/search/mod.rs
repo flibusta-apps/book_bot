@@ -3,6 +3,8 @@ pub mod utils;
 
 use book_bot_macros::log_handler;
 
+use super::utils::constants::*;
+
 use core::fmt::Debug;
 use smartstring::alias::String as SmartString;
 
@@ -57,9 +59,7 @@ where
     let (chat_id, query, message_id) = match (chat_id, query, message_id) {
         (Some(chat_id), Some(query), Some(message_id)) => (chat_id, query, message_id),
         (Some(chat_id), _, _) => {
-            bot.send_message(chat_id, "Повторите поиск сначала")
-                .send()
-                .await?;
+            bot.send_message(chat_id, REPEAT_SEARCH).send().await?;
             return Ok(());
         }
         _ => {
@@ -79,9 +79,7 @@ where
     let mut items_page = match items_getter(query.clone(), page, allowed_langs.clone()).await {
         Ok(v) => v,
         Err(err) => {
-            bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
-                .send()
-                .await?;
+            bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
 
             return Err(err);
         }
@@ -89,10 +87,10 @@ where
 
     if items_page.pages == 0 {
         let message_text = match search_data {
-            SearchCallbackData::Book { .. } => "Книги не найдены!",
-            SearchCallbackData::Authors { .. } => "Авторы не найдены!",
-            SearchCallbackData::Sequences { .. } => "Серии не найдены!",
-            SearchCallbackData::Translators { .. } => "Переводчики не найдены!",
+            SearchCallbackData::Book { .. } => BOOKS_NOT_FOUND,
+            SearchCallbackData::Authors { .. } => AUTHORS_NOT_FOUND,
+            SearchCallbackData::Sequences { .. } => SEQUENCES_NOT_FOUND,
+            SearchCallbackData::Translators { .. } => TRANSLATORS_NOT_FOUND,
         };
 
         bot.send_message(chat_id, message_text).send().await?;
@@ -103,16 +101,14 @@ where
         items_page = match items_getter(query, items_page.pages, allowed_langs).await {
             Ok(v) => v,
             Err(err) => {
-                bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
-                    .send()
-                    .await?;
+                bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
 
                 return Err(err);
             }
         };
     }
 
-    let formatted_page = items_page.format(page, 4096);
+    let formatted_page = items_page.format(page, TELEGRAM_MESSAGE_MAX_LENGTH);
     if is_message_text_equals(cq.message, &formatted_page) {
         return Ok(());
     }
@@ -146,17 +142,15 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                 SearchCallbackData::Book { .. } => {
                     match search_book(query_owned, 1, allowed_langs).await {
                         Ok(p) if p.pages == 0 => {
-                            bot.send_message(chat_id, "Книги не найдены!")
+                            bot.send_message(chat_id, BOOKS_NOT_FOUND)
                                 .reply_parameters(reply_params)
                                 .send()
                                 .await?;
                             return Ok(());
                         }
-                        Ok(p) => (p.format(1, 4096), p.pages),
+                        Ok(p) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
                         Err(_) => {
-                            bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
-                                .send()
-                                .await?;
+                            bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
                             return Ok(());
                         }
                     }
@@ -164,17 +158,15 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                 SearchCallbackData::Authors { .. } => {
                     match search_author(query_owned, 1, allowed_langs).await {
                         Ok(p) if p.pages == 0 => {
-                            bot.send_message(chat_id, "Авторы не найдены!")
+                            bot.send_message(chat_id, AUTHORS_NOT_FOUND)
                                 .reply_parameters(reply_params)
                                 .send()
                                 .await?;
                             return Ok(());
                         }
-                        Ok(p) => (p.format(1, 4096), p.pages),
+                        Ok(p) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
                         Err(_) => {
-                            bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
-                                .send()
-                                .await?;
+                            bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
                             return Ok(());
                         }
                     }
@@ -182,17 +174,15 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                 SearchCallbackData::Sequences { .. } => {
                     match search_sequence(query_owned, 1, allowed_langs).await {
                         Ok(p) if p.pages == 0 => {
-                            bot.send_message(chat_id, "Серии не найдены!")
+                            bot.send_message(chat_id, SEQUENCES_NOT_FOUND)
                                 .reply_parameters(reply_params)
                                 .send()
                                 .await?;
                             return Ok(());
                         }
-                        Ok(p) => (p.format(1, 4096), p.pages),
+                        Ok(p) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
                         Err(_) => {
-                            bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
-                                .send()
-                                .await?;
+                            bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
                             return Ok(());
                         }
                     }
@@ -200,17 +190,15 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                 SearchCallbackData::Translators { .. } => {
                     match search_translator(query_owned, 1, allowed_langs).await {
                         Ok(p) if p.pages == 0 => {
-                            bot.send_message(chat_id, "Переводчики не найдены!")
+                            bot.send_message(chat_id, TRANSLATORS_NOT_FOUND)
                                 .reply_parameters(reply_params)
                                 .send()
                                 .await?;
                             return Ok(());
                         }
-                        Ok(p) => (p.format(1, 4096), p.pages),
+                        Ok(p) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
                         Err(_) => {
-                            bot.send_message(chat_id, "Ошибка! Попробуйте позже :(")
-                                .send()
-                                .await?;
+                            bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
                             return Ok(());
                         }
                     }

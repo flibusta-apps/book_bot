@@ -55,7 +55,10 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
 
                 match BOTS_ROUTES.get(&token).await {
                     None => {
-                        log::error!("Cannot get a bot with token: {token}");
+                        log::error!(
+                            "Cannot get a bot with token: {}...",
+                            &token[..token.len().min(5)]
+                        );
                         return StatusCode::SERVICE_UNAVAILABLE;
                     }
                     Some(v) => v,

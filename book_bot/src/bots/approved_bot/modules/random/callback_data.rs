@@ -15,20 +15,18 @@ impl std::str::FromStr for RandomCallbackData {
     type Err = strum::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let value = s.to_string();
-
         for callback_data in <RandomCallbackData as strum::IntoEnumIterator>::iter() {
             match callback_data {
                 RandomCallbackData::Genres { .. }
                 | RandomCallbackData::RandomBookByGenre { .. } => {
                     let callback_prefix = callback_data.to_string();
 
-                    if value.starts_with(&callback_prefix) {
-                        let data: u32 = value
-                            .strip_prefix(&format!("{}_", &callback_prefix).to_string())
-                            .unwrap()
+                    if let Some(suffix) = s.strip_prefix(&callback_prefix) {
+                        let data: u32 = suffix
+                            .strip_prefix('_')
+                            .ok_or(strum::ParseError::VariantNotFound)?
                             .parse()
-                            .unwrap();
+                            .map_err(|_| strum::ParseError::VariantNotFound)?;
 
                         match callback_data {
                             RandomCallbackData::Genres { .. } => {
@@ -42,7 +40,7 @@ impl std::str::FromStr for RandomCallbackData {
                     }
                 }
                 _ => {
-                    if value == callback_data.to_string() {
+                    if s == callback_data.to_string() {
                         return Ok(callback_data);
                     }
                 }

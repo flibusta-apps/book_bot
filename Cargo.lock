@@ -378,7 +378,6 @@ dependencies = [
  "dateparser",
  "futures",
  "moka",
- "once_cell",
  "regex",
  "reqwest",
  "sentry",

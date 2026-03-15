@@ -1,12 +1,11 @@
 use regex::Regex;
+use std::sync::LazyLock;
+
+static RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("(?P<token>[0-9]+:[0-9a-zA-Z-_]+)").unwrap());
 
 pub fn get_token(message_text: &str) -> Option<&str> {
-    let re = Regex::new("(?P<token>[0-9]+:[0-9a-zA-Z-_]+)").unwrap();
-
-    match re.find(message_text) {
-        Some(v) => Some(v.as_str()),
-        None => None,
-    }
+    RE.find(message_text).map(|v| v.as_str())
 }
 
 #[cfg(test)]

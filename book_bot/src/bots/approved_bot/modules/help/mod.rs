@@ -11,12 +11,19 @@ use teloxide::{
 
 use self::commands::HelpCommand;
 
+fn escape_html(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
 #[log_handler("help")]
 pub async fn help_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let name = message
         .from
-        .map(|user| user.first_name)
-        .unwrap_or("пользователь".to_string());
+        .as_ref()
+        .map(|user| escape_html(&user.first_name))
+        .unwrap_or_else(|| "пользователь".to_string());
 
     match bot
         .send_message(

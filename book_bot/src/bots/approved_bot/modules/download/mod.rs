@@ -1,6 +1,8 @@
 pub mod callback_data;
 pub mod commands;
 
+use super::utils::constants::*;
+
 use book_bot_macros::log_handler;
 
 use std::time::Duration;
@@ -194,7 +196,7 @@ async fn get_download_keyboard_handler(
     let book = match get_book(download_data.id).await {
         Ok(v) => v,
         Err(err) => {
-            bot.send_message(message.chat.id, "Ошибка! Попробуйте позже :(")
+            bot.send_message(message.chat.id, ERROR_TRY_LATER)
                 .send()
                 .await?;
 
@@ -236,7 +238,10 @@ async fn get_download_archive_keyboard_handler(
     bot: CacheMe<Throttle<Bot>>,
     command: DownloadArchiveCommand,
 ) -> BotHandlerInternal {
-    let allowed_langs = get_user_or_default_lang_codes(message.from.unwrap().id).await;
+    let Some(from) = message.from.as_ref() else {
+        return Ok(());
+    };
+    let allowed_langs = get_user_or_default_lang_codes(from.id).await;
 
     let available_types = match command {
         DownloadArchiveCommand::Sequence { id } => {
@@ -298,7 +303,7 @@ async fn get_download_archive_keyboard_handler(
 
 async fn send_error_message(bot: CacheMe<Throttle<Bot>>, chat_id: ChatId, message_id: MessageId) {
     let _ = bot
-        .edit_message_text(chat_id, message_id, "Ошибка! Попробуйте позже :(")
+        .edit_message_text(chat_id, message_id, ERROR_TRY_LATER)
         .reply_markup(InlineKeyboardMarkup {
             inline_keyboard: vec![],
         })
@@ -399,21 +404,25 @@ async fn wait_archive(
         task.id
     );
 
-    let downloaded_data =
-        match download_file_by_link(&task.clone().result_filename.unwrap(), link).await {
-            Ok(v) => match v {
-                Some(v) => v,
-                None => {
-                    send_error_message(bot, message.chat.id, message.id).await;
-                    return Ok(());
-                }
-            },
-            Err(err) => {
+    let downloaded_data = match download_file_by_link(
+        task.result_filename.as_deref().unwrap_or_default(),
+        link,
+    )
+    .await
+    {
+        Ok(v) => match v {
+            Some(v) => v,
+            None => {
                 send_error_message(bot, message.chat.id, message.id).await;
-                log::error!("{err:?}");
-                return Err(err);
+                return Ok(());
             }
-        };
+        },
+        Err(err) => {
+            send_error_message(bot, message.chat.id, message.id).await;
+            log::error!("{err:?}");
+            return Err(err);
+        }
+    };
 
     match _send_downloaded_file(
         &MaybeInaccessibleMessage::Regular(message.clone()),
@@ -454,7 +463,9 @@ async fn download_archive(
         }
     };
 
-    let message = cq.message.unwrap();
+    let Some(message) = cq.message else {
+        return Ok(());
+    };
 
     let task = create_task(CreateTaskData {
         object_id: id,
@@ -490,7 +501,10 @@ async fn download_query_handler(
     bot: CacheMe<Throttle<Bot>>,
     cache: BotCache,
 ) -> BotHandlerInternal {
-    download_handler(cq.message.unwrap(), bot, cache, download_query_data, true).await
+    let Some(message) = cq.message else {
+        return Ok(());
+    };
+    download_handler(message, bot, cache, download_query_data, true).await
 }
 
 pub fn get_download_handler() -> crate::bots::BotHandler {
@@ -519,7 +533,10 @@ pub fn get_download_handler() -> crate::bots::BotHandler {
             Update::filter_callback_query()
             .chain(filter_callback_query::<CheckArchiveStatus>())
             .endpoint(|cq: CallbackQuery, status: CheckArchiveStatus, bot: CacheMe<Throttle<Bot>>| async move {
-                wait_archive(bot, status.task_id, cq.message.unwrap()).await
+                let Some(message) = cq.message else {
+                    return Ok(());
+                };
+                wait_archive(bot, status.task_id, message).await
             })
         )
 }
