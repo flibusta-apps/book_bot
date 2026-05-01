@@ -24,6 +24,7 @@ use teloxide::prelude::*;
 use moka::future::Cache;
 
 use crate::bots_manager::bot_manager_client::delete_bot;
+use crate::config;
 
 use self::axum_server::start_axum_server;
 use self::bot_manager_client::get_bots;
@@ -209,7 +210,45 @@ impl BotsManager {
         }
     }
 
+    async fn wait_for_telegram_api() {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(5))
+            .build()
+            .expect("Failed to build HTTP client for readiness check");
+
+        let url = config::CONFIG.telegram_bot_api.clone();
+
+        log::info!("Waiting for Telegram Bot API at {url} to become ready...");
+
+        let mut attempt: u32 = 0;
+
+        loop {
+            match client.get(url.clone()).send().await {
+                Ok(_) => {
+                    log::info!("Telegram Bot API is ready");
+                    return;
+                }
+                Err(err) => {
+                    attempt += 1;
+                    let delay = Duration::from_secs(2)
+                        .mul_f64(1.5_f64.powi(attempt as i32 - 1))
+                        .min(Duration::from_secs(30));
+
+                    log::warn!(
+                        "Telegram Bot API not ready yet (attempt {attempt}): {err}. \
+                         Retrying in {}s...",
+                        delay.as_secs(),
+                    );
+
+                    tokio::time::sleep(delay).await;
+                }
+            }
+        }
+    }
+
     pub async fn start(running: Arc<AtomicBool>) {
+        BotsManager::wait_for_telegram_api().await;
+
         BotsManager::check(true).await;
 
         start_axum_server(running.clone()).await;

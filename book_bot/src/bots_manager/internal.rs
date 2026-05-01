@@ -49,6 +49,10 @@ pub fn get_listener() -> (
 }
 
 pub async fn set_webhook(bot_data: &BotData) -> bool {
+    set_webhook_with_retry(bot_data, 3).await
+}
+
+async fn set_webhook_with_retry(bot_data: &BotData, max_retries: u32) -> bool {
     log::info!("Set webhook Bot(id={})!", bot_data.id);
 
     let bot = Bot::new(bot_data.token.clone()).set_api_url(config::CONFIG.telegram_bot_api.clone());
@@ -63,17 +67,46 @@ pub async fn set_webhook(bot_data: &BotData) -> bool {
     let url = Url::parse(&format!("{host}/{token}/"))
         .unwrap_or_else(|_| panic!("Can't parse webhook url!"));
 
-    match bot.set_webhook(url.clone()).await {
-        Ok(_) => true,
-        Err(err) => {
-            if let teloxide::RequestError::Api(ref err) = err {
-                if err == &teloxide::ApiError::InvalidToken {
-                    let _ = delete_bot(bot_data.id).await;
-                }
-            }
+    let mut attempt: u32 = 0;
 
-            log::error!("Webhook set error: {err}");
-            false
+    loop {
+        match bot.set_webhook(url.clone()).await {
+            Ok(_) => return true,
+            Err(err) => {
+                if let teloxide::RequestError::Api(ref api_err) = err {
+                    if api_err == &teloxide::ApiError::InvalidToken {
+                        let _ = delete_bot(bot_data.id).await;
+                        return false;
+                    }
+                    // Non-retryable API error
+                    log::error!(
+                        "Webhook set error (non-retryable) for Bot(id={}): {err}",
+                        bot_data.id
+                    );
+                    return false;
+                }
+
+                attempt += 1;
+
+                if attempt > max_retries {
+                    log::error!(
+                        "Webhook set error for Bot(id={}) after {max_retries} retries: {err}",
+                        bot_data.id
+                    );
+                    return false;
+                }
+
+                let delay = std::time::Duration::from_secs(2) * 2u32.pow(attempt - 1);
+
+                log::warn!(
+                    "Webhook set error for Bot(id={}) attempt {attempt}/{max_retries}: {err}. \
+                     Retrying in {}s...",
+                    bot_data.id,
+                    delay.as_secs(),
+                );
+
+                tokio::time::sleep(delay).await;
+            }
         }
     }
 }
