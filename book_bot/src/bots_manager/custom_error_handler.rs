@@ -58,6 +58,16 @@ fn classify_error(error_string: &str) -> log::Level {
         return log::Level::Warn;
     }
 
+    // Telegram message errors — expected in production when messages are
+    // deleted between requests, users click the same button, etc.
+    if error_string.contains("message to edit not found")
+        || error_string.contains("message is not modified")
+        || error_string.contains("MESSAGE_ID_INVALID")
+        || error_string.contains("text must be non-empty")
+    {
+        return log::Level::Warn;
+    }
+
     log::Level::Error
 }
 
@@ -74,6 +84,11 @@ where
 
             if error_string.contains("Bad Request: message to be replied not found") {
                 log::debug!("Ignoring Telegram reply error: {:?}", error);
+                return;
+            }
+
+            if error_string.contains("message is not modified") {
+                log::debug!("Ignoring Telegram not-modified error: {:?}", error);
                 return;
             }
 
