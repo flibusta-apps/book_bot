@@ -33,7 +33,10 @@ use crate::bots::approved_bot::{
 
 use self::{callback_data::BookCallbackData, commands::BookCommand};
 
-use super::utils::{filter_command::filter_command, pagination::generic_get_pagination_keyboard};
+use super::utils::{
+    filter_command::filter_command, pagination::generic_get_pagination_keyboard,
+    telegram_utils::safe_edit_message_text,
+};
 
 #[log_handler("book")]
 async fn send_book_handler<T, P, Fut>(
@@ -167,15 +170,7 @@ where
         return Ok(());
     }
 
-    match bot
-        .edit_message_text(chat_id, message_id, formatted_page)
-        .reply_markup(keyboard)
-        .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err.into()),
-    }
+    safe_edit_message_text(&bot, chat_id, message_id, formatted_page, Some(keyboard)).await
 }
 
 pub fn get_book_handler() -> crate::bots::BotHandler {

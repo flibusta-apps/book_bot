@@ -18,7 +18,9 @@ use teloxide::{
 
 use crate::bots::{
     approved_bot::{
-        modules::utils::message_text::is_message_text_equals,
+        modules::utils::{
+            message_text::is_message_text_equals, telegram_utils::safe_edit_message_text,
+        },
         services::{
             book_library::{
                 formatters::{Format, FormatTitle},
@@ -114,15 +116,7 @@ where
     }
 
     let keyboard = generic_get_pagination_keyboard(page, items_page.pages, search_data, true);
-    match bot
-        .edit_message_text(chat_id, message_id, formatted_page)
-        .reply_markup(keyboard)
-        .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err.into()),
-    }
+    safe_edit_message_text(&bot, chat_id, message_id, formatted_page, Some(keyboard)).await
 }
 
 #[log_handler("search")]
