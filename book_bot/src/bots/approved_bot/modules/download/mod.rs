@@ -2,7 +2,10 @@ pub mod callback_data;
 pub mod commands;
 
 use super::utils::constants::*;
-use super::utils::telegram_utils::{safe_edit_message_text, safe_send_message_with_reply};
+use super::utils::telegram_utils::{
+    safe_delete_message, safe_edit_message_text, safe_edit_message_text_html, safe_send_document,
+    safe_send_message_with_reply,
+};
 
 use book_bot_macros::log_handler;
 
@@ -102,7 +105,7 @@ async fn send_cached_message(
             if _send_cached(&message, &bot, cached).await.is_ok() {
                 if need_delete_message {
                     if let MaybeInaccessibleMessage::Regular(message) = &message {
-                        let _ = bot.delete_message(message.chat.id, message.id).await;
+                        let _ = safe_delete_message(&bot, message.chat.id, message.id).await;
                     }
                 }
 
@@ -137,10 +140,7 @@ async fn _send_downloaded_file(
 
     let document = InputFile::read(data).file_name(filename);
 
-    bot.send_document(message.chat().id, document)
-        .caption(caption)
-        .send()
-        .await?;
+    safe_send_document(bot, message.chat().id, document, caption).await?;
 
     send_donation_notification(bot, message).await?;
 
@@ -164,7 +164,7 @@ async fn send_with_download_from_channel(
 
     if need_delete_message {
         if let MaybeInaccessibleMessage::Regular(message) = message {
-            let _ = bot.delete_message(message.chat.id, message.id).await;
+            let _ = safe_delete_message(&bot, message.chat.id, message.id).await;
         };
     }
 
@@ -197,13 +197,25 @@ async fn get_download_keyboard_handler(
     let book = match get_book(download_data.id).await {
         Ok(Some(v)) => v,
         Ok(None) => {
-            bot.send_message(message.chat.id, NOT_FOUND).send().await?;
+            safe_send_message_with_reply(
+                &bot,
+                message.chat.id,
+                NOT_FOUND,
+                ReplyParameters::new(message.id),
+                None,
+            )
+            .await?;
             return Ok(());
         }
         Err(err) => {
-            bot.send_message(message.chat.id, ERROR_TRY_LATER)
-                .send()
-                .await?;
+            safe_send_message_with_reply(
+                &bot,
+                message.chat.id,
+                ERROR_TRY_LATER,
+                ReplyParameters::new(message.id),
+                None,
+            )
+            .await?;
 
             return Err(err);
         }
@@ -266,7 +278,14 @@ async fn get_download_archive_keyboard_handler(
     let available_types = match available_types {
         Ok(Some(v)) => v,
         Ok(None) => {
-            bot.send_message(message.chat.id, NOT_FOUND).send().await?;
+            safe_send_message_with_reply(
+                &bot,
+                message.chat.id,
+                NOT_FOUND,
+                ReplyParameters::new(message.id),
+                None,
+            )
+            .await?;
             return Ok(());
         }
         Err(err) => return Err(err),
@@ -342,18 +361,18 @@ async fn send_archive_link(
         task.id
     );
 
-    bot.edit_message_text(
+    safe_edit_message_text_html(
+        bot,
         chat_id,
         message_id,
         format!(
             "Файл не может быть загружен в чат! \n \
                     Вы можете скачать его <a href=\"{link}\">по ссылке</a> (работает 3 часа)"
         ),
+        Some(InlineKeyboardMarkup {
+            inline_keyboard: vec![],
+        }),
     )
-    .parse_mode(ParseMode::Html)
-    .reply_markup(InlineKeyboardMarkup {
-        inline_keyboard: vec![],
-    })
     .await?;
 
     Ok(())
@@ -457,7 +476,7 @@ async fn wait_archive(
         }
     }
 
-    let _ = bot.delete_message(message.chat.id, message.id).await;
+    let _ = safe_delete_message(&bot, message.chat.id, message.id).await;
 
     Ok(())
 }
