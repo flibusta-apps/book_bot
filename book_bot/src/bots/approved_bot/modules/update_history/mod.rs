@@ -9,7 +9,7 @@ use crate::bots::{
         modules::utils::{
             constants::{ERROR_TRY_AGAIN, TELEGRAM_MESSAGE_MAX_LENGTH},
             message_text::is_message_text_equals,
-            telegram_utils::safe_edit_message_text,
+            telegram_utils::{safe_edit_message_text, safe_send_message},
         },
         services::book_library::get_uploaded_books,
         tools::filter_callback_query,
@@ -72,15 +72,13 @@ async fn update_log_command(message: Message, bot: CacheMe<Throttle<Bot>>) -> Bo
         ],
     };
 
-    match bot
-        .send_message(message.chat.id, "Обновление каталога:")
-        .reply_markup(keyboard)
-        .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err.into()),
-    }
+    safe_send_message(
+        &bot,
+        message.chat.id,
+        "Обновление каталога:",
+        Some(keyboard),
+    )
+    .await
 }
 
 #[log_handler("update_history")]
@@ -92,7 +90,7 @@ async fn update_log_pagination_handler(
     let message = match cq.message.clone() {
         Some(v) => v,
         None => {
-            bot.send_message(cq.from.id, ERROR_TRY_AGAIN).send().await?;
+            safe_send_message(&bot, cq.from.id.into(), ERROR_TRY_AGAIN, None).await?;
             return Ok(());
         }
     };
@@ -119,17 +117,25 @@ async fn update_log_pagination_handler(
     {
         Some(v) => v,
         None => {
-            bot.send_message(message.chat().id, "Нет новых книг за этот период.")
-                .send()
-                .await?;
+            safe_send_message(
+                &bot,
+                message.chat().id,
+                "Нет новых книг за этот период.",
+                None,
+            )
+            .await?;
             return Ok(());
         }
     };
 
     if items_page.pages == 0 {
-        bot.send_message(message.chat().id, "Нет новых книг за этот период.")
-            .send()
-            .await?;
+        safe_send_message(
+            &bot,
+            message.chat().id,
+            "Нет новых книг за этот период.",
+            None,
+        )
+        .await?;
         return Ok(());
     }
 
@@ -151,9 +157,13 @@ async fn update_log_pagination_handler(
         {
             Some(v) => v,
             None => {
-                bot.send_message(message.chat().id, "Нет новых книг за этот период.")
-                    .send()
-                    .await?;
+                safe_send_message(
+                    &bot,
+                    message.chat().id,
+                    "Нет новых книг за этот период.",
+                    None,
+                )
+                .await?;
                 return Ok(());
             }
         };

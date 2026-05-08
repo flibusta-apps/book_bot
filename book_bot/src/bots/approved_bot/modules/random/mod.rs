@@ -15,7 +15,7 @@ use crate::bots::{
     approved_bot::{
         modules::random::callback_data::RandomCallbackData,
         modules::utils::telegram_utils::{
-            safe_edit_message_reply_markup, safe_send_message_with_reply,
+            safe_edit_message_reply_markup, safe_send_message, safe_send_message_with_reply,
         },
         services::{
             book_library::{self, formatters::Format},
@@ -87,28 +87,29 @@ where
     let item = match item {
         Ok(Some(v)) => v,
         Ok(None) => {
-            bot.send_message(cq.from.id, "Не найдено :(").send().await?;
+            safe_send_message(&bot, cq.from.id.into(), "Не найдено :(", None).await?;
             return Ok(());
         }
         Err(err) => {
-            bot.send_message(cq.from.id, "Ошибка! Попробуйте позже :(")
-                .send()
-                .await?;
+            safe_send_message(&bot, cq.from.id.into(), "Ошибка! Попробуйте позже :(", None).await?;
             return Err(err);
         }
     };
 
     let item_message = item.format(4096).result;
 
-    bot.send_message(cq.from.id, item_message)
-        .reply_markup(InlineKeyboardMarkup {
+    safe_send_message(
+        &bot,
+        cq.from.id.into(),
+        item_message,
+        Some(InlineKeyboardMarkup {
             inline_keyboard: vec![vec![InlineKeyboardButton {
                 kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(cq.data.unwrap()),
                 text: String::from("Повторить?"),
             }]],
-        })
-        .send()
-        .await?;
+        }),
+    )
+    .await?;
 
     match cq.message {
         Some(message) => {
@@ -152,7 +153,7 @@ async fn get_genre_metas_handler(
     let genre_metas = match book_library::get_genre_metas().await {
         Ok(Some(v)) => v,
         Ok(None) => {
-            bot.send_message(cq.from.id, "Не найдено :(").send().await?;
+            safe_send_message(&bot, cq.from.id.into(), "Не найдено :(", None).await?;
             return Ok(());
         }
         Err(err) => return Err(err),
@@ -161,9 +162,7 @@ async fn get_genre_metas_handler(
     let message = match cq.message {
         Some(v) => v,
         None => {
-            bot.send_message(cq.from.id, "Ошибка! Начните заново :(")
-                .send()
-                .await?;
+            safe_send_message(&bot, cq.from.id.into(), "Ошибка! Начните заново :(", None).await?;
             return Ok(());
         }
     };
@@ -200,7 +199,7 @@ async fn get_genres_by_meta_handler(
     let genre_metas = match book_library::get_genre_metas().await {
         Ok(Some(v)) => v,
         Ok(None) => {
-            bot.send_message(cq.from.id, "Не найдено :(").send().await?;
+            safe_send_message(&bot, cq.from.id.into(), "Не найдено :(", None).await?;
             return Ok(());
         }
         Err(err) => return Err(err),
@@ -209,9 +208,7 @@ async fn get_genres_by_meta_handler(
     let meta = match genre_metas.get(genre_index as usize) {
         Some(v) => v,
         None => {
-            bot.send_message(cq.from.id, "Ошибка! Попробуйте позже :(")
-                .send()
-                .await?;
+            safe_send_message(&bot, cq.from.id.into(), "Ошибка! Попробуйте позже :(", None).await?;
 
             return Ok(());
         }
@@ -220,7 +217,7 @@ async fn get_genres_by_meta_handler(
     let genres_page = match book_library::get_genres(meta.into()).await {
         Ok(Some(v)) => v,
         Ok(None) => {
-            bot.send_message(cq.from.id, "Не найдено :(").send().await?;
+            safe_send_message(&bot, cq.from.id.into(), "Не найдено :(", None).await?;
             return Ok(());
         }
         Err(err) => return Err(err),
@@ -255,9 +252,7 @@ async fn get_genres_by_meta_handler(
     let message = match cq.message {
         Some(message) => message,
         None => {
-            bot.send_message(cq.from.id, "Ошибка! Начните заново :(")
-                .send()
-                .await?;
+            safe_send_message(&bot, cq.from.id.into(), "Ошибка! Начните заново :(", None).await?;
 
             return Ok(());
         }

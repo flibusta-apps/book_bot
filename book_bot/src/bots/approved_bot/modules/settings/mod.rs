@@ -10,7 +10,10 @@ use smartstring::alias::String as SmartString;
 
 use crate::bots::{
     approved_bot::{
-        modules::utils::telegram_utils::{safe_edit_message_reply_markup, safe_edit_message_text},
+        modules::utils::telegram_utils::{
+            safe_answer_callback_query, safe_answer_callback_query_with_text,
+            safe_edit_message_reply_markup, safe_edit_message_text, safe_send_message,
+        },
         services::user_settings::{
             create_or_update_user_settings, get_langs, get_user_or_default_lang_codes,
             get_user_settings, DefaultSearchType, Lang,
@@ -49,10 +52,13 @@ fn get_main_settings_keyboard() -> InlineKeyboardMarkup {
 
 #[log_handler("settings")]
 async fn settings_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
-    bot.send_message(message.chat.id, "Настройки")
-        .reply_markup(get_main_settings_keyboard())
-        .send()
-        .await?;
+    safe_send_message(
+        &bot,
+        message.chat.id,
+        "Настройки",
+        Some(get_main_settings_keyboard()),
+    )
+    .await?;
 
     Ok(())
 }
@@ -163,9 +169,7 @@ async fn settings_callback_handler(
     let message = match cq.message {
         Some(v) => v,
         None => {
-            bot.send_message(cq.from.id, "Ошибка! Попробуйте заново(")
-                .send()
-                .await?;
+            safe_send_message(&bot, cq.from.id.into(), "Ошибка! Попробуйте заново(", None).await?;
             return Ok(());
         }
     };
@@ -185,7 +189,7 @@ async fn settings_callback_handler(
                 Some(keyboard),
             )
             .await?;
-            bot.answer_callback_query(cq.id).send().await?;
+            safe_answer_callback_query(&bot, cq.id).await?;
             return Ok(());
         }
         SettingsCallbackData::DefaultSearchBack => {
@@ -197,7 +201,7 @@ async fn settings_callback_handler(
                 Some(get_main_settings_keyboard()),
             )
             .await?;
-            bot.answer_callback_query(cq.id).send().await?;
+            safe_answer_callback_query(&bot, cq.id).await?;
             return Ok(());
         }
         SettingsCallbackData::LangSettingsBack => {
@@ -209,7 +213,7 @@ async fn settings_callback_handler(
                 Some(get_main_settings_keyboard()),
             )
             .await?;
-            bot.answer_callback_query(cq.id).send().await?;
+            safe_answer_callback_query(&bot, cq.id).await?;
             return Ok(());
         }
         SettingsCallbackData::DefaultSearch { value } => {
@@ -223,7 +227,7 @@ async fn settings_callback_handler(
             } else if let Some(t) = DefaultSearchType::from_api_str(value.as_str()) {
                 Some(t)
             } else {
-                bot.answer_callback_query(cq.id).send().await?;
+                safe_answer_callback_query(&bot, cq.id).await?;
                 return Ok(());
             };
             if create_or_update_user_settings(
@@ -238,11 +242,13 @@ async fn settings_callback_handler(
             .await
             .is_err()
             {
-                bot.answer_callback_query(cq.id)
-                    .text("Ошибка! Попробуйте заново(")
-                    .show_alert(true)
-                    .send()
-                    .await?;
+                safe_answer_callback_query_with_text(
+                    &bot,
+                    cq.id,
+                    "Ошибка! Попробуйте заново(",
+                    true,
+                )
+                .await?;
                 return Ok(());
             }
             safe_edit_message_text(
@@ -253,10 +259,7 @@ async fn settings_callback_handler(
                 Some(get_main_settings_keyboard()),
             )
             .await?;
-            bot.answer_callback_query(cq.id)
-                .text("Готово")
-                .send()
-                .await?;
+            safe_answer_callback_query_with_text(&bot, cq.id, "Готово", false).await?;
             return Ok(());
         }
         _ => {}
@@ -284,11 +287,13 @@ async fn settings_callback_handler(
     };
 
     if allowed_langs_set.is_empty() {
-        bot.answer_callback_query(cq.id)
-            .text("Должен быть активен, хотя бы один язык!")
-            .show_alert(true)
-            .send()
-            .await?;
+        safe_answer_callback_query_with_text(
+            &bot,
+            cq.id,
+            "Должен быть активен, хотя бы один язык!",
+            true,
+        )
+        .await?;
 
         return Ok(());
     }
@@ -307,18 +312,14 @@ async fn settings_callback_handler(
     )
     .await
     {
-        bot.send_message(message.chat().id, "Ошибка! Попробуйте заново(")
-            .send()
-            .await?;
+        safe_send_message(&bot, message.chat().id, "Ошибка! Попробуйте заново(", None).await?;
         return Err(err);
     }
 
     let all_langs = match get_langs().await {
         Ok(v) => v,
         Err(err) => {
-            bot.send_message(message.chat().id, "Ошибка! Попробуйте заново(")
-                .send()
-                .await?;
+            safe_send_message(&bot, message.chat().id, "Ошибка! Попробуйте заново(", None).await?;
             return Err(err);
         }
     };

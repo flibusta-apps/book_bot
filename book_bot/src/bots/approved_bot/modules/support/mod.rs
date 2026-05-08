@@ -8,6 +8,8 @@ use teloxide::{
     utils::command::BotCommands,
 };
 
+use crate::bots::approved_bot::modules::utils::telegram_utils::safe_send_message_html;
+
 fn escape_html(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -56,9 +58,7 @@ pub async fn support_command_handler(
 "
     );
 
-    bot.send_message(message.chat.id, message_text)
-        .parse_mode(teloxide::types::ParseMode::Html)
-        .await?;
+    safe_send_message_html(bot, message.chat.id, message_text, None).await?;
 
     Ok(())
 }

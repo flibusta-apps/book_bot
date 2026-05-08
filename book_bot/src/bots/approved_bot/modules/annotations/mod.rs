@@ -120,10 +120,14 @@ where
     let keyboard =
         generic_get_pagination_keyboard(1, chunked_text.len().try_into()?, callback_data, false);
 
-    bot.send_message(message.chat.id, current_text)
-        .reply_markup(keyboard)
-        .send()
-        .await?;
+    safe_send_message_with_reply(
+        &bot,
+        message.chat.id,
+        current_text,
+        ReplyParameters::new(message.id),
+        Some(keyboard),
+    )
+    .await?;
 
     Ok(())
 }
