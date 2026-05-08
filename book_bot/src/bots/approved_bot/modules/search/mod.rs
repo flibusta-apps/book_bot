@@ -20,7 +20,9 @@ use crate::bots::{
     approved_bot::{
         modules::utils::{
             message_text::is_message_text_equals,
-            telegram_utils::{safe_edit_message_text, safe_send_message_with_reply},
+            telegram_utils::{
+                safe_edit_message_text, safe_send_message, safe_send_message_with_reply,
+            },
         },
         services::{
             book_library::{
@@ -62,7 +64,7 @@ where
     let (chat_id, query, message_id) = match (chat_id, query, message_id) {
         (Some(chat_id), Some(query), Some(message_id)) => (chat_id, query, message_id),
         (Some(chat_id), _, _) => {
-            bot.send_message(chat_id, REPEAT_SEARCH).send().await?;
+            safe_send_message(&bot, chat_id, REPEAT_SEARCH, None).await?;
             return Ok(());
         }
         _ => {
@@ -89,11 +91,11 @@ where
                 SearchCallbackData::Translators { .. } => TRANSLATORS_NOT_FOUND,
             };
 
-            bot.send_message(chat_id, message_text).send().await?;
+            safe_send_message(&bot, chat_id, message_text, None).await?;
             return Ok(());
         }
         Err(err) => {
-            bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
+            safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
 
             return Err(err);
         }
@@ -107,7 +109,7 @@ where
             SearchCallbackData::Translators { .. } => TRANSLATORS_NOT_FOUND,
         };
 
-        bot.send_message(chat_id, message_text).send().await?;
+        safe_send_message(&bot, chat_id, message_text, None).await?;
         return Ok(());
     };
 
@@ -115,11 +117,11 @@ where
         items_page = match items_getter(query, items_page.pages, allowed_langs).await {
             Ok(Some(v)) => v,
             Ok(None) => {
-                bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
+                safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
                 return Ok(());
             }
             Err(err) => {
-                bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
+                safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
 
                 return Err(err);
             }
@@ -174,7 +176,7 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                         }
                         Ok(Some(p)) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
                         Err(_) => {
-                            bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
+                            safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
                             return Ok(());
                         }
                     }
@@ -205,7 +207,7 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                         }
                         Ok(Some(p)) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
                         Err(_) => {
-                            bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
+                            safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
                             return Ok(());
                         }
                     }
@@ -236,7 +238,7 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                         }
                         Ok(Some(p)) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
                         Err(_) => {
-                            bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
+                            safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
                             return Ok(());
                         }
                     }
@@ -267,7 +269,7 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                         }
                         Ok(Some(p)) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
                         Err(_) => {
-                            bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
+                            safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
                             return Ok(());
                         }
                     }
