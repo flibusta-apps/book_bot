@@ -45,6 +45,19 @@ fn classify_error(error_string: &str) -> log::Level {
         return log::Level::Warn;
     }
 
+    // Telegram permission/authorization errors — expected in production when
+    // bots are added to groups without send rights, users block the bot, etc.
+    if error_string.contains("not enough rights")
+        || error_string.contains("CHAT_WRITE_FORBIDDEN")
+        || error_string.contains("Forbidden: bot was blocked by the user")
+        || error_string.contains("Forbidden: user is deactivated")
+        || error_string.contains("Forbidden: bot can't initiate conversation")
+        || error_string.contains("Bad Request: chat not found")
+        || error_string.contains("Forbidden: bot was kicked from the group")
+    {
+        return log::Level::Warn;
+    }
+
     log::Level::Error
 }
 
