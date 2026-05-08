@@ -10,6 +10,7 @@ use smartstring::alias::String as SmartString;
 
 use crate::bots::{
     approved_bot::{
+        modules::utils::telegram_utils::{safe_edit_message_reply_markup, safe_edit_message_text},
         services::user_settings::{
             create_or_update_user_settings, get_langs, get_user_or_default_lang_codes,
             get_user_settings, DefaultSearchType, Lang,
@@ -176,26 +177,38 @@ async fn settings_callback_handler(
             let current = get_user_settings(user.id).await.ok().flatten();
             let current_default = current.as_ref().and_then(|s| s.default_search);
             let keyboard = get_default_search_keyboard(current_default);
-            bot.edit_message_text(message.chat().id, message.id(), "Поиск по умолчанию")
-                .reply_markup(keyboard)
-                .send()
-                .await?;
+            safe_edit_message_text(
+                &bot,
+                message.chat().id,
+                message.id(),
+                "Поиск по умолчанию",
+                Some(keyboard),
+            )
+            .await?;
             bot.answer_callback_query(cq.id).send().await?;
             return Ok(());
         }
         SettingsCallbackData::DefaultSearchBack => {
-            bot.edit_message_text(message.chat().id, message.id(), "Настройки")
-                .reply_markup(get_main_settings_keyboard())
-                .send()
-                .await?;
+            safe_edit_message_text(
+                &bot,
+                message.chat().id,
+                message.id(),
+                "Настройки",
+                Some(get_main_settings_keyboard()),
+            )
+            .await?;
             bot.answer_callback_query(cq.id).send().await?;
             return Ok(());
         }
         SettingsCallbackData::LangSettingsBack => {
-            bot.edit_message_text(message.chat().id, message.id(), "Настройки")
-                .reply_markup(get_main_settings_keyboard())
-                .send()
-                .await?;
+            safe_edit_message_text(
+                &bot,
+                message.chat().id,
+                message.id(),
+                "Настройки",
+                Some(get_main_settings_keyboard()),
+            )
+            .await?;
             bot.answer_callback_query(cq.id).send().await?;
             return Ok(());
         }
@@ -232,10 +245,14 @@ async fn settings_callback_handler(
                     .await?;
                 return Ok(());
             }
-            bot.edit_message_text(message.chat().id, message.id(), "Настройки")
-                .reply_markup(get_main_settings_keyboard())
-                .send()
-                .await?;
+            safe_edit_message_text(
+                &bot,
+                message.chat().id,
+                message.id(),
+                "Настройки",
+                Some(get_main_settings_keyboard()),
+            )
+            .await?;
             bot.answer_callback_query(cq.id)
                 .text("Готово")
                 .send()
@@ -308,10 +325,7 @@ async fn settings_callback_handler(
 
     let keyboard = get_lang_keyboard(all_langs, allowed_langs_set);
 
-    bot.edit_message_reply_markup(message.chat().id, message.id())
-        .reply_markup(keyboard)
-        .send()
-        .await?;
+    safe_edit_message_reply_markup(&bot, message.chat().id, message.id(), keyboard).await?;
 
     Ok(())
 }
