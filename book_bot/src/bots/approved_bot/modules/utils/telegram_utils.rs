@@ -13,7 +13,6 @@ use crate::bots::BotHandlerInternal;
 /// - `MessageToEditNotFound` / `MessageIdInvalid` → send new message as fallback
 /// - `NotEnoughRights*` / `MessageTextIsEmpty` → Ok(()) (can't act, suppress)
 /// - Other errors → Err
-#[allow(dead_code)]
 pub async fn safe_edit_message_text(
     bot: &CacheMe<Throttle<Bot>>,
     chat_id: ChatId,
@@ -69,7 +68,6 @@ pub async fn safe_edit_message_text(
 /// - `MessageToEditNotFound` / `MessageIdInvalid` → Ok(()) (message deleted, keyboard irrelevant)
 /// - `NotEnoughRights*` → Ok(()) (can't act, suppress)
 /// - Other errors → Err
-#[allow(dead_code)]
 pub async fn safe_edit_message_reply_markup(
     bot: &CacheMe<Throttle<Bot>>,
     chat_id: ChatId,
