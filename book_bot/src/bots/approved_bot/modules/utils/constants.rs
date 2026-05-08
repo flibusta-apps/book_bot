@@ -6,6 +6,7 @@ pub const ERROR_TRY_LATER: &str = "Ошибка! Попробуйте позже
 pub const ERROR_TRY_AGAIN: &str = "Ошибка! Попробуйте заново(";
 pub const REPEAT_SEARCH: &str = "Повторите поиск сначала";
 pub const REPEAT_REQUEST: &str = "Повторите запрос сначала";
+pub const NOT_FOUND: &str = "Не найдено :(";
 
 /// Search not-found messages
 pub const BOOKS_NOT_FOUND: &str = "Книги не найдены!";

@@ -52,14 +52,27 @@ pub async fn send_annotation_handler<T, Fut>(
 ) -> BotHandlerInternal
 where
     T: AnnotationFormat,
-    Fut: std::future::Future<Output = anyhow::Result<T>>,
+    Fut: std::future::Future<Output = anyhow::Result<Option<T>>>,
 {
     let id = match command {
         AnnotationCommand::Book { id } => id,
         AnnotationCommand::Author { id } => id,
     };
 
-    let annotation = annotation_getter(id).await?;
+    let annotation = match annotation_getter(id).await {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            return safe_send_message_with_reply(
+                &bot,
+                message.chat.id,
+                "Аннотация недоступна :(",
+                ReplyParameters::new(message.id),
+                None,
+            )
+            .await;
+        }
+        Err(err) => return Err(err),
+    };
 
     if annotation.get_file().is_none() && !annotation.is_normal_text() {
         return safe_send_message_with_reply(
@@ -124,14 +137,20 @@ pub async fn annotation_pagination_handler<T, Fut>(
 ) -> BotHandlerInternal
 where
     T: AnnotationFormat,
-    Fut: std::future::Future<Output = anyhow::Result<T>>,
+    Fut: std::future::Future<Output = anyhow::Result<Option<T>>>,
 {
     let (id, page) = match callback_data {
         AnnotationCallbackData::Book { id, page } => (id, page),
         AnnotationCallbackData::Author { id, page } => (id, page),
     };
 
-    let annotation = annotation_getter(id).await?;
+    let annotation = match annotation_getter(id).await {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            return Ok(());
+        }
+        Err(err) => return Err(err),
+    };
 
     let message = match cq.message {
         Some(v) => v,

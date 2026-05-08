@@ -48,7 +48,7 @@ async fn send_book_handler<T, P, Fut>(
 where
     T: Format + Clone + Debug,
     P: FormatTitle + Clone + Debug,
-    Fut: std::future::Future<Output = anyhow::Result<Page<T, P>>>,
+    Fut: std::future::Future<Output = anyhow::Result<Option<Page<T, P>>>>,
 {
     let id = match command {
         BookCommand::Author { id } => id,
@@ -70,7 +70,11 @@ where
     let allowed_langs = get_user_or_default_lang_codes(user_id).await;
 
     let items_page = match books_getter(id, 1, allowed_langs).await {
-        Ok(v) => v,
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            bot.send_message(chat_id, NOT_FOUND).send().await?;
+            return Ok(());
+        }
         Err(err) => {
             bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
             return Err(err);
@@ -110,7 +114,7 @@ async fn send_pagination_book_handler<T, P, Fut>(
 where
     T: Format + Clone + Debug,
     P: FormatTitle + Clone + Debug,
-    Fut: std::future::Future<Output = anyhow::Result<Page<T, P>>>,
+    Fut: std::future::Future<Output = anyhow::Result<Option<Page<T, P>>>>,
 {
     let (id, page) = match callback_data {
         BookCallbackData::Author { id, page } => (id, page),
@@ -136,7 +140,14 @@ where
     let allowed_langs = get_user_or_default_lang_codes(user_id).await;
 
     let mut items_page = match books_getter(id, page, allowed_langs.clone()).await {
-        Ok(v) => v,
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            match bot.send_message(chat_id, NOT_FOUND).send().await {
+                Ok(_) => (),
+                Err(err) => log::error!("{err:?}"),
+            }
+            return Ok(());
+        }
         Err(err) => {
             match bot.send_message(chat_id, ERROR_TRY_LATER).send().await {
                 Ok(_) => (),
@@ -153,7 +164,11 @@ where
 
     if page > items_page.pages {
         items_page = match books_getter(id, items_page.pages, allowed_langs).await {
-            Ok(v) => v,
+            Ok(Some(v)) => v,
+            Ok(None) => {
+                bot.send_message(chat_id, NOT_FOUND).send().await?;
+                return Ok(());
+            }
             Err(err) => {
                 bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
 

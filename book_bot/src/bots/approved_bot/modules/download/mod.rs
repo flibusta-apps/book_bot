@@ -195,7 +195,11 @@ async fn get_download_keyboard_handler(
     download_data: StartDownloadCommand,
 ) -> BotHandlerInternal {
     let book = match get_book(download_data.id).await {
-        Ok(v) => v,
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            bot.send_message(message.chat.id, NOT_FOUND).send().await?;
+            return Ok(());
+        }
         Err(err) => {
             bot.send_message(message.chat.id, ERROR_TRY_LATER)
                 .send()
@@ -260,7 +264,11 @@ async fn get_download_archive_keyboard_handler(
     };
 
     let available_types = match available_types {
-        Ok(v) => v,
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            bot.send_message(message.chat.id, NOT_FOUND).send().await?;
+            return Ok(());
+        }
         Err(err) => return Err(err),
     };
 

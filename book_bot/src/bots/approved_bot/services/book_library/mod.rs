@@ -32,7 +32,7 @@ fn get_allowed_langs_params(
         .collect()
 }
 
-async fn _make_request<T>(url: &str, params: Vec<(&str, SmartString)>) -> anyhow::Result<T>
+async fn _make_request<T>(url: &str, params: Vec<(&str, SmartString)>) -> anyhow::Result<Option<T>>
 where
     T: DeserializeOwned,
 {
@@ -41,11 +41,16 @@ where
         .query(&params)
         .header("Authorization", &config::CONFIG.book_server_api_key)
         .send()
-        .await?
-        .error_for_status()?;
+        .await?;
+
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+
+    let response = response.error_for_status()?;
 
     match response.json::<T>().await {
-        Ok(v) => Ok(v),
+        Ok(v) => Ok(Some(v)),
         Err(err) => {
             log::error!("Failed serialization: url={url:?} err={err:?}");
             Err(err.into())
@@ -53,14 +58,14 @@ where
     }
 }
 
-pub async fn get_book(id: u32) -> anyhow::Result<types::Book> {
+pub async fn get_book(id: u32) -> anyhow::Result<Option<types::Book>> {
     _make_request(&format!("/api/v1/books/{id}"), vec![]).await
 }
 
 pub async fn get_random_book_by_genre(
     allowed_langs: SmallVec<[SmartString; 3]>,
     genre: Option<u32>,
-) -> anyhow::Result<types::Book> {
+) -> anyhow::Result<Option<types::Book>> {
     let mut params = get_allowed_langs_params(&allowed_langs);
 
     if let Some(v) = genre {
@@ -72,13 +77,13 @@ pub async fn get_random_book_by_genre(
 
 pub async fn get_random_book(
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<types::Book> {
+) -> anyhow::Result<Option<types::Book>> {
     get_random_book_by_genre(allowed_langs, None).await
 }
 
 pub async fn get_random_author(
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<types::Author> {
+) -> anyhow::Result<Option<types::Author>> {
     let params = get_allowed_langs_params(&allowed_langs);
 
     _make_request("/api/v1/authors/random", params).await
@@ -86,17 +91,19 @@ pub async fn get_random_author(
 
 pub async fn get_random_sequence(
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<types::Sequence> {
+) -> anyhow::Result<Option<types::Sequence>> {
     let params = get_allowed_langs_params(&allowed_langs);
 
     _make_request("/api/v1/sequences/random", params).await
 }
 
-pub async fn get_genre_metas() -> anyhow::Result<Vec<String>> {
+pub async fn get_genre_metas() -> anyhow::Result<Option<Vec<String>>> {
     _make_request("/api/v1/genres/metas", vec![]).await
 }
 
-pub async fn get_genres(meta: SmartString) -> anyhow::Result<types::Page<types::Genre, Empty>> {
+pub async fn get_genres(
+    meta: SmartString,
+) -> anyhow::Result<Option<types::Page<types::Genre, Empty>>> {
     let params = vec![("meta", meta)];
 
     _make_request("/api/v1/genres", params).await
@@ -108,7 +115,7 @@ pub async fn search_book(
     query: String,
     page: u32,
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<types::Page<types::SearchBook, Empty>> {
+) -> anyhow::Result<Option<types::Page<types::SearchBook, Empty>>> {
     let mut params = get_allowed_langs_params(&allowed_langs);
 
     params.push(("page", page.to_string().into()));
@@ -125,7 +132,7 @@ pub async fn search_author(
     query: String,
     page: u32,
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<types::Page<types::Author, Empty>> {
+) -> anyhow::Result<Option<types::Page<types::Author, Empty>>> {
     let mut params = get_allowed_langs_params(&allowed_langs);
 
     params.push(("page", page.to_string().into()));
@@ -142,7 +149,7 @@ pub async fn search_sequence(
     query: String,
     page: u32,
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<types::Page<types::Sequence, Empty>> {
+) -> anyhow::Result<Option<types::Page<types::Sequence, Empty>>> {
     let mut params = get_allowed_langs_params(&allowed_langs);
 
     params.push(("page", page.to_string().into()));
@@ -159,7 +166,7 @@ pub async fn search_translator(
     query: String,
     page: u32,
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<types::Page<types::Translator, Empty>> {
+) -> anyhow::Result<Option<types::Page<types::Translator, Empty>>> {
     let mut params = get_allowed_langs_params(&allowed_langs);
 
     params.push(("page", page.to_string().into()));
@@ -172,11 +179,11 @@ pub async fn search_translator(
     .await
 }
 
-pub async fn get_book_annotation(id: u32) -> anyhow::Result<types::BookAnnotation> {
+pub async fn get_book_annotation(id: u32) -> anyhow::Result<Option<types::BookAnnotation>> {
     _make_request(format!("/api/v1/books/{id}/annotation").as_str(), vec![]).await
 }
 
-pub async fn get_author_annotation(id: u32) -> anyhow::Result<types::AuthorAnnotation> {
+pub async fn get_author_annotation(id: u32) -> anyhow::Result<Option<types::AuthorAnnotation>> {
     _make_request(format!("/api/v1/authors/{id}/annotation").as_str(), vec![]).await
 }
 
@@ -184,7 +191,7 @@ pub async fn get_author_books(
     id: u32,
     page: u32,
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<types::Page<types::AuthorBook, types::BookAuthor>> {
+) -> anyhow::Result<Option<types::Page<types::AuthorBook, types::BookAuthor>>> {
     let mut params = get_allowed_langs_params(&allowed_langs);
 
     params.push(("page", page.to_string().into()));
@@ -197,7 +204,7 @@ pub async fn get_translator_books(
     id: u32,
     page: u32,
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<types::Page<types::TranslatorBook, types::BookTranslator>> {
+) -> anyhow::Result<Option<types::Page<types::TranslatorBook, types::BookTranslator>>> {
     let mut params = get_allowed_langs_params(&allowed_langs);
 
     params.push(("page", page.to_string().into()));
@@ -210,7 +217,7 @@ pub async fn get_sequence_books(
     id: u32,
     page: u32,
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<types::Page<types::SequenceBook, types::Sequence>> {
+) -> anyhow::Result<Option<types::Page<types::SequenceBook, types::Sequence>>> {
     let mut params = get_allowed_langs_params(&allowed_langs);
 
     params.push(("page", page.to_string().into()));
@@ -223,7 +230,7 @@ pub async fn get_uploaded_books(
     page: u32,
     uploaded_gte: SmartString,
     uploaded_lte: SmartString,
-) -> anyhow::Result<types::Page<types::SearchBook, Empty>> {
+) -> anyhow::Result<Option<types::Page<types::SearchBook, Empty>>> {
     let params = vec![
         ("page", page.to_string().into()),
         ("size", PAGE_SIZE.to_string().into()),
@@ -238,7 +245,7 @@ pub async fn get_uploaded_books(
 pub async fn get_author_books_available_types(
     id: u32,
     allowed_langs: &SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<Vec<String>> {
+) -> anyhow::Result<Option<Vec<String>>> {
     let params = get_allowed_langs_params(allowed_langs);
 
     _make_request(
@@ -251,7 +258,7 @@ pub async fn get_author_books_available_types(
 pub async fn get_translator_books_available_types(
     id: u32,
     allowed_langs: &SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<Vec<String>> {
+) -> anyhow::Result<Option<Vec<String>>> {
     let params = get_allowed_langs_params(allowed_langs);
 
     _make_request(
@@ -264,7 +271,7 @@ pub async fn get_translator_books_available_types(
 pub async fn get_sequence_books_available_types(
     id: u32,
     allowed_langs: &SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<Vec<String>> {
+) -> anyhow::Result<Option<Vec<String>>> {
     let params = get_allowed_langs_params(allowed_langs);
 
     _make_request(

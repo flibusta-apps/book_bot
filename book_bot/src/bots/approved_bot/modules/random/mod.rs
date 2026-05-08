@@ -79,13 +79,17 @@ async fn random_handler(
 async fn get_random_item_handler_internal<T>(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
-    item: anyhow::Result<T>,
+    item: anyhow::Result<Option<T>>,
 ) -> BotHandlerInternal
 where
     T: Format,
 {
     let item = match item {
-        Ok(v) => v,
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            bot.send_message(cq.from.id, "Не найдено :(").send().await?;
+            return Ok(());
+        }
         Err(err) => {
             bot.send_message(cq.from.id, "Ошибка! Попробуйте позже :(")
                 .send()
@@ -131,7 +135,7 @@ async fn get_random_item_handler<T, Fut>(
 ) -> BotHandlerInternal
 where
     T: Format,
-    Fut: std::future::Future<Output = anyhow::Result<T>>,
+    Fut: std::future::Future<Output = anyhow::Result<Option<T>>>,
 {
     let allowed_langs = get_user_or_default_lang_codes(cq.from.id).await;
 
@@ -145,7 +149,14 @@ async fn get_genre_metas_handler(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
 ) -> BotHandlerInternal {
-    let genre_metas = book_library::get_genre_metas().await?;
+    let genre_metas = match book_library::get_genre_metas().await {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            bot.send_message(cq.from.id, "Не найдено :(").send().await?;
+            return Ok(());
+        }
+        Err(err) => return Err(err),
+    };
 
     let message = match cq.message {
         Some(v) => v,
@@ -186,7 +197,14 @@ async fn get_genres_by_meta_handler(
     bot: CacheMe<Throttle<Bot>>,
     genre_index: u32,
 ) -> BotHandlerInternal {
-    let genre_metas = book_library::get_genre_metas().await?;
+    let genre_metas = match book_library::get_genre_metas().await {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            bot.send_message(cq.from.id, "Не найдено :(").send().await?;
+            return Ok(());
+        }
+        Err(err) => return Err(err),
+    };
 
     let meta = match genre_metas.get(genre_index as usize) {
         Some(v) => v,
@@ -199,8 +217,16 @@ async fn get_genres_by_meta_handler(
         }
     };
 
-    let mut buttons: Vec<Vec<InlineKeyboardButton>> = book_library::get_genres(meta.into())
-        .await?
+    let genres_page = match book_library::get_genres(meta.into()).await {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            bot.send_message(cq.from.id, "Не найдено :(").send().await?;
+            return Ok(());
+        }
+        Err(err) => return Err(err),
+    };
+
+    let mut buttons: Vec<Vec<InlineKeyboardButton>> = genres_page
         .items
         .into_iter()
         .map(|genre| {

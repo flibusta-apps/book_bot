@@ -102,7 +102,7 @@ async fn update_log_pagination_handler(
 
     let header = format!("Обновление каталога ({from} - {to}):\n\n");
 
-    let mut items_page = get_uploaded_books(
+    let mut items_page = match get_uploaded_books(
         update_callback_data.page,
         update_callback_data
             .from
@@ -115,7 +115,16 @@ async fn update_log_pagination_handler(
             .to_string()
             .into(),
     )
-    .await?;
+    .await?
+    {
+        Some(v) => v,
+        None => {
+            bot.send_message(message.chat().id, "Нет новых книг за этот период.")
+                .send()
+                .await?;
+            return Ok(());
+        }
+    };
 
     if items_page.pages == 0 {
         bot.send_message(message.chat().id, "Нет новых книг за этот период.")
@@ -125,7 +134,7 @@ async fn update_log_pagination_handler(
     }
 
     if update_callback_data.page > items_page.pages {
-        items_page = get_uploaded_books(
+        items_page = match get_uploaded_books(
             items_page.pages,
             update_callback_data
                 .from
@@ -138,7 +147,16 @@ async fn update_log_pagination_handler(
                 .to_string()
                 .into(),
         )
-        .await?;
+        .await?
+        {
+            Some(v) => v,
+            None => {
+                bot.send_message(message.chat().id, "Нет новых книг за этот период.")
+                    .send()
+                    .await?;
+                return Ok(());
+            }
+        };
     }
 
     let page = update_callback_data.page;
