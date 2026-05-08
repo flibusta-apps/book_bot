@@ -21,6 +21,7 @@ use crate::bots::{
     approved_bot::{
         modules::utils::{
             message_text::is_message_text_equals, pagination::generic_get_pagination_keyboard,
+            telegram_utils::safe_edit_message_text,
         },
         services::book_library::{get_author_annotation, get_book_annotation},
         tools::filter_callback_query,
@@ -156,15 +157,14 @@ where
         return Ok(());
     }
 
-    match bot
-        .edit_message_text(message.chat().id, message.id(), new_text)
-        .reply_markup(keyboard)
-        .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err.into()),
-    }
+    safe_edit_message_text(
+        &bot,
+        message.chat().id,
+        message.id(),
+        new_text,
+        Some(keyboard),
+    )
+    .await
 }
 
 pub fn get_annotations_handler() -> crate::bots::BotHandler {

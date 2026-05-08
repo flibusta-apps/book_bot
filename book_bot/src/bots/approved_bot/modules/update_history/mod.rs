@@ -9,6 +9,7 @@ use crate::bots::{
         modules::utils::{
             constants::{ERROR_TRY_AGAIN, TELEGRAM_MESSAGE_MAX_LENGTH},
             message_text::is_message_text_equals,
+            telegram_utils::safe_edit_message_text,
         },
         services::book_library::get_uploaded_books,
         tools::filter_callback_query,
@@ -151,15 +152,14 @@ async fn update_log_pagination_handler(
     }
 
     let keyboard = generic_get_pagination_keyboard(page, total_pages, update_callback_data, true);
-    match bot
-        .edit_message_text(message.chat().id, message.id(), message_text)
-        .reply_markup(keyboard)
-        .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err.into()),
-    }
+    safe_edit_message_text(
+        &bot,
+        message.chat().id,
+        message.id(),
+        message_text,
+        Some(keyboard),
+    )
+    .await
 }
 
 pub fn get_update_log_handler() -> crate::bots::BotHandler {
