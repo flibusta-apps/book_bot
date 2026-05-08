@@ -2,6 +2,7 @@ pub mod axum_server;
 pub mod bot_manager_client;
 pub mod closable_sender;
 pub mod custom_error_handler;
+pub mod error_classification;
 pub mod internal;
 pub mod utils;
 
