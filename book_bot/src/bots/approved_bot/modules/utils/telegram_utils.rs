@@ -1,9 +1,13 @@
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
-    types::{InlineKeyboardMarkup, MessageId, ReplyParameters},
+    types::{
+        CallbackQueryId, InlineKeyboardMarkup, InputFile, MessageId, ParseMode, ReplyParameters,
+    },
     ApiError, RequestError,
 };
+
+use tracing::log;
 
 use crate::bots::BotHandlerInternal;
 
@@ -127,6 +131,193 @@ pub async fn safe_send_message(
             other => Err(RequestError::Api(other).into()),
         },
         Err(e) => Err(e.into()),
+    }
+}
+
+/// Safely send a message with HTML parse mode, handling common Telegram API errors.
+///
+/// - `NotEnoughRights*` → Ok(()) (can't act, suppress)
+/// - `MessageTextIsEmpty` → Ok(()) (suppress, shouldn't crash)
+/// - Other errors → Err
+#[allow(dead_code)]
+pub async fn safe_send_message_html(
+    bot: &CacheMe<Throttle<Bot>>,
+    chat_id: ChatId,
+    text: impl Into<String>,
+    keyboard: Option<InlineKeyboardMarkup>,
+) -> BotHandlerInternal {
+    let text = text.into();
+    let mut request = bot.send_message(chat_id, &text).parse_mode(ParseMode::Html);
+
+    if let Some(keyboard) = keyboard {
+        request = request.reply_markup(keyboard);
+    }
+
+    match request.send().await {
+        Ok(_) => Ok(()),
+        Err(RequestError::Api(api_error)) => match api_error {
+            ApiError::NotEnoughRightsToPostMessages
+            | ApiError::NotEnoughRightsToRestrict
+            | ApiError::NotEnoughRightsToChangeChatPermissions
+            | ApiError::NotEnoughRightsToManagePins
+            | ApiError::NotEnoughRightsToPinMessage
+            | ApiError::MessageTextIsEmpty => Ok(()),
+            other => Err(RequestError::Api(other).into()),
+        },
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Safely edit message text with HTML parse mode, handling common Telegram API errors.
+///
+/// Same error handling as `safe_edit_message_text`, but sets HTML parse mode.
+#[allow(dead_code)]
+pub async fn safe_edit_message_text_html(
+    bot: &CacheMe<Throttle<Bot>>,
+    chat_id: ChatId,
+    message_id: MessageId,
+    text: impl Into<String>,
+    keyboard: Option<InlineKeyboardMarkup>,
+) -> BotHandlerInternal {
+    let text = text.into();
+    let mut request = bot
+        .edit_message_text(chat_id, message_id, &text)
+        .parse_mode(ParseMode::Html);
+
+    if let Some(ref keyboard) = keyboard {
+        request = request.reply_markup(keyboard.clone());
+    }
+
+    match request.send().await {
+        Ok(_) => Ok(()),
+        Err(RequestError::Api(api_error)) => match api_error {
+            ApiError::MessageNotModified => Ok(()),
+            ApiError::MessageToEditNotFound | ApiError::MessageIdInvalid => {
+                let mut send_request = bot.send_message(chat_id, &text).parse_mode(ParseMode::Html);
+                if let Some(keyboard) = keyboard {
+                    send_request = send_request.reply_markup(keyboard);
+                }
+                match send_request.send().await {
+                    Ok(_) => Ok(()),
+                    Err(RequestError::Api(
+                        ApiError::NotEnoughRightsToPostMessages
+                        | ApiError::NotEnoughRightsToRestrict
+                        | ApiError::NotEnoughRightsToChangeChatPermissions
+                        | ApiError::NotEnoughRightsToManagePins
+                        | ApiError::NotEnoughRightsToPinMessage
+                        | ApiError::MessageTextIsEmpty,
+                    )) => Ok(()),
+                    Err(e) => Err(e.into()),
+                }
+            }
+            ApiError::NotEnoughRightsToPostMessages
+            | ApiError::NotEnoughRightsToRestrict
+            | ApiError::NotEnoughRightsToChangeChatPermissions
+            | ApiError::NotEnoughRightsToManagePins
+            | ApiError::NotEnoughRightsToPinMessage
+            | ApiError::MessageTextIsEmpty => Ok(()),
+            other => Err(RequestError::Api(other).into()),
+        },
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Safely send a document, handling common Telegram API errors.
+///
+/// - `NotEnoughRights*` → Ok(()) (can't act, suppress)
+/// - Other errors → Err
+#[allow(dead_code)]
+pub async fn safe_send_document(
+    bot: &CacheMe<Throttle<Bot>>,
+    chat_id: ChatId,
+    document: InputFile,
+    caption: impl Into<String>,
+) -> BotHandlerInternal {
+    match bot
+        .send_document(chat_id, document)
+        .caption(caption)
+        .send()
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(RequestError::Api(api_error)) => match api_error {
+            ApiError::NotEnoughRightsToPostMessages
+            | ApiError::NotEnoughRightsToRestrict
+            | ApiError::NotEnoughRightsToChangeChatPermissions
+            | ApiError::NotEnoughRightsToManagePins
+            | ApiError::NotEnoughRightsToPinMessage => Ok(()),
+            other => Err(RequestError::Api(other).into()),
+        },
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Safely delete a message, handling common Telegram API errors.
+///
+/// - `MessageToDeleteNotFound` → Ok(()) (message already deleted)
+/// - `NotEnoughRights*` → Ok(()) (can't act, suppress)
+/// - Other errors → Err
+#[allow(dead_code)]
+pub async fn safe_delete_message(
+    bot: &CacheMe<Throttle<Bot>>,
+    chat_id: ChatId,
+    message_id: MessageId,
+) -> BotHandlerInternal {
+    match bot.delete_message(chat_id, message_id).await {
+        Ok(_) => Ok(()),
+        Err(RequestError::Api(api_error)) => match api_error {
+            ApiError::MessageToDeleteNotFound
+            | ApiError::NotEnoughRightsToPostMessages
+            | ApiError::NotEnoughRightsToRestrict
+            | ApiError::NotEnoughRightsToChangeChatPermissions
+            | ApiError::NotEnoughRightsToManagePins
+            | ApiError::NotEnoughRightsToPinMessage => Ok(()),
+            other => Err(RequestError::Api(other).into()),
+        },
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Safely answer a callback query, suppressing all errors.
+///
+/// Callback query responses are non-critical UX hints. If they fail
+/// (e.g., the query is too old), there's nothing actionable to do.
+#[allow(dead_code)]
+pub async fn safe_answer_callback_query(
+    bot: &CacheMe<Throttle<Bot>>,
+    callback_query_id: CallbackQueryId,
+) -> BotHandlerInternal {
+    match bot.answer_callback_query(callback_query_id).send().await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            log::warn!("Failed to answer callback query: {:?}", e);
+            Ok(())
+        }
+    }
+}
+
+/// Safely answer a callback query with text and optional alert, suppressing all errors.
+///
+/// Same as `safe_answer_callback_query` but supports text and alert parameters.
+#[allow(dead_code)]
+pub async fn safe_answer_callback_query_with_text(
+    bot: &CacheMe<Throttle<Bot>>,
+    callback_query_id: CallbackQueryId,
+    text: &str,
+    show_alert: bool,
+) -> BotHandlerInternal {
+    match bot
+        .answer_callback_query(callback_query_id)
+        .text(text)
+        .show_alert(show_alert)
+        .send()
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            log::warn!("Failed to answer callback query: {:?}", e);
+            Ok(())
+        }
     }
 }
 
