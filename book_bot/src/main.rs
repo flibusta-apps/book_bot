@@ -10,6 +10,8 @@ use tracing_subscriber::filter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
+use bots_manager::error_classification::is_expected_telegram_error;
+
 mod bots;
 mod bots_manager;
 mod config;
@@ -27,10 +29,10 @@ async fn main() {
     let _guard = sentry::init(options);
 
     let sentry_layer = sentry_tracing::layer().event_filter(|md| {
-        if md
-            .name()
-            .contains("Forbidden: bot can't initiate conversation with a user")
-        {
+        // Ignore expected Telegram errors at any log level — they are
+        // normal API responses (rate limits, permissions, message state)
+        // and should not create Sentry events.
+        if is_expected_telegram_error(md.name()) {
             return EventFilter::Ignore;
         }
 
