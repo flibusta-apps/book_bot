@@ -15,6 +15,7 @@ use teloxide::{
     dispatching::UpdateFilterExt,
     dptree,
     prelude::*,
+    types::ReplyParameters,
 };
 use tracing::log;
 
@@ -34,8 +35,9 @@ use crate::bots::approved_bot::{
 use self::{callback_data::BookCallbackData, commands::BookCommand};
 
 use super::utils::{
-    filter_command::filter_command, pagination::generic_get_pagination_keyboard,
-    telegram_utils::safe_edit_message_text,
+    filter_command::filter_command,
+    pagination::generic_get_pagination_keyboard,
+    telegram_utils::{safe_edit_message_text, safe_send_message, safe_send_message_with_reply},
 };
 
 #[log_handler("book")]
@@ -60,10 +62,14 @@ where
     let user_id = match message.from.map(|from| from.id) {
         Some(v) => v,
         None => {
-            return match bot.send_message(chat_id, REPEAT_REQUEST).send().await {
-                Ok(_) => Ok(()),
-                Err(err) => Err(err.into()),
-            }
+            return safe_send_message_with_reply(
+                &bot,
+                chat_id,
+                REPEAT_REQUEST,
+                ReplyParameters::new(message.id),
+                None,
+            )
+            .await;
         }
     };
 
@@ -72,17 +78,38 @@ where
     let items_page = match books_getter(id, 1, allowed_langs).await {
         Ok(Some(v)) => v,
         Ok(None) => {
-            bot.send_message(chat_id, NOT_FOUND).send().await?;
+            safe_send_message_with_reply(
+                &bot,
+                chat_id,
+                NOT_FOUND,
+                ReplyParameters::new(message.id),
+                None,
+            )
+            .await?;
             return Ok(());
         }
         Err(err) => {
-            bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
+            safe_send_message_with_reply(
+                &bot,
+                chat_id,
+                ERROR_TRY_LATER,
+                ReplyParameters::new(message.id),
+                None,
+            )
+            .await?;
             return Err(err);
         }
     };
 
     if items_page.pages == 0 {
-        bot.send_message(chat_id, BOOKS_NOT_FOUND).send().await?;
+        safe_send_message_with_reply(
+            &bot,
+            chat_id,
+            BOOKS_NOT_FOUND,
+            ReplyParameters::new(message.id),
+            None,
+        )
+        .await?;
         return Ok(());
     };
 
@@ -96,10 +123,14 @@ where
 
     let keyboard = generic_get_pagination_keyboard(1, items_page.pages, callback_data, true);
 
-    bot.send_message(chat_id, formatted_page)
-        .reply_markup(keyboard)
-        .send()
-        .await?;
+    safe_send_message_with_reply(
+        &bot,
+        chat_id,
+        formatted_page,
+        ReplyParameters::new(message.id),
+        Some(keyboard),
+    )
+    .await?;
 
     Ok(())
 }
@@ -129,7 +160,7 @@ where
     let (chat_id, message_id) = match (chat_id, message_id) {
         (Some(chat_id), Some(message_id)) => (chat_id, message_id),
         (Some(chat_id), None) => {
-            bot.send_message(chat_id, REPEAT_SEARCH).send().await?;
+            safe_send_message(&bot, chat_id, REPEAT_SEARCH, None).await?;
             return Ok(());
         }
         _ => {
@@ -142,14 +173,14 @@ where
     let mut items_page = match books_getter(id, page, allowed_langs.clone()).await {
         Ok(Some(v)) => v,
         Ok(None) => {
-            match bot.send_message(chat_id, NOT_FOUND).send().await {
+            match safe_send_message(&bot, chat_id, NOT_FOUND, None).await {
                 Ok(_) => (),
                 Err(err) => log::error!("{err:?}"),
             }
             return Ok(());
         }
         Err(err) => {
-            match bot.send_message(chat_id, ERROR_TRY_LATER).send().await {
+            match safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await {
                 Ok(_) => (),
                 Err(err) => log::error!("{err:?}"),
             }
@@ -158,7 +189,7 @@ where
     };
 
     if items_page.pages == 0 {
-        bot.send_message(chat_id, BOOKS_NOT_FOUND).send().await?;
+        safe_send_message(&bot, chat_id, BOOKS_NOT_FOUND, None).await?;
         return Ok(());
     };
 
@@ -166,11 +197,11 @@ where
         items_page = match books_getter(id, items_page.pages, allowed_langs).await {
             Ok(Some(v)) => v,
             Ok(None) => {
-                bot.send_message(chat_id, NOT_FOUND).send().await?;
+                safe_send_message(&bot, chat_id, NOT_FOUND, None).await?;
                 return Ok(());
             }
             Err(err) => {
-                bot.send_message(chat_id, ERROR_TRY_LATER).send().await?;
+                safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
 
                 return Err(err);
             }
