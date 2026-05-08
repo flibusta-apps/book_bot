@@ -14,6 +14,7 @@ use teloxide::{
 use crate::bots::{
     approved_bot::{
         modules::random::callback_data::RandomCallbackData,
+        modules::utils::telegram_utils::safe_edit_message_reply_markup,
         services::{
             book_library::{self, formatters::Format},
             user_settings::get_user_or_default_lang_codes,
@@ -102,12 +103,15 @@ where
 
     match cq.message {
         Some(message) => {
-            bot.edit_message_reply_markup(message.chat().id, message.id())
-                .reply_markup(InlineKeyboardMarkup {
+            safe_edit_message_reply_markup(
+                &bot,
+                message.chat().id,
+                message.id(),
+                InlineKeyboardMarkup {
                     inline_keyboard: vec![],
-                })
-                .send()
-                .await?;
+                },
+            )
+            .await?;
             Ok(())
         }
         None => Ok(()),
@@ -166,10 +170,7 @@ async fn get_genre_metas_handler(
             .collect(),
     };
 
-    bot.edit_message_reply_markup(message.chat().id, message.id())
-        .reply_markup(keyboard)
-        .send()
-        .await?;
+    safe_edit_message_reply_markup(&bot, message.chat().id, message.id(), keyboard).await?;
 
     Ok(())
 }
@@ -231,10 +232,7 @@ async fn get_genres_by_meta_handler(
         }
     };
 
-    bot.edit_message_reply_markup(message.chat().id, message.id())
-        .reply_markup(keyboard)
-        .send()
-        .await?;
+    safe_edit_message_reply_markup(&bot, message.chat().id, message.id(), keyboard).await?;
 
     Ok(())
 }
