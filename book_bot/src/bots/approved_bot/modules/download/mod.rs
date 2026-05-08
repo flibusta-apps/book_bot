@@ -2,7 +2,7 @@ pub mod callback_data;
 pub mod commands;
 
 use super::utils::constants::*;
-use super::utils::telegram_utils::safe_edit_message_text;
+use super::utils::telegram_utils::{safe_edit_message_text, safe_send_message_with_reply};
 
 use book_bot_macros::log_handler;
 
@@ -224,11 +224,14 @@ async fn get_download_keyboard_handler(
             .collect(),
     };
 
-    bot.send_message(message.chat.id, "Выбери формат:")
-        .reply_markup(keyboard)
-        .reply_parameters(ReplyParameters::new(message.id))
-        .send()
-        .await?;
+    safe_send_message_with_reply(
+        &bot,
+        message.chat.id,
+        "Выбери формат:",
+        ReplyParameters::new(message.id),
+        Some(keyboard),
+    )
+    .await?;
 
     Ok(())
 }
@@ -294,10 +297,14 @@ async fn get_download_archive_keyboard_handler(
             .collect(),
     };
 
-    bot.send_message(message.chat.id, "Выбери формат:")
-        .reply_markup(keyboard)
-        .reply_parameters(ReplyParameters::new(message.id))
-        .await?;
+    safe_send_message_with_reply(
+        &bot,
+        message.chat.id,
+        "Выбери формат:",
+        ReplyParameters::new(message.id),
+        Some(keyboard),
+    )
+    .await?;
 
     Ok(())
 }

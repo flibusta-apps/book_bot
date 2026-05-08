@@ -20,8 +20,9 @@ use teloxide::{
 use crate::bots::{
     approved_bot::{
         modules::utils::{
-            message_text::is_message_text_equals, pagination::generic_get_pagination_keyboard,
-            telegram_utils::safe_edit_message_text,
+            message_text::is_message_text_equals,
+            pagination::generic_get_pagination_keyboard,
+            telegram_utils::{safe_edit_message_text, safe_send_message_with_reply},
         },
         services::book_library::{get_author_annotation, get_book_annotation},
         tools::filter_callback_query,
@@ -61,15 +62,14 @@ where
     let annotation = annotation_getter(id).await?;
 
     if annotation.get_file().is_none() && !annotation.is_normal_text() {
-        return match bot
-            .send_message(message.chat.id, "Аннотация недоступна :(")
-            .reply_parameters(ReplyParameters::new(message.id))
-            .send()
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(err) => Err(err.into()),
-        };
+        return safe_send_message_with_reply(
+            &bot,
+            message.chat.id,
+            "Аннотация недоступна :(",
+            ReplyParameters::new(message.id),
+            None,
+        )
+        .await;
     };
 
     if let Some(file) = annotation.get_file() {

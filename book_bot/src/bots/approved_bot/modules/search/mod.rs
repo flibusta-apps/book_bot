@@ -19,7 +19,8 @@ use teloxide::{
 use crate::bots::{
     approved_bot::{
         modules::utils::{
-            message_text::is_message_text_equals, telegram_utils::safe_edit_message_text,
+            message_text::is_message_text_equals,
+            telegram_utils::{safe_edit_message_text, safe_send_message_with_reply},
         },
         services::{
             book_library::{
@@ -130,16 +131,19 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
             let allowed_langs = get_user_or_default_lang_codes(user_id).await;
             let query_owned = query.to_string();
             let chat_id = message.chat.id;
-            let reply_params = ReplyParameters::new(message.id);
 
             let (formatted, pages) = match &search_data {
                 SearchCallbackData::Book { .. } => {
                     match search_book(query_owned, 1, allowed_langs).await {
                         Ok(p) if p.pages == 0 => {
-                            bot.send_message(chat_id, BOOKS_NOT_FOUND)
-                                .reply_parameters(reply_params)
-                                .send()
-                                .await?;
+                            safe_send_message_with_reply(
+                                &bot,
+                                chat_id,
+                                BOOKS_NOT_FOUND,
+                                ReplyParameters::new(message.id),
+                                None,
+                            )
+                            .await?;
                             return Ok(());
                         }
                         Ok(p) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
@@ -152,10 +156,14 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                 SearchCallbackData::Authors { .. } => {
                     match search_author(query_owned, 1, allowed_langs).await {
                         Ok(p) if p.pages == 0 => {
-                            bot.send_message(chat_id, AUTHORS_NOT_FOUND)
-                                .reply_parameters(reply_params)
-                                .send()
-                                .await?;
+                            safe_send_message_with_reply(
+                                &bot,
+                                chat_id,
+                                AUTHORS_NOT_FOUND,
+                                ReplyParameters::new(message.id),
+                                None,
+                            )
+                            .await?;
                             return Ok(());
                         }
                         Ok(p) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
@@ -168,10 +176,14 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                 SearchCallbackData::Sequences { .. } => {
                     match search_sequence(query_owned, 1, allowed_langs).await {
                         Ok(p) if p.pages == 0 => {
-                            bot.send_message(chat_id, SEQUENCES_NOT_FOUND)
-                                .reply_parameters(reply_params)
-                                .send()
-                                .await?;
+                            safe_send_message_with_reply(
+                                &bot,
+                                chat_id,
+                                SEQUENCES_NOT_FOUND,
+                                ReplyParameters::new(message.id),
+                                None,
+                            )
+                            .await?;
                             return Ok(());
                         }
                         Ok(p) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
@@ -184,10 +196,14 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                 SearchCallbackData::Translators { .. } => {
                     match search_translator(query_owned, 1, allowed_langs).await {
                         Ok(p) if p.pages == 0 => {
-                            bot.send_message(chat_id, TRANSLATORS_NOT_FOUND)
-                                .reply_parameters(reply_params)
-                                .send()
-                                .await?;
+                            safe_send_message_with_reply(
+                                &bot,
+                                chat_id,
+                                TRANSLATORS_NOT_FOUND,
+                                ReplyParameters::new(message.id),
+                                None,
+                            )
+                            .await?;
                             return Ok(());
                         }
                         Ok(p) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
@@ -200,11 +216,14 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
             };
 
             let keyboard = generic_get_pagination_keyboard(1, pages, search_data, true);
-            bot.send_message(chat_id, formatted)
-                .reply_parameters(reply_params)
-                .reply_markup(keyboard)
-                .send()
-                .await?;
+            safe_send_message_with_reply(
+                &bot,
+                chat_id,
+                formatted,
+                ReplyParameters::new(message.id),
+                Some(keyboard),
+            )
+            .await?;
             return Ok(());
         }
     }
@@ -239,11 +258,14 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
         ],
     };
 
-    bot.send_message(message.chat.id, message_text)
-        .reply_parameters(ReplyParameters::new(message.id))
-        .reply_markup(keyboard)
-        .send()
-        .await?;
+    safe_send_message_with_reply(
+        &bot,
+        message.chat.id,
+        message_text,
+        ReplyParameters::new(message.id),
+        Some(keyboard),
+    )
+    .await?;
 
     Ok(())
 }

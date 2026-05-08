@@ -14,7 +14,9 @@ use teloxide::{
 use crate::bots::{
     approved_bot::{
         modules::random::callback_data::RandomCallbackData,
-        modules::utils::telegram_utils::safe_edit_message_reply_markup,
+        modules::utils::telegram_utils::{
+            safe_edit_message_reply_markup, safe_send_message_with_reply,
+        },
         services::{
             book_library::{self, formatters::Format},
             user_settings::get_user_or_default_lang_codes,
@@ -62,11 +64,14 @@ async fn random_handler(
         ],
     };
 
-    bot.send_message(message.chat.id, MESSAGE_TEXT)
-        .reply_parameters(ReplyParameters::new(message.id))
-        .reply_markup(keyboard)
-        .send()
-        .await?;
+    safe_send_message_with_reply(
+        &bot,
+        message.chat.id,
+        MESSAGE_TEXT,
+        ReplyParameters::new(message.id),
+        Some(keyboard),
+    )
+    .await?;
 
     Ok(())
 }

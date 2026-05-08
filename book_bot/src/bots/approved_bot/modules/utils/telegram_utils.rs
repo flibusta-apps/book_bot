@@ -1,7 +1,7 @@
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
-    types::{InlineKeyboardMarkup, MessageId},
+    types::{InlineKeyboardMarkup, MessageId, ReplyParameters},
     ApiError, RequestError,
 };
 
@@ -117,6 +117,62 @@ pub async fn safe_send_message(
 
     match request.send().await {
         Ok(_) => Ok(()),
+        Err(RequestError::Api(api_error)) => match api_error {
+            ApiError::NotEnoughRightsToPostMessages
+            | ApiError::NotEnoughRightsToRestrict
+            | ApiError::NotEnoughRightsToChangeChatPermissions
+            | ApiError::NotEnoughRightsToManagePins
+            | ApiError::NotEnoughRightsToPinMessage
+            | ApiError::MessageTextIsEmpty => Ok(()),
+            other => Err(RequestError::Api(other).into()),
+        },
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Safely send a message with reply parameters, handling common Telegram API errors.
+///
+/// - `MessageToReplyNotFound` → retry without reply parameters (original message was deleted)
+/// - `NotEnoughRights*` → Ok(()) (can't act, suppress)
+/// - `MessageTextIsEmpty` → Ok(()) (suppress, shouldn't crash)
+/// - Other errors → Err
+pub async fn safe_send_message_with_reply(
+    bot: &CacheMe<Throttle<Bot>>,
+    chat_id: ChatId,
+    text: impl Into<String>,
+    reply_parameters: ReplyParameters,
+    keyboard: Option<InlineKeyboardMarkup>,
+) -> BotHandlerInternal {
+    let text = text.into();
+    let mut request = bot
+        .send_message(chat_id, &text)
+        .reply_parameters(reply_parameters);
+
+    if let Some(ref keyboard) = keyboard {
+        request = request.reply_markup(keyboard.clone());
+    }
+
+    match request.send().await {
+        Ok(_) => Ok(()),
+        Err(RequestError::Api(ApiError::MessageToReplyNotFound)) => {
+            // Original message was deleted, send without reply
+            let mut fallback = bot.send_message(chat_id, &text);
+            if let Some(keyboard) = keyboard {
+                fallback = fallback.reply_markup(keyboard);
+            }
+            match fallback.send().await {
+                Ok(_) => Ok(()),
+                Err(RequestError::Api(
+                    ApiError::NotEnoughRightsToPostMessages
+                    | ApiError::NotEnoughRightsToRestrict
+                    | ApiError::NotEnoughRightsToChangeChatPermissions
+                    | ApiError::NotEnoughRightsToManagePins
+                    | ApiError::NotEnoughRightsToPinMessage
+                    | ApiError::MessageTextIsEmpty,
+                )) => Ok(()),
+                Err(e) => Err(e.into()),
+            }
+        }
         Err(RequestError::Api(api_error)) => match api_error {
             ApiError::NotEnoughRightsToPostMessages
             | ApiError::NotEnoughRightsToRestrict

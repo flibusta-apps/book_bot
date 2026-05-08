@@ -8,6 +8,8 @@ use teloxide::{
 
 use self::{strings::format_registered_message, utils::get_token};
 
+use crate::bots::approved_bot::modules::utils::telegram_utils::safe_send_message_with_reply;
+
 pub mod register;
 pub mod strings;
 pub mod utils;
@@ -28,9 +30,14 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> a
         register::RegisterStatus::AlreadyExists => strings::ALREADY_EXISTS_MESSAGE.to_string(),
     };
 
-    bot.send_message(message.chat.id, message_text)
-        .reply_parameters(ReplyParameters::new(message.id))
-        .await?;
+    safe_send_message_with_reply(
+        &bot,
+        message.chat.id,
+        message_text,
+        ReplyParameters::new(message.id),
+        None,
+    )
+    .await?;
 
     Ok(())
 }
