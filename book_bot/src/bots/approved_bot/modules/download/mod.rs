@@ -438,7 +438,7 @@ async fn wait_archive(
         },
         Err(err) => {
             send_error_message(&bot, message.chat.id, message.id).await;
-            log::error!("{err:?}");
+            log::warn!("{err:?}");
             return Err(err);
         }
     };
@@ -453,7 +453,7 @@ async fn wait_archive(
         Ok(_) => (),
         Err(err) => {
             send_archive_link(&bot, message.chat.id, message.id, &task).await?;
-            log::error!("{err:?}");
+            log::warn!("{err:?}");
         }
     }
 

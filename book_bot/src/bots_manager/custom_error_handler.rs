@@ -16,6 +16,38 @@ impl CustomErrorHandler {
     }
 }
 
+/// Classify an error by severity based on its string representation.
+///
+/// Transient errors (rate limits, network timeouts, DNS failures) are expected
+/// in a distributed system and should be logged at WARN level to avoid
+/// flooding Sentry with non-actionable events. Only truly unexpected errors
+/// are logged at ERROR level.
+fn classify_error(error_string: &str) -> log::Level {
+    // Rate limit errors from Telegram API
+    if error_string.contains("Retry after")
+        || error_string.contains("Too Many Requests")
+        || error_string.contains("Flood")
+    {
+        return log::Level::Warn;
+    }
+
+    // Network/transient errors (timeouts, DNS, connection refused, incomplete messages)
+    if error_string.contains("operation timed out")
+        || error_string.contains("dns error")
+        || error_string.contains("tcp connect error")
+        || error_string.contains("connection refused")
+        || error_string.contains("error sending request")
+        || error_string.contains("A network error")
+        || error_string.contains("network error")
+        || error_string.contains("IncompleteMessage")
+        || error_string.contains("ConnectError")
+    {
+        return log::Level::Warn;
+    }
+
+    log::Level::Error
+}
+
 impl<E> teloxide::error_handlers::ErrorHandler<E> for CustomErrorHandler
 where
     E: std::fmt::Debug + Send + 'static,
@@ -32,22 +64,35 @@ where
                 return;
             }
 
-            let backtrace = std::backtrace::Backtrace::force_capture();
+            let level = classify_error(&error_string);
 
-            let backtrace_info = match backtrace.status() {
-                std::backtrace::BacktraceStatus::Captured => {
-                    format!("\nBacktrace:\n{}", backtrace)
-                }
-                std::backtrace::BacktraceStatus::Disabled => {
-                    "\nBacktrace: disabled (compile with debug info for stack traces)".to_string()
-                }
-                std::backtrace::BacktraceStatus::Unsupported => {
-                    "\nBacktrace: unsupported on this platform".to_string()
-                }
-                _ => String::new(),
-            };
+            match level {
+                log::Level::Error => {
+                    let backtrace = std::backtrace::Backtrace::force_capture();
 
-            log::error!("{}: {:?}{}", self.text, error, backtrace_info);
+                    let backtrace_info = match backtrace.status() {
+                        std::backtrace::BacktraceStatus::Captured => {
+                            format!("\nBacktrace:\n{}", backtrace)
+                        }
+                        std::backtrace::BacktraceStatus::Disabled => {
+                            "\nBacktrace: disabled (compile with debug info for stack traces)"
+                                .to_string()
+                        }
+                        std::backtrace::BacktraceStatus::Unsupported => {
+                            "\nBacktrace: unsupported on this platform".to_string()
+                        }
+                        _ => String::new(),
+                    };
+
+                    log::error!("{}: {:?}{}", self.text, error, backtrace_info);
+                }
+                log::Level::Warn => {
+                    log::warn!("{}: {:?}", self.text, error);
+                }
+                _ => {
+                    log::log!(level, "{}: {:?}", self.text, error);
+                }
+            }
         })
     }
 }

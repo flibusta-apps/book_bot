@@ -134,6 +134,7 @@ pub async fn start_bot(bot_data: &BotData) {
 
     let mut dispatcher = Dispatcher::builder(bot.clone(), handler)
         .dependencies(dptree::deps![bot_data.cache])
+        .error_handler(CustomErrorHandler::with_custom_text("Handler error"))
         .build();
 
     let (stop_token, stop_flag, tx, listener) = get_listener();
