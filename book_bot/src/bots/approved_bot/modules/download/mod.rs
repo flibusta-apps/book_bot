@@ -2,6 +2,7 @@ pub mod callback_data;
 pub mod commands;
 
 use super::utils::constants::*;
+use super::utils::telegram_utils::safe_edit_message_text;
 
 use book_bot_macros::log_handler;
 
@@ -301,14 +302,17 @@ async fn get_download_archive_keyboard_handler(
     Ok(())
 }
 
-async fn send_error_message(bot: CacheMe<Throttle<Bot>>, chat_id: ChatId, message_id: MessageId) {
-    let _ = bot
-        .edit_message_text(chat_id, message_id, ERROR_TRY_LATER)
-        .reply_markup(InlineKeyboardMarkup {
+async fn send_error_message(bot: &CacheMe<Throttle<Bot>>, chat_id: ChatId, message_id: MessageId) {
+    let _ = safe_edit_message_text(
+        bot,
+        chat_id,
+        message_id,
+        ERROR_TRY_LATER,
+        Some(InlineKeyboardMarkup {
             inline_keyboard: vec![],
-        })
-        .send()
-        .await;
+        }),
+    )
+    .await;
 }
 
 async fn send_archive_link(
@@ -350,7 +354,7 @@ async fn wait_archive(
     let message = match input_message {
         MaybeInaccessibleMessage::Regular(message) => message,
         _ => {
-            send_error_message(bot, input_message.chat().id, input_message.id()).await;
+            send_error_message(&bot, input_message.chat().id, input_message.id()).await;
             return Ok(());
         }
     };
@@ -361,7 +365,7 @@ async fn wait_archive(
         let task = match get_task(&task_id).await {
             Ok(v) => v,
             Err(err) => {
-                send_error_message(bot, message.chat.id, message.id).await;
+                send_error_message(&bot, message.chat.id, message.id).await;
                 log::error!("{err:?}");
                 return Err(err);
             }
@@ -373,21 +377,21 @@ async fn wait_archive(
 
         let now = Utc::now().format("%H:%M:%S UTC").to_string();
 
-        bot.edit_message_text(
+        safe_edit_message_text(
+            &bot,
             message.chat.id,
             message.id,
             format!(
                 "Статус: \n ⏳ {} \n\nОбновлено в {now}",
                 task.status_description
             ),
+            Some(get_check_keyboard(task.id)),
         )
-        .reply_markup(get_check_keyboard(task.id))
-        .send()
         .await?;
     };
 
     if task.status != TaskStatus::Complete {
-        send_error_message(bot, message.chat.id, message.id).await;
+        send_error_message(&bot, message.chat.id, message.id).await;
         return Ok(());
     }
 
@@ -413,12 +417,12 @@ async fn wait_archive(
         Ok(v) => match v {
             Some(v) => v,
             None => {
-                send_error_message(bot, message.chat.id, message.id).await;
+                send_error_message(&bot, message.chat.id, message.id).await;
                 return Ok(());
             }
         },
         Err(err) => {
-            send_error_message(bot, message.chat.id, message.id).await;
+            send_error_message(&bot, message.chat.id, message.id).await;
             log::error!("{err:?}");
             return Err(err);
         }
@@ -478,16 +482,20 @@ async fn download_archive(
     let task = match task {
         Ok(v) => v,
         Err(err) => {
-            send_error_message(bot, message.chat().id, message.id()).await;
+            send_error_message(&bot, message.chat().id, message.id()).await;
             log::error!("{err:?}");
             return Err(err);
         }
     };
 
-    bot.edit_message_text(message.chat().id, message.id(), "⏳ Подготовка архива...")
-        .reply_markup(get_check_keyboard(task.id.clone()))
-        .send()
-        .await?;
+    safe_edit_message_text(
+        &bot,
+        message.chat().id,
+        message.id(),
+        "⏳ Подготовка архива...",
+        Some(get_check_keyboard(task.id.clone())),
+    )
+    .await?;
 
     let _ = wait_archive(bot, task.id, message).await;
 
