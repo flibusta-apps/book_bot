@@ -55,6 +55,9 @@ fn is_network_error(s: &str) -> bool {
         || s.contains("network error")
         || s.contains("IncompleteMessage")
         || s.contains("ConnectError")
+        || s.contains("Host is unreachable")
+        || s.contains("Name does not resolve")
+        || s.contains("error decoding response body")
 }
 
 fn is_permission_error(s: &str) -> bool {
@@ -65,6 +68,11 @@ fn is_permission_error(s: &str) -> bool {
         || s.contains("Forbidden: bot can't initiate conversation")
         || s.contains("Bad Request: chat not found")
         || s.contains("Forbidden: bot was kicked from the group")
+        || s.contains("Forbidden: bot was kicked from the supergroup")
+        || s.contains("TOPIC_CLOSED")
+        || s.contains("TOPIC_DELETED")
+        || s.contains("CHANNEL_PRIVATE")
+        || s.contains("PEER_ID_INVALID")
 }
 
 fn is_message_state_error(s: &str) -> bool {
@@ -73,4 +81,6 @@ fn is_message_state_error(s: &str) -> bool {
         || s.contains("MESSAGE_ID_INVALID")
         || s.contains("text must be non-empty")
         || s.contains("Bad Request: message to be replied not found")
+        || s.contains("migrated to a supergroup")
+        || s.contains("internal Server Error")
 }

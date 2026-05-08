@@ -1,4 +1,5 @@
 use super::custom_error_handler::CustomErrorHandler;
+use super::error_classification::is_expected_telegram_error;
 use teloxide::adaptors::throttle::Limits;
 use teloxide::dispatching::Dispatcher;
 
@@ -79,20 +80,36 @@ async fn set_webhook_with_retry(bot_data: &BotData, max_retries: u32) -> bool {
                         return false;
                     }
                     // Non-retryable API error
-                    log::error!(
-                        "Webhook set error (non-retryable) for Bot(id={}): {err}",
-                        bot_data.id
-                    );
+                    let err_str = format!("{err}");
+                    if is_expected_telegram_error(&err_str) {
+                        log::warn!(
+                            "Webhook set error (non-retryable, expected) for Bot(id={}): {err}",
+                            bot_data.id
+                        );
+                    } else {
+                        log::error!(
+                            "Webhook set error (non-retryable) for Bot(id={}): {err}",
+                            bot_data.id
+                        );
+                    }
                     return false;
                 }
 
                 attempt += 1;
 
                 if attempt > max_retries {
-                    log::error!(
-                        "Webhook set error for Bot(id={}) after {max_retries} retries: {err}",
-                        bot_data.id
-                    );
+                    let err_str = format!("{err}");
+                    if is_expected_telegram_error(&err_str) {
+                        log::warn!(
+                            "Webhook set error for Bot(id={}) after {max_retries} retries (expected): {err}",
+                            bot_data.id
+                        );
+                    } else {
+                        log::error!(
+                            "Webhook set error for Bot(id={}) after {max_retries} retries: {err}",
+                            bot_data.id
+                        );
+                    }
                     return false;
                 }
 

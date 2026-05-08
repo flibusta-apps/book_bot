@@ -25,6 +25,7 @@ use teloxide::prelude::*;
 use moka::future::Cache;
 
 use crate::bots_manager::bot_manager_client::delete_bot;
+use crate::bots_manager::error_classification::is_expected_telegram_error;
 use crate::config;
 
 use self::axum_server::start_axum_server;
@@ -184,8 +185,12 @@ impl BotsManager {
                         continue;
                     }
 
-                    if webhook_info.last_error_message.is_some() {
-                        log::error!("Webhook last error: {:?}", webhook_info.last_error_message);
+                    if let Some(ref err_msg) = webhook_info.last_error_message {
+                        if is_expected_telegram_error(err_msg) {
+                            log::warn!("Webhook last error (expected): {err_msg}");
+                        } else {
+                            log::error!("Webhook last error: {err_msg}");
+                        }
 
                         set_webhook(&bot_data).await;
                     }
@@ -201,7 +206,11 @@ impl BotsManager {
                         continue;
                     }
 
-                    log::error!("Error getting webhook info: {error_message}");
+                    if is_expected_telegram_error(&error_message) {
+                        log::warn!("Error getting webhook info (expected): {error_message}");
+                    } else {
+                        log::error!("Error getting webhook info: {error_message}");
+                    }
 
                     WEBHOOK_CHECK_ERRORS_COUNT
                         .insert(bot_data.id, error_count + 1)
