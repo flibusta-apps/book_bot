@@ -3,8 +3,8 @@ pub mod commands;
 
 use super::utils::constants::*;
 use super::utils::telegram_utils::{
-    safe_delete_message, safe_edit_message_text, safe_edit_message_text_html, safe_send_document,
-    safe_send_message_with_reply,
+    safe_copy_message, safe_delete_message, safe_edit_message_text, safe_edit_message_text_html,
+    safe_send_document, safe_send_message_with_reply,
 };
 
 use book_bot_macros::log_handler;
@@ -74,18 +74,13 @@ async fn _send_cached(
     bot: &CacheMe<Throttle<Bot>>,
     cached_message: CachedMessage,
 ) -> BotHandlerInternal {
-    match bot
-        .copy_message(
-            message.chat().id,
-            Recipient::Id(ChatId(cached_message.chat_id)),
-            MessageId(cached_message.message_id),
-        )
-        .send()
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err.into()),
-    }
+    safe_copy_message(
+        bot,
+        ChatId(cached_message.chat_id),
+        message.chat().id,
+        MessageId(cached_message.message_id),
+    )
+    .await
 }
 
 async fn send_cached_message(

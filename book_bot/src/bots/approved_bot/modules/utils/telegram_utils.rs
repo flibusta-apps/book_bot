@@ -321,6 +321,59 @@ pub async fn safe_answer_callback_query_with_text(
     }
 }
 
+/// Safely copy a message, handling common Telegram API errors.
+///
+/// - `MessageToCopyNotFound` → Ok(()) (original message deleted)
+/// - `NotEnoughRights*` → Ok(()) (can't act, suppress)
+/// - Other errors → Err
+pub async fn safe_copy_message(
+    bot: &CacheMe<Throttle<Bot>>,
+    from_chat_id: ChatId,
+    to_chat_id: ChatId,
+    message_id: MessageId,
+) -> BotHandlerInternal {
+    match bot
+        .copy_message(to_chat_id, from_chat_id, message_id)
+        .send()
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(RequestError::Api(api_error)) => match api_error {
+            ApiError::MessageToCopyNotFound
+            | ApiError::NotEnoughRightsToPostMessages
+            | ApiError::NotEnoughRightsToRestrict
+            | ApiError::NotEnoughRightsToChangeChatPermissions
+            | ApiError::NotEnoughRightsToManagePins
+            | ApiError::NotEnoughRightsToPinMessage => Ok(()),
+            other => Err(RequestError::Api(other).into()),
+        },
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Safely send a photo, handling common Telegram API errors.
+///
+/// - `NotEnoughRights*` → Ok(()) (can't act, suppress)
+/// - Other errors → Err
+pub async fn safe_send_photo(
+    bot: &CacheMe<Throttle<Bot>>,
+    chat_id: ChatId,
+    photo: InputFile,
+) -> BotHandlerInternal {
+    match bot.send_photo(chat_id, photo).send().await {
+        Ok(_) => Ok(()),
+        Err(RequestError::Api(api_error)) => match api_error {
+            ApiError::NotEnoughRightsToPostMessages
+            | ApiError::NotEnoughRightsToRestrict
+            | ApiError::NotEnoughRightsToChangeChatPermissions
+            | ApiError::NotEnoughRightsToManagePins
+            | ApiError::NotEnoughRightsToPinMessage => Ok(()),
+            other => Err(RequestError::Api(other).into()),
+        },
+        Err(e) => Err(e.into()),
+    }
+}
+
 /// Safely send a message with reply parameters, handling common Telegram API errors.
 ///
 /// - `MessageToReplyNotFound` → retry without reply parameters (original message was deleted)

@@ -6,10 +6,10 @@ use book_bot_macros::log_handler;
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
-    types::ParseMode,
 };
 
 use self::commands::HelpCommand;
+use super::utils::telegram_utils::safe_send_message_html;
 
 fn escape_html(s: &str) -> String {
     s.replace('&', "&amp;")
@@ -25,11 +25,11 @@ pub async fn help_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotH
         .map(|user| escape_html(&user.first_name))
         .unwrap_or_else(|| "пользователь".to_string());
 
-    match bot
-        .send_message(
-            message.chat.id,
-            format!(
-                "
+    safe_send_message_html(
+        &bot,
+        message.chat.id,
+        format!(
+            "
 Привет, {name}!
 
 Этот бот поможет тебе загружать книги.
@@ -41,14 +41,10 @@ pub async fn help_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotH
 2. И перешли сюда сообщение об успешной регистрации.
 (Начинается с: Done! Congratulations on your new bot.)
         "
-            ),
-        )
-        .parse_mode(ParseMode::Html)
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err.into()),
-    }
+        ),
+        None,
+    )
+    .await
 }
 
 pub fn get_help_handler() -> crate::bots::BotHandler {

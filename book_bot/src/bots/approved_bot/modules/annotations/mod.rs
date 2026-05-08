@@ -22,7 +22,9 @@ use crate::bots::{
         modules::utils::{
             message_text::is_message_text_equals,
             pagination::generic_get_pagination_keyboard,
-            telegram_utils::{safe_edit_message_text, safe_send_message_with_reply},
+            telegram_utils::{
+                safe_edit_message_text, safe_send_message_with_reply, safe_send_photo,
+            },
         },
         services::book_library::{get_author_annotation, get_book_annotation},
         tools::filter_callback_query,
@@ -92,12 +94,7 @@ where
             let stream = v.bytes_stream().map_err(std::io::Error::other);
             let data = tokio_util::io::StreamReader::new(stream);
 
-            #[allow(unused_must_use)]
-            {
-                bot.send_photo(message.chat.id, InputFile::read(data))
-                    .send()
-                    .await;
-            }
+            safe_send_photo(&bot, message.chat.id, InputFile::read(data)).await?;
         }
     };
 
