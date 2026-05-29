@@ -6,3 +6,5 @@ test_env
 .DS_Store
 
 .zed
+
+graphify-out

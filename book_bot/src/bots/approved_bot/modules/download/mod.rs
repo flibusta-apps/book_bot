@@ -89,9 +89,10 @@ async fn send_cached_message(
     download_data: DownloadQueryData,
     need_delete_message: bool,
     cache: BotCache,
+    user_id: Option<u64>,
 ) -> BotHandlerInternal {
     'cached: {
-        if let Ok(v) = get_cached_message(&download_data, cache).await {
+        if let Ok(v) = get_cached_message(&download_data, cache, user_id).await {
             let cached = match v {
                 Some(v) => v,
                 None => break 'cached,
@@ -114,7 +115,8 @@ async fn send_cached_message(
         };
     }
 
-    send_with_download_from_channel(message, bot, download_data, need_delete_message).await?;
+    send_with_download_from_channel(message, bot, download_data, need_delete_message, user_id)
+        .await?;
 
     Ok(())
 }
@@ -147,8 +149,9 @@ async fn send_with_download_from_channel(
     bot: CacheMe<Throttle<Bot>>,
     download_data: DownloadQueryData,
     need_delete_message: bool,
+    user_id: Option<u64>,
 ) -> BotHandlerInternal {
-    let downloaded_file = match download_file(&download_data).await? {
+    let downloaded_file = match download_file(&download_data, user_id).await? {
         Some(v) => v,
         None => {
             return Ok(());
@@ -172,13 +175,29 @@ async fn download_handler(
     cache: BotCache,
     download_data: DownloadQueryData,
     need_delete_message: bool,
+    user_id: Option<u64>,
 ) -> BotHandlerInternal {
     match cache {
         BotCache::Original | BotCache::Cache => {
-            send_cached_message(message, bot, download_data, need_delete_message, cache).await
+            send_cached_message(
+                message,
+                bot,
+                download_data,
+                need_delete_message,
+                cache,
+                user_id,
+            )
+            .await
         }
         BotCache::NoCache => {
-            send_with_download_from_channel(message, bot, download_data, need_delete_message).await
+            send_with_download_from_channel(
+                message,
+                bot,
+                download_data,
+                need_delete_message,
+                user_id,
+            )
+            .await
         }
     }
 }
@@ -541,7 +560,8 @@ async fn download_query_handler(
     let Some(message) = cq.message else {
         return Ok(());
     };
-    download_handler(message, bot, cache, download_query_data, true).await
+    let user_id = Some(cq.from.id.0);
+    download_handler(message, bot, cache, download_query_data, true, user_id).await
 }
 
 pub fn get_download_handler() -> crate::bots::BotHandler {
