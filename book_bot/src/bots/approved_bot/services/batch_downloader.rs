@@ -43,17 +43,23 @@ pub struct Task {
     pub id: String,
     pub status: TaskStatus,
     pub status_description: String,
-    // pub error_message: Option<String>,
+    pub error_message: Option<String>,
     pub result_filename: Option<String>,
     pub content_size: Option<u64>,
 }
 
-pub async fn create_task(data: CreateTaskData) -> anyhow::Result<Task> {
-    Ok(CLIENT
+pub async fn create_task(data: CreateTaskData, user_id: Option<u64>) -> anyhow::Result<Task> {
+    let mut request = CLIENT
         .post(format!("{}/api/", &config::CONFIG.batch_downloader_url))
         .body(serde_json::to_string(&data).unwrap())
         .header("Authorization", &config::CONFIG.batch_downloader_api_key)
-        .header("Content-Type", "application/json")
+        .header("Content-Type", "application/json");
+
+    if let Some(uid) = user_id {
+        request = request.header("X-User-Id", uid.to_string());
+    }
+
+    Ok(request
         .send()
         .await?
         .error_for_status()?

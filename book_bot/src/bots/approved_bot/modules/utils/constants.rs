@@ -7,6 +7,7 @@ pub const ERROR_TRY_AGAIN: &str = "Ошибка! Попробуйте занов
 pub const REPEAT_SEARCH: &str = "Повторите поиск сначала";
 pub const REPEAT_REQUEST: &str = "Повторите запрос сначала";
 pub const NOT_FOUND: &str = "Не найдено :(";
+pub const RATE_LIMIT_ERROR: &str = "Слишком много запросов, попробуйте позже";
 
 /// Search not-found messages
 pub const BOOKS_NOT_FOUND: &str = "Книги не найдены!";

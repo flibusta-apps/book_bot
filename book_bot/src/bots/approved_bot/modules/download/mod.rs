@@ -419,7 +419,7 @@ async fn wait_archive(
             }
         };
 
-        if task.status != TaskStatus::InProgress {
+        if !matches!(task.status, TaskStatus::InProgress | TaskStatus::Archiving) {
             break task;
         }
 
@@ -437,6 +437,36 @@ async fn wait_archive(
         )
         .await?;
     };
+
+    if task.status == TaskStatus::Failed {
+        let is_rate_limit = task
+            .error_message
+            .as_deref()
+            .map(|msg| msg.to_lowercase().contains("rate limit"))
+            .unwrap_or(false);
+
+        if is_rate_limit {
+            log::warn!(
+                "Rate limit hit for user {} on task {}",
+                message.chat.id,
+                task.id
+            );
+            let _ = safe_edit_message_text(
+                &bot,
+                message.chat.id,
+                message.id,
+                RATE_LIMIT_ERROR,
+                Some(InlineKeyboardMarkup {
+                    inline_keyboard: vec![],
+                }),
+            )
+            .await;
+        } else {
+            log::error!("Task {} failed: {:?}", task.id, task.error_message);
+            send_error_message(&bot, message.chat.id, message.id).await;
+        }
+        return Ok(());
+    }
 
     if task.status != TaskStatus::Complete {
         send_error_message(&bot, message.chat.id, message.id).await;
@@ -519,12 +549,17 @@ async fn download_archive(
         return Ok(());
     };
 
-    let task = create_task(CreateTaskData {
-        object_id: id,
-        object_type: task_type,
-        file_format: file_type,
-        allowed_langs,
-    })
+    let user_id = cq.from.id.0;
+
+    let task = create_task(
+        CreateTaskData {
+            object_id: id,
+            object_type: task_type,
+            file_format: file_type,
+            allowed_langs,
+        },
+        Some(user_id),
+    )
     .await;
 
     let task = match task {
