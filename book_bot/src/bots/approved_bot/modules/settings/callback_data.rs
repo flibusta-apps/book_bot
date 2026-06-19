@@ -26,6 +26,14 @@ pub enum SettingsCallbackData {
     DefaultSearchBack,
     /// Return from languages submenu to main settings
     LangSettingsBack,
+    /// Open "file name language" submenu
+    FileNameLangMenu,
+    /// Set file name language: value is "normalized"|"original"
+    FileNameLang {
+        value: SmartString,
+    },
+    /// Return from file name language submenu to main settings
+    FileNameLangBack,
 }
 
 impl FromStr for SettingsCallbackData {
@@ -44,8 +52,19 @@ impl FromStr for SettingsCallbackData {
         if s == "lang_settings_back" {
             return Ok(SettingsCallbackData::LangSettingsBack);
         }
+        if s == "filename_lang" {
+            return Ok(SettingsCallbackData::FileNameLangMenu);
+        }
+        if s == "filename_lang_back" {
+            return Ok(SettingsCallbackData::FileNameLangBack);
+        }
         if let Some(value) = s.strip_prefix("defsearch_") {
             return Ok(SettingsCallbackData::DefaultSearch {
+                value: value.to_string().into(),
+            });
+        }
+        if let Some(value) = s.strip_prefix("filename_lang_") {
+            return Ok(SettingsCallbackData::FileNameLang {
                 value: value.to_string().into(),
             });
         }
@@ -73,6 +92,9 @@ impl Display for SettingsCallbackData {
             SettingsCallbackData::DefaultSearch { value } => write!(f, "defsearch_{value}"),
             SettingsCallbackData::DefaultSearchBack => write!(f, "defsearch_back"),
             SettingsCallbackData::LangSettingsBack => write!(f, "lang_settings_back"),
+            SettingsCallbackData::FileNameLangMenu => write!(f, "filename_lang"),
+            SettingsCallbackData::FileNameLang { value } => write!(f, "filename_lang_{value}"),
+            SettingsCallbackData::FileNameLangBack => write!(f, "filename_lang_back"),
         }
     }
 }

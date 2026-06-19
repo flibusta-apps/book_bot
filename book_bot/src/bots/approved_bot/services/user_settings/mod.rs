@@ -47,6 +47,32 @@ impl DefaultSearchType {
     }
 }
 
+/// API values: "normalized" | "original"
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum FileNameLang {
+    #[default]
+    Normalized,
+    Original,
+}
+
+impl FileNameLang {
+    pub fn as_api_str(self) -> &'static str {
+        match self {
+            FileNameLang::Normalized => "normalized",
+            FileNameLang::Original => "original",
+        }
+    }
+
+    pub fn from_api_str(s: &str) -> Option<Self> {
+        match s {
+            "normalized" => Some(FileNameLang::Normalized),
+            "original" => Some(FileNameLang::Original),
+            _ => None,
+        }
+    }
+}
+
 fn deserialize_optional_default_search<'de, D>(d: D) -> Result<Option<DefaultSearchType>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -72,6 +98,8 @@ pub struct UserSettings {
     pub allowed_langs: SmallVec<[Lang; 3]>,
     #[serde(default, deserialize_with = "deserialize_optional_default_search")]
     pub default_search: Option<DefaultSearchType>,
+    #[serde(default)]
+    pub file_name_lang: FileNameLang,
 }
 
 pub async fn get_user_settings(user_id: UserId) -> anyhow::Result<Option<UserSettings>> {
@@ -116,6 +144,7 @@ pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartS
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_or_update_user_settings(
     user_id: UserId,
     last_name: &str,
@@ -124,6 +153,7 @@ pub async fn create_or_update_user_settings(
     source: &str,
     allowed_langs: SmallVec<[SmartString; 3]>,
     default_search: Option<DefaultSearchType>,
+    file_name_lang: FileNameLang,
 ) -> anyhow::Result<UserSettings> {
     USER_LANGS_CACHE.invalidate(&user_id).await;
 
@@ -138,7 +168,8 @@ pub async fn create_or_update_user_settings(
         "username": username,
         "source": source,
         "allowed_langs": allowed_langs.into_vec(),
-        "default_search": default_search_json
+        "default_search": default_search_json,
+        "file_name_lang": file_name_lang.as_api_str(),
     });
 
     let response = CLIENT

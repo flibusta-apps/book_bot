@@ -42,6 +42,10 @@ async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) 
             let allowed_langs = get_user_or_default_lang_codes(user.id).await;
             let current = get_user_settings(user.id).await.ok().flatten();
             let default_search = current.as_ref().and_then(|s| s.default_search);
+            let file_name_lang = current
+                .as_ref()
+                .map(|s| s.file_name_lang)
+                .unwrap_or_default();
 
             if create_or_update_user_settings(
                 user.id,
@@ -51,6 +55,7 @@ async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) 
                 &me.username.clone().unwrap_or("".to_string()),
                 allowed_langs,
                 default_search,
+                file_name_lang,
             )
             .await
             .is_ok()

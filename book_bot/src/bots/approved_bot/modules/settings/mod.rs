@@ -16,7 +16,7 @@ use crate::bots::{
         },
         services::user_settings::{
             create_or_update_user_settings, get_langs, get_user_or_default_lang_codes,
-            get_user_settings, DefaultSearchType, Lang,
+            get_user_settings, DefaultSearchType, FileNameLang, Lang,
         },
         tools::filter_callback_query,
     },
@@ -44,6 +44,12 @@ fn get_main_settings_keyboard() -> InlineKeyboardMarkup {
                 text: "Поиск по умолчанию".to_string(),
                 kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
                     SettingsCallbackData::DefaultSearchMenu.to_string(),
+                ),
+            }],
+            vec![InlineKeyboardButton {
+                text: "Имена файлов".to_string(),
+                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
+                    SettingsCallbackData::FileNameLangMenu.to_string(),
                 ),
             }],
         ],
@@ -159,6 +165,38 @@ fn get_default_search_keyboard(current: Option<DefaultSearchType>) -> InlineKeyb
     }
 }
 
+fn get_file_name_lang_keyboard(current: FileNameLang) -> InlineKeyboardMarkup {
+    let check = |v: FileNameLang| if current == v { " ✓" } else { "" };
+    InlineKeyboardMarkup {
+        inline_keyboard: vec![
+            vec![InlineKeyboardButton {
+                text: format!("Транслит{}", check(FileNameLang::Normalized)),
+                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
+                    SettingsCallbackData::FileNameLang {
+                        value: FileNameLang::Normalized.as_api_str().into(),
+                    }
+                    .to_string(),
+                ),
+            }],
+            vec![InlineKeyboardButton {
+                text: format!("Язык оригинала{}", check(FileNameLang::Original)),
+                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
+                    SettingsCallbackData::FileNameLang {
+                        value: FileNameLang::Original.as_api_str().into(),
+                    }
+                    .to_string(),
+                ),
+            }],
+            vec![InlineKeyboardButton {
+                text: "← Назад".to_string(),
+                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
+                    SettingsCallbackData::FileNameLangBack.to_string(),
+                ),
+            }],
+        ],
+    }
+}
+
 #[log_handler("settings")]
 async fn settings_callback_handler(
     cq: CallbackQuery,
@@ -204,6 +242,36 @@ async fn settings_callback_handler(
             safe_answer_callback_query(&bot, cq.id).await?;
             return Ok(());
         }
+        SettingsCallbackData::FileNameLangMenu => {
+            let current = get_user_settings(user.id).await.ok().flatten();
+            let current_value = current
+                .as_ref()
+                .map(|s| s.file_name_lang)
+                .unwrap_or_default();
+            let keyboard = get_file_name_lang_keyboard(current_value);
+            safe_edit_message_text(
+                &bot,
+                message.chat().id,
+                message.id(),
+                "Имена файлов",
+                Some(keyboard),
+            )
+            .await?;
+            safe_answer_callback_query(&bot, cq.id).await?;
+            return Ok(());
+        }
+        SettingsCallbackData::FileNameLangBack => {
+            safe_edit_message_text(
+                &bot,
+                message.chat().id,
+                message.id(),
+                "Настройки",
+                Some(get_main_settings_keyboard()),
+            )
+            .await?;
+            safe_answer_callback_query(&bot, cq.id).await?;
+            return Ok(());
+        }
         SettingsCallbackData::LangSettingsBack => {
             safe_edit_message_text(
                 &bot,
@@ -218,8 +286,8 @@ async fn settings_callback_handler(
         }
         SettingsCallbackData::DefaultSearch { value } => {
             let current = get_user_settings(user.id).await.ok().flatten();
-            let allowed_langs: SmallVec<[SmartString; 3]> = match current {
-                Some(s) => s.allowed_langs.into_iter().map(|l| l.code).collect(),
+            let allowed_langs: SmallVec<[SmartString; 3]> = match current.as_ref() {
+                Some(s) => s.allowed_langs.iter().map(|l| l.code.clone()).collect(),
                 None => get_user_or_default_lang_codes(user.id).await,
             };
             let default_search = if value.as_str() == "none" {
@@ -230,6 +298,10 @@ async fn settings_callback_handler(
                 safe_answer_callback_query(&bot, cq.id).await?;
                 return Ok(());
             };
+            let file_name_lang = current
+                .as_ref()
+                .map(|s| s.file_name_lang)
+                .unwrap_or_default();
             if create_or_update_user_settings(
                 user.id,
                 &user.last_name.unwrap_or("".to_string()),
@@ -238,6 +310,54 @@ async fn settings_callback_handler(
                 &me.username.clone().unwrap(),
                 allowed_langs,
                 default_search,
+                file_name_lang,
+            )
+            .await
+            .is_err()
+            {
+                safe_answer_callback_query_with_text(
+                    &bot,
+                    cq.id,
+                    "Ошибка! Попробуйте заново(",
+                    true,
+                )
+                .await?;
+                return Ok(());
+            }
+            safe_edit_message_text(
+                &bot,
+                message.chat().id,
+                message.id(),
+                "Настройки",
+                Some(get_main_settings_keyboard()),
+            )
+            .await?;
+            safe_answer_callback_query_with_text(&bot, cq.id, "Готово", false).await?;
+            return Ok(());
+        }
+        SettingsCallbackData::FileNameLang { value } => {
+            let file_name_lang = match FileNameLang::from_api_str(value.as_str()) {
+                Some(v) => v,
+                None => {
+                    safe_answer_callback_query(&bot, cq.id).await?;
+                    return Ok(());
+                }
+            };
+            let current = get_user_settings(user.id).await.ok().flatten();
+            let allowed_langs: SmallVec<[SmartString; 3]> = match current.as_ref() {
+                Some(s) => s.allowed_langs.iter().map(|l| l.code.clone()).collect(),
+                None => get_user_or_default_lang_codes(user.id).await,
+            };
+            let default_search = current.as_ref().and_then(|s| s.default_search);
+            if create_or_update_user_settings(
+                user.id,
+                &user.last_name.unwrap_or("".to_string()),
+                &user.first_name,
+                user.username.as_deref().unwrap_or(""),
+                &me.username.clone().unwrap(),
+                allowed_langs,
+                default_search,
+                file_name_lang,
             )
             .await
             .is_err()
@@ -283,7 +403,10 @@ async fn settings_callback_handler(
         SettingsCallbackData::LangSettingsBack
         | SettingsCallbackData::DefaultSearchBack
         | SettingsCallbackData::DefaultSearchMenu
-        | SettingsCallbackData::DefaultSearch { .. } => {}
+        | SettingsCallbackData::DefaultSearch { .. }
+        | SettingsCallbackData::FileNameLangMenu
+        | SettingsCallbackData::FileNameLang { .. }
+        | SettingsCallbackData::FileNameLangBack => {}
     };
 
     if allowed_langs_set.is_empty() {
@@ -300,6 +423,10 @@ async fn settings_callback_handler(
 
     let current_settings = get_user_settings(user.id).await.ok().flatten();
     let default_search = current_settings.as_ref().and_then(|s| s.default_search);
+    let file_name_lang = current_settings
+        .as_ref()
+        .map(|s| s.file_name_lang)
+        .unwrap_or_default();
 
     if let Err(err) = create_or_update_user_settings(
         user.id,
@@ -309,6 +436,7 @@ async fn settings_callback_handler(
         &me.username.clone().unwrap(),
         allowed_langs_set.clone().into_iter().collect(),
         default_search,
+        file_name_lang,
     )
     .await
     {
