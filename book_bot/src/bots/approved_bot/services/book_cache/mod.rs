@@ -1,10 +1,18 @@
 use base64::{engine::general_purpose, Engine};
+use moka::future::Cache;
 use reqwest::StatusCode;
 use std::sync::LazyLock;
+use std::time::Duration;
+use teloxide::types::UserId;
 
 use crate::{
     bots::approved_bot::modules::download::callback_data::DownloadQueryData,
-    bots::approved_bot::services::rate_limit::retry_on_429, bots_manager::BotCache, config,
+    bots::approved_bot::services::{
+        rate_limit::retry_on_429,
+        user_settings::{get_user_settings, FileNameLang},
+    },
+    bots_manager::BotCache,
+    config,
 };
 
 use self::types::{CachedMessage, DownloadFile};
@@ -18,6 +26,29 @@ pub static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .expect("Failed to create HTTP client")
 });
 
+pub static USER_FILE_NAME_LANG_CACHE: LazyLock<Cache<UserId, FileNameLang>> = LazyLock::new(|| {
+    Cache::builder()
+        .time_to_idle(Duration::from_secs(30 * 60))
+        .max_capacity(4096)
+        .build()
+});
+
+/// Returns the user's `file_name_lang` setting, using the cache.
+/// On any error or missing user, returns the default (`Normalized`).
+pub async fn get_user_file_name_lang(user_id: UserId) -> FileNameLang {
+    if let Some(cached) = USER_FILE_NAME_LANG_CACHE.get(&user_id).await {
+        return cached;
+    }
+
+    let value = match get_user_settings(user_id).await {
+        Ok(Some(s)) => s.file_name_lang,
+        _ => FileNameLang::default(),
+    };
+
+    USER_FILE_NAME_LANG_CACHE.insert(user_id, value).await;
+    value
+}
+
 pub async fn get_cached_message(
     download_data: &DownloadQueryData,
     bot_cache: BotCache,
@@ -30,12 +61,16 @@ pub async fn get_cached_message(
 
     let is_need_copy = bot_cache == BotCache::Cache;
 
+    let mut url = config::CONFIG.cache_server_url.clone();
+    url.path_segments_mut()
+        .map_err(|_| anyhow::anyhow!("cache_server_url has cannot-be-a-base scheme"))?
+        .extend(["api", "v1", &id.to_string(), format, ""]);
+    url.query_pairs_mut()
+        .append_pair("copy", &is_need_copy.to_string());
+
     let response = retry_on_429(user_id.is_some(), || {
         let mut req = CLIENT
-            .get(format!(
-                "{}/api/v1/{id}/{format}/?copy={is_need_copy}",
-                &config::CONFIG.cache_server_url
-            ))
+            .get(url.clone())
             .header("Authorization", &config::CONFIG.cache_server_api_key);
 
         if let Some(uid) = user_id {
@@ -64,12 +99,29 @@ pub async fn download_file(
         file_type: format,
     } = download_data;
 
+    // If the user has selected original (Cyrillic) file names, ask the
+    // cache server not to transliterate. Default (Normalized / unknown)
+    // matches the previous behavior — no query param is sent, the server
+    // falls back to `normalized=true`.
+    let normalized = match user_id {
+        Some(uid) => matches!(
+            get_user_file_name_lang(UserId(uid)).await,
+            FileNameLang::Original
+        ),
+        None => false,
+    };
+
+    let mut url = config::CONFIG.cache_server_url.clone();
+    url.path_segments_mut()
+        .map_err(|_| anyhow::anyhow!("cache_server_url has cannot-be-a-base scheme"))?
+        .extend(["api", "v1", "download", &id.to_string(), format, ""]);
+    if normalized {
+        url.query_pairs_mut().append_pair("normalized", "false");
+    }
+
     let response = retry_on_429(user_id.is_some(), || {
         let mut req = CLIENT
-            .get(format!(
-                "{}/api/v1/download/{id}/{format}/",
-                &config::CONFIG.cache_server_url
-            ))
+            .get(url.clone())
             .header("Authorization", &config::CONFIG.cache_server_api_key);
 
         if let Some(uid) = user_id {

@@ -17,7 +17,7 @@ pub struct Config {
     pub book_server_url: String,
     pub book_server_api_key: String,
 
-    pub cache_server_url: String,
+    pub cache_server_url: reqwest::Url,
     pub cache_server_api_key: String,
 
     pub batch_downloader_url: String,
@@ -51,7 +51,8 @@ impl Config {
             book_server_url: get_env("BOOK_SERVER_URL"),
             book_server_api_key: get_env("BOOK_SERVER_API_KEY"),
 
-            cache_server_url: get_env("CACHE_SERVER_URL"),
+            cache_server_url: reqwest::Url::parse(&get_env("CACHE_SERVER_URL"))
+                .unwrap_or_else(|_| panic!("Cannot parse url from CACHE_SERVER_URL env variable")),
             cache_server_api_key: get_env("CACHE_SERVER_API_KEY"),
 
             batch_downloader_url: get_env("BATCH_DOWNLOADER_URL"),
