@@ -4,6 +4,7 @@ use reqwest::StatusCode;
 use std::sync::LazyLock;
 use std::time::Duration;
 use teloxide::types::UserId;
+use tracing::log;
 
 use crate::{
     bots::approved_bot::modules::download::callback_data::DownloadQueryData,
@@ -49,6 +50,20 @@ pub async fn get_user_file_name_lang(user_id: UserId) -> FileNameLang {
     value
 }
 
+/// Build a cache-server URL by appending the given path segments to the
+/// configured base. Path segments must already be percent-safe; the cache
+/// IDs and file types are controlled by the server, so we pass them
+/// through directly.
+fn build_cache_url<'a>(
+    segments: impl IntoIterator<Item = &'a str>,
+) -> anyhow::Result<reqwest::Url> {
+    let mut url = config::CONFIG.cache_server_url.clone();
+    url.path_segments_mut()
+        .map_err(|_| anyhow::anyhow!("cache_server_url has cannot-be-a-base scheme"))?
+        .extend(segments);
+    Ok(url)
+}
+
 pub async fn get_cached_message(
     download_data: &DownloadQueryData,
     bot_cache: BotCache,
@@ -60,13 +75,22 @@ pub async fn get_cached_message(
     } = download_data;
 
     let is_need_copy = bot_cache == BotCache::Cache;
+    // The cache server now stores separate records per `normalized` mode.
+    // Mirror the user's setting here so we hit the same record that
+    // `download_file` would later request.
+    let requested_original = matches!(
+        get_user_file_name_lang_for(user_id).await,
+        FileNameLang::Original
+    );
 
-    let mut url = config::CONFIG.cache_server_url.clone();
-    url.path_segments_mut()
-        .map_err(|_| anyhow::anyhow!("cache_server_url has cannot-be-a-base scheme"))?
-        .extend(["api", "v1", &id.to_string(), format, ""]);
-    url.query_pairs_mut()
-        .append_pair("copy", &is_need_copy.to_string());
+    let mut url = build_cache_url(["api", "v1", &id.to_string(), format, ""])?;
+    {
+        let mut q = url.query_pairs_mut();
+        q.append_pair("copy", &is_need_copy.to_string());
+        if requested_original {
+            q.append_pair("normalized", "false");
+        }
+    }
 
     let response = retry_on_429(user_id.is_some(), || {
         let mut req = CLIENT
@@ -87,7 +111,23 @@ pub async fn get_cached_message(
 
     let response = response.error_for_status()?;
 
-    Ok(Some(response.json::<CachedMessage>().await?))
+    let cached: CachedMessage = response.json().await?;
+
+    // The server echoes back the mode it actually used. If it disagrees
+    // with what we requested, we're talking to an older / misconfigured
+    // server and subsequent `download_file` calls will miss the cache.
+    if let Some(echo) = cached.is_normalized {
+        let echoed_original = !echo;
+        if echoed_original != requested_original {
+            log::warn!(
+                "cache server echoed is_normalized={echo} for {id}/{format} \
+                 but client requested original={requested_original}; \
+                 cache mode may be inconsistent"
+            );
+        }
+    }
+
+    Ok(Some(cached))
 }
 
 pub async fn download_file(
@@ -103,19 +143,13 @@ pub async fn download_file(
     // cache server not to transliterate. Default (Normalized / unknown)
     // matches the previous behavior — no query param is sent, the server
     // falls back to `normalized=true`.
-    let normalized = match user_id {
-        Some(uid) => matches!(
-            get_user_file_name_lang(UserId(uid)).await,
-            FileNameLang::Original
-        ),
-        None => false,
-    };
+    let original = matches!(
+        get_user_file_name_lang_for(user_id).await,
+        FileNameLang::Original
+    );
 
-    let mut url = config::CONFIG.cache_server_url.clone();
-    url.path_segments_mut()
-        .map_err(|_| anyhow::anyhow!("cache_server_url has cannot-be-a-base scheme"))?
-        .extend(["api", "v1", "download", &id.to_string(), format, ""]);
-    if normalized {
+    let mut url = build_cache_url(["api", "v1", "download", &id.to_string(), format, ""])?;
+    if original {
         url.query_pairs_mut().append_pair("normalized", "false");
     }
 
@@ -163,6 +197,16 @@ pub async fn download_file(
         filename,
         caption,
     }))
+}
+
+/// Resolve `file_name_lang` for an `Option<u64>`. `None` means there is
+/// no user context (e.g. an internal call) and we fall back to the
+/// default, which is `Normalized`.
+async fn get_user_file_name_lang_for(user_id: Option<u64>) -> FileNameLang {
+    match user_id {
+        Some(uid) => get_user_file_name_lang(UserId(uid)).await,
+        None => FileNameLang::default(),
+    }
 }
 
 pub async fn download_file_by_link(
