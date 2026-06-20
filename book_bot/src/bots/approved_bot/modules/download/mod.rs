@@ -34,6 +34,7 @@ use crate::{
                 },
                 book_cache::{
                     download_file, download_file_by_link, get_cached_message,
+                    get_user_file_name_lang_for,
                     types::{CachedMessage, DownloadFile},
                 },
                 book_library::{
@@ -41,7 +42,7 @@ use crate::{
                     get_translator_books_available_types,
                 },
                 donation_notifications::send_donation_notification,
-                user_settings::get_user_or_default_lang_codes,
+                user_settings::{get_user_or_default_lang_codes, FileNameLang},
             },
             tools::filter_callback_query,
         },
@@ -551,12 +552,21 @@ async fn download_archive(
 
     let user_id = cq.from.id.0;
 
+    // `normalized` mirrors the cache server's `?normalized=` parameter.
+    // Default for the server is `true` (transliterated names); we send
+    // `false` only when the user opted into original Cyrillic names.
+    let normalized = !matches!(
+        get_user_file_name_lang_for(Some(user_id)).await,
+        FileNameLang::Original
+    );
+
     let task = create_task(
         CreateTaskData {
             object_id: id,
             object_type: task_type,
             file_format: file_type,
             allowed_langs,
+            normalized,
         },
         Some(user_id),
     )

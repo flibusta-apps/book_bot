@@ -36,6 +36,16 @@ pub struct CreateTaskData {
     pub object_type: TaskObjectType,
     pub file_format: String,
     pub allowed_langs: SmallVec<[SmartString; 3]>,
+    /// When `true` (the default), archive members have transliterated
+    /// (GOST 7.79B) names. Set to `false` to keep Cyrillic names.
+    /// Mirrors the cache server's `?normalized=` parameter.
+    #[serde(default = "default_normalized_true")]
+    pub normalized: bool,
+}
+
+#[allow(dead_code)] // referenced by `#[serde(default = ...)]` above
+fn default_normalized_true() -> bool {
+    true
 }
 
 #[derive(Deserialize, Clone)]

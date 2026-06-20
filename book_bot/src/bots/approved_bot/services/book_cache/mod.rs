@@ -202,7 +202,7 @@ pub async fn download_file(
 /// Resolve `file_name_lang` for an `Option<u64>`. `None` means there is
 /// no user context (e.g. an internal call) and we fall back to the
 /// default, which is `Normalized`.
-async fn get_user_file_name_lang_for(user_id: Option<u64>) -> FileNameLang {
+pub(crate) async fn get_user_file_name_lang_for(user_id: Option<u64>) -> FileNameLang {
     match user_id {
         Some(uid) => get_user_file_name_lang(UserId(uid)).await,
         None => FileNameLang::default(),
