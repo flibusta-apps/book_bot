@@ -1,4 +1,5 @@
 use axum::extract::State;
+use axum::http::HeaderMap;
 use axum::response::IntoResponse;
 use axum::routing::post;
 use axum::{extract::Path, routing::get};
@@ -47,8 +48,19 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
     async fn telegram_request(
         State(start_bot_mutex): State<Arc<Mutex<()>>>,
         Path(token): Path<String>,
+        headers: HeaderMap,
         input: String,
     ) -> impl IntoResponse {
+        let expected_secret = config::CONFIG.webhook_secret_token.as_str();
+        let provided_secret = headers
+            .get("x-telegram-bot-api-secret-token")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        if provided_secret != expected_secret {
+            metrics::counter!("webhook_secret_rejected_total").increment(1u64);
+            return StatusCode::FORBIDDEN;
+        }
+
         let (_, stop_flag, r_tx) = match BOTS_ROUTES.get(&token).await {
             Some(tx) => tx,
             None => {
