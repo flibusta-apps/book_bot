@@ -3,6 +3,7 @@ use super::error_classification::is_expected_telegram_error;
 use teloxide::adaptors::throttle::Limits;
 use teloxide::dispatching::Dispatcher;
 
+use teloxide::payloads::SetWebhookSetters;
 use teloxide::requests::{Request, Requester, RequesterExt};
 use teloxide::stop::StopToken;
 use teloxide::stop::{mk_stop_token, StopFlag};
@@ -71,7 +72,11 @@ async fn set_webhook_with_retry(bot_data: &BotData, max_retries: u32) -> bool {
     let mut attempt: u32 = 0;
 
     loop {
-        match bot.set_webhook(url.clone()).await {
+        match bot
+            .set_webhook(url.clone())
+            .secret_token(config::CONFIG.webhook_secret_token.clone())
+            .await
+        {
             Ok(_) => return true,
             Err(err) => {
                 if let teloxide::RequestError::Api(ref api_err) = err {
