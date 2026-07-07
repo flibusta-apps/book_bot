@@ -24,6 +24,7 @@ use tower_http::trace::{self, TraceLayer};
 use tracing::log;
 use tracing::Level;
 
+use crate::bots_manager::utils::mask_token;
 use crate::bots_manager::{internal::start_bot, BOTS_DATA, BOTS_ROUTES};
 use crate::config;
 
@@ -55,10 +56,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
 
                 match BOTS_ROUTES.get(&token).await {
                     None => {
-                        log::error!(
-                            "Cannot get a bot with token: {}...",
-                            &token[..token.len().min(5)]
-                        );
+                        log::error!("Cannot get a bot with token: {}", mask_token(&token));
                         return StatusCode::SERVICE_UNAVAILABLE;
                     }
                     Some(v) => v,

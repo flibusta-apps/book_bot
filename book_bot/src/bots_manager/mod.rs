@@ -73,8 +73,11 @@ pub static BOTS_ROUTES: LazyLock<Cache<String, StopTokenWithSender>> = LazyLock:
     Cache::builder()
         .time_to_idle(Duration::from_secs(60 * 60))
         .max_capacity(100)
-        .eviction_listener(|token, value: StopTokenWithSender, _cause| {
-            log::info!("Stop Bot(token={token})!");
+        .eviction_listener(|token: Arc<String>, value: StopTokenWithSender, _cause| {
+            log::info!(
+                "Stop Bot(token={})!",
+                crate::bots_manager::utils::mask_token(&token)
+            );
 
             let (stop_token, _stop_flag, mut sender) = value;
 
