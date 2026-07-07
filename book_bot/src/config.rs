@@ -5,6 +5,8 @@ pub struct Config {
 
     pub webhook_base_url: String,
     pub webhook_port: u16,
+    #[allow(dead_code)]
+    pub webhook_secret_token: String,
 
     // pub admin_id: String,
     // pub bot_token: String,
@@ -41,6 +43,7 @@ impl Config {
 
             webhook_base_url: get_env("WEBHOOK_BASE_URL"),
             webhook_port: get_env("WEBHOOK_PORT").parse().unwrap(),
+            webhook_secret_token: get_env("WEBHOOK_SECRET_TOKEN"),
 
             manager_url: get_env("MANAGER_URL"),
             manager_api_key: get_env("MANAGER_API_KEY"),
