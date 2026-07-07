@@ -2,12 +2,10 @@ pub fn tuple_first_mut<A, B>(tuple: &mut (A, B)) -> &mut A {
     &mut tuple.0
 }
 
-#[allow(dead_code)]
 pub fn mask_token(token: &str) -> String {
     format!("{}…", &token[..token.len().min(8)])
 }
 
-#[allow(dead_code)]
 pub fn mask_uri_path(path: &str) -> String {
     let stripped = path.trim_start_matches('/');
     let end = stripped.find('/').unwrap_or(stripped.len());

@@ -5,7 +5,6 @@ pub struct Config {
 
     pub webhook_base_url: String,
     pub webhook_port: u16,
-    #[allow(dead_code)]
     pub webhook_secret_token: String,
 
     // pub admin_id: String,
