@@ -24,9 +24,24 @@ use tower_http::trace::{self, TraceLayer};
 use tracing::log;
 use tracing::Level;
 
-use crate::bots_manager::utils::mask_token;
+use crate::bots_manager::utils::{mask_token, mask_uri_path};
 use crate::bots_manager::{internal::start_bot, BOTS_DATA, BOTS_ROUTES};
 use crate::config;
+
+#[derive(Clone)]
+struct BotIdMakeSpan;
+
+impl<B> tower_http::trace::MakeSpan<B> for BotIdMakeSpan {
+    fn make_span(&mut self, request: &axum::http::Request<B>) -> tracing::Span {
+        let masked = mask_uri_path(request.uri().path());
+        tracing::info_span!(
+            "request",
+            method = %request.method(),
+            uri = %masked,
+            version = ?request.version(),
+        )
+    }
+}
 
 pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
     async fn telegram_request(
@@ -119,7 +134,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
         .merge(metric_router)
         .layer(
             TraceLayer::new_for_http()
-                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+                .make_span_with(BotIdMakeSpan)
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         );
 
