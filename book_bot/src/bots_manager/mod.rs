@@ -132,6 +132,23 @@ fn record_manager_fetch_failure() {
     metrics::counter!("bots_manager_fetch_failures_total").increment(1);
 }
 
+const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
+
+async fn wait_for_handles(
+    handles: Vec<Arc<tokio::task::JoinHandle<()>>>,
+    timeout: Duration,
+) -> usize {
+    let deadline = tokio::time::Instant::now() + timeout;
+
+    loop {
+        let remaining = handles.iter().filter(|h| !h.is_finished()).count();
+        if remaining == 0 || tokio::time::Instant::now() >= deadline {
+            return remaining;
+        }
+        sleep(Duration::from_millis(100)).await;
+    }
+}
+
 pub struct BotsManager;
 
 impl BotsManager {
@@ -211,13 +228,27 @@ impl BotsManager {
     }
 
     pub async fn stop_all() {
-        for (_, (stop_token, _, _, _)) in BOTS_ROUTES.iter() {
-            stop_token.stop();
-        }
+        let handles: Vec<Arc<tokio::task::JoinHandle<()>>> = BOTS_ROUTES
+            .iter()
+            .map(|(_, (stop_token, _, _, handle))| {
+                stop_token.stop();
+                handle
+            })
+            .collect();
 
         BOTS_ROUTES.invalidate_all();
 
-        sleep(Duration::from_secs(5)).await;
+        let total = handles.len();
+        let remaining = wait_for_handles(handles, SHUTDOWN_TIMEOUT).await;
+
+        if remaining == 0 {
+            log::info!("All {total} bot dispatcher(s) shut down cleanly");
+        } else {
+            log::warn!(
+                "Timed out after {}s waiting for {remaining}/{total} bot dispatcher(s) to shut down",
+                SHUTDOWN_TIMEOUT.as_secs()
+            );
+        }
     }
 
     pub async fn check_pending_updates() {
@@ -592,5 +623,26 @@ mod tests {
         assert!(BotsManager::should_run_pending_updates_check(600));
         assert!(!BotsManager::should_run_pending_updates_check(601));
         assert!(!BotsManager::should_run_pending_updates_check(1799));
+    }
+
+    #[tokio::test]
+    async fn wait_for_handles_returns_zero_once_all_tasks_finish() {
+        let handles = vec![
+            Arc::new(tokio::spawn(async {})),
+            Arc::new(tokio::spawn(async {})),
+        ];
+
+        let remaining = wait_for_handles(handles, Duration::from_secs(1)).await;
+        assert_eq!(remaining, 0);
+    }
+
+    #[tokio::test]
+    async fn wait_for_handles_gives_up_after_timeout() {
+        let handles = vec![Arc::new(tokio::spawn(async {
+            tokio::time::sleep(Duration::from_secs(60)).await;
+        }))];
+
+        let remaining = wait_for_handles(handles, Duration::from_millis(200)).await;
+        assert_eq!(remaining, 1);
     }
 }
