@@ -76,13 +76,17 @@ fn update_user_activity_handler() -> BotHandler {
     dptree::entry()
         .branch(Update::filter_callback_query().inspect_async(
             |cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>| async move {
-                _update_activity(bot.get_me().await.unwrap(), cq.from).await;
+                if let Ok(me) = bot.get_me().await {
+                    _update_activity(me, cq.from).await;
+                }
             },
         ))
         .branch(Update::filter_message().inspect_async(
             |message: Message, bot: CacheMe<Throttle<Bot>>| async move {
                 if let Some(user) = message.from {
-                    _update_activity(bot.get_me().await.unwrap(), user).await;
+                    if let Ok(me) = bot.get_me().await {
+                        _update_activity(me, user).await;
+                    }
                 }
             },
         ))

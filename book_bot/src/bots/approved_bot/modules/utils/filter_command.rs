@@ -11,7 +11,7 @@ where
     Output: CommandParse<Output> + Send + Sync + 'static,
 {
     dptree::entry().chain(dptree::filter_map(move |message: Message, me: Me| {
-        let bot_name = me.user.username.expect("Bots must have a username");
+        let bot_name = me.user.username.unwrap_or_default();
         message
             .text()
             .and_then(|text| Output::parse(text, &bot_name).ok())
