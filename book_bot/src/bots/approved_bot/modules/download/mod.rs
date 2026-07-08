@@ -593,7 +593,9 @@ async fn download_archive(
     )
     .await?;
 
-    let _ = wait_archive(bot, task.id, message).await;
+    if let Err(err) = wait_archive(bot, task.id, message).await {
+        log::error!("{err:?}");
+    }
 
     Ok(())
 }
