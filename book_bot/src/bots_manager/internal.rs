@@ -11,8 +11,8 @@ use teloxide::types::{BotCommand, Update};
 use teloxide::update_listeners::{StatefulListener, UpdateListener};
 use teloxide::{dptree, Bot};
 
-use tokio::sync::mpsc::{self, UnboundedSender};
-use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
 
 use tracing::log;
 use url::Url;
@@ -27,19 +27,21 @@ use super::closable_sender::ClosableSender;
 use super::utils::tuple_first_mut;
 use super::BotData;
 
-type UpdateSender = mpsc::UnboundedSender<Result<Update, std::convert::Infallible>>;
+pub const UPDATE_CHANNEL_CAPACITY: usize = 1024;
+
+type UpdateSender = mpsc::Sender<Result<Update, std::convert::Infallible>>;
 
 pub fn get_listener() -> (
     StopToken,
     StopFlag,
-    UnboundedSender<Result<Update, std::convert::Infallible>>,
+    UpdateSender,
     impl UpdateListener<Err = Infallible>,
 ) {
-    let (tx, rx): (UpdateSender, _) = mpsc::unbounded_channel();
+    let (tx, rx): (UpdateSender, _) = mpsc::channel(UPDATE_CHANNEL_CAPACITY);
 
     let (stop_token, stop_flag) = mk_stop_token();
 
-    let stream = UnboundedReceiverStream::new(rx);
+    let stream = ReceiverStream::new(rx);
 
     let listener = StatefulListener::new(
         (stream, stop_token.clone()),

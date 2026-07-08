@@ -110,10 +110,23 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
                     *value = serde_json::from_str(&input).unwrap_or_default();
                 }
 
-                if let Err(err) = tx.send(Ok(update)) {
-                    log::error!("{err:?}");
-                    BOTS_ROUTES.remove(&token).await;
-                    return StatusCode::SERVICE_UNAVAILABLE;
+                match tx.try_send(Ok(update)) {
+                    Ok(()) => {}
+                    Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                        log::warn!(
+                            "Update queue full for Bot(token={}); asking Telegram to retry",
+                            mask_token(&token)
+                        );
+                        return StatusCode::SERVICE_UNAVAILABLE;
+                    }
+                    Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                        log::error!(
+                            "Update channel closed for Bot(token={})",
+                            mask_token(&token)
+                        );
+                        BOTS_ROUTES.remove(&token).await;
+                        return StatusCode::SERVICE_UNAVAILABLE;
+                    }
                 }
             }
             Err(error) => {
