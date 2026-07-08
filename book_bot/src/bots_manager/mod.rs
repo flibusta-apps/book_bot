@@ -56,12 +56,8 @@ pub static CHAT_DONATION_NOTIFICATIONS_CACHE: LazyLock<Cache<ChatId, ()>> = Lazy
         .build()
 });
 
-pub static WEBHOOK_CHECK_ERRORS_COUNT: LazyLock<Cache<u32, u32>> = LazyLock::new(|| {
-    Cache::builder()
-        .time_to_idle(Duration::from_secs(600))
-        .max_capacity(128)
-        .build()
-});
+pub static WEBHOOK_CHECK_ERRORS_COUNT: LazyLock<Cache<u32, u32>> =
+    LazyLock::new(|| Cache::builder().build());
 
 type StopTokenWithSender = (
     StopToken,
@@ -89,6 +85,46 @@ pub static BOTS_ROUTES: LazyLock<Cache<String, StopTokenWithSender>> = LazyLock:
 
 pub static BOTS_DATA: LazyLock<Cache<String, BotData>> = LazyLock::new(|| Cache::builder().build());
 pub static INITED_BOTS_IDS: LazyLock<Cache<u32, ()>> = LazyLock::new(|| Cache::builder().build());
+
+async fn record_webhook_check_success(bot_id: u32) {
+    WEBHOOK_CHECK_ERRORS_COUNT.insert(bot_id, 0).await;
+}
+
+async fn record_webhook_check_failure(bot_id: u32) -> u32 {
+    let error_count = WEBHOOK_CHECK_ERRORS_COUNT.get(&bot_id).await.unwrap_or(0) + 1;
+    WEBHOOK_CHECK_ERRORS_COUNT.insert(bot_id, error_count).await;
+    error_count
+}
+
+async fn webhook_check_breaker_tripped(bot_id: u32) -> bool {
+    WEBHOOK_CHECK_ERRORS_COUNT.get(&bot_id).await.unwrap_or(0) >= 3
+}
+
+enum WebhookAction {
+    NoAction,
+    ReSet { url_missing: bool },
+}
+
+fn decide_webhook_action(webhook_info: &teloxide::types::WebhookInfo) -> WebhookAction {
+    if webhook_info.pending_update_count == 0 {
+        return WebhookAction::NoAction;
+    }
+
+    if webhook_info.url.is_none() {
+        return WebhookAction::ReSet { url_missing: true };
+    }
+
+    if let Some(ref err_msg) = webhook_info.last_error_message {
+        if is_expected_telegram_error(err_msg) {
+            log::warn!("Webhook last error (expected): {err_msg}");
+        } else {
+            log::error!("Webhook last error: {err_msg}");
+        }
+        return WebhookAction::ReSet { url_missing: false };
+    }
+
+    WebhookAction::NoAction
+}
 
 pub struct BotsManager;
 
@@ -179,12 +215,7 @@ impl BotsManager {
 
     pub async fn check_pending_updates() {
         for (token, bot_data) in BOTS_DATA.iter() {
-            let error_count = WEBHOOK_CHECK_ERRORS_COUNT
-                .get(&bot_data.id)
-                .await
-                .unwrap_or(0);
-
-            if error_count >= 3 {
+            if webhook_check_breaker_tripped(bot_data.id).await {
                 continue;
             }
 
@@ -196,18 +227,22 @@ impl BotsManager {
 
             match result {
                 Ok(webhook_info) => {
-                    if webhook_info.pending_update_count == 0 {
-                        continue;
-                    }
+                    record_webhook_check_success(bot_data.id).await;
 
-                    if let Some(ref err_msg) = webhook_info.last_error_message {
-                        if is_expected_telegram_error(err_msg) {
-                            log::warn!("Webhook last error (expected): {err_msg}");
-                        } else {
-                            log::error!("Webhook last error: {err_msg}");
+                    match decide_webhook_action(&webhook_info) {
+                        WebhookAction::NoAction => continue,
+                        WebhookAction::ReSet { url_missing } => {
+                            if url_missing {
+                                log::warn!(
+                                    "Webhook URL missing for Bot(id={}) despite pending updates; re-setting",
+                                    bot_data.id
+                                );
+                            }
+
+                            if !set_webhook(&bot_data).await {
+                                log::error!("Failed to re-set webhook for Bot(id={})", bot_data.id);
+                            }
                         }
-
-                        set_webhook(&bot_data).await;
                     }
                 }
                 Err(err) => {
@@ -227,9 +262,7 @@ impl BotsManager {
                         log::error!("Error getting webhook info: {error_message}");
                     }
 
-                    WEBHOOK_CHECK_ERRORS_COUNT
-                        .insert(bot_data.id, error_count + 1)
-                        .await;
+                    record_webhook_check_failure(bot_data.id).await;
                 }
             }
         }
@@ -381,5 +414,76 @@ mod tests {
             .await
             .expect("kept bot should remain");
         assert_eq!(kept.cache, BotCache::NoCache);
+    }
+
+    #[tokio::test]
+    async fn breaker_trips_after_three_failures_and_resets_on_success() {
+        let bot_id = 900_001;
+
+        assert!(!webhook_check_breaker_tripped(bot_id).await);
+
+        record_webhook_check_failure(bot_id).await;
+        record_webhook_check_failure(bot_id).await;
+        assert!(!webhook_check_breaker_tripped(bot_id).await);
+
+        record_webhook_check_failure(bot_id).await;
+        assert!(webhook_check_breaker_tripped(bot_id).await);
+
+        record_webhook_check_success(bot_id).await;
+        assert!(!webhook_check_breaker_tripped(bot_id).await);
+    }
+
+    fn webhook_info(
+        url: Option<&str>,
+        pending: u32,
+        last_error: Option<&str>,
+    ) -> teloxide::types::WebhookInfo {
+        teloxide::types::WebhookInfo {
+            url: url.map(|u| reqwest::Url::parse(u).unwrap()),
+            has_custom_certificate: false,
+            pending_update_count: pending,
+            ip_address: None,
+            last_error_date: None,
+            last_error_message: last_error.map(String::from),
+            last_synchronization_error_date: None,
+            max_connections: None,
+            allowed_updates: None,
+        }
+    }
+
+    #[test]
+    fn no_action_when_no_pending_updates() {
+        let info = webhook_info(Some("https://example.com/token/"), 0, Some("boom"));
+        assert!(matches!(
+            decide_webhook_action(&info),
+            WebhookAction::NoAction
+        ));
+    }
+
+    #[test]
+    fn reset_when_url_missing_despite_pending_updates() {
+        let info = webhook_info(None, 5, None);
+        assert!(matches!(
+            decide_webhook_action(&info),
+            WebhookAction::ReSet { url_missing: true }
+        ));
+    }
+
+    #[test]
+    fn reset_when_last_error_present() {
+        let info = webhook_info(Some("https://example.com/token/"), 5, Some("boom"));
+        assert!(matches!(
+            decide_webhook_action(&info),
+            WebhookAction::ReSet { url_missing: false }
+        ));
+    }
+
+    #[test]
+    fn no_action_when_pending_but_no_error_and_url_present() {
+        let info = webhook_info(Some("https://example.com/token/"), 5, None);
+        assert!(matches!(
+            decide_webhook_action(&info),
+            WebhookAction::NoAction
+        ));
     }
 }
