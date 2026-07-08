@@ -1,13 +1,15 @@
+use moka::future::Cache;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use smallvec::{smallvec, SmallVec};
 use smartstring::alias::String as SmartString;
 use std::sync::LazyLock;
+use std::time::Duration;
 use teloxide::types::{ChatId, UserId};
 use tracing::log;
 
-use crate::{bots_manager::USER_LANGS_CACHE, config};
+use crate::config;
 
 pub static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     reqwest::Client::builder()
@@ -102,6 +104,33 @@ pub struct UserSettings {
     pub file_name_lang: FileNameLang,
 }
 
+pub static USER_SETTINGS_CACHE: LazyLock<Cache<UserId, Option<UserSettings>>> =
+    LazyLock::new(|| {
+        Cache::builder()
+            .time_to_live(Duration::from_secs(30 * 60))
+            .max_capacity(4096)
+            .build()
+    });
+
+/// Loads the user's settings through `USER_SETTINGS_CACHE`. Concurrent
+/// misses for the same user are coalesced into one HTTP request via
+/// `try_get_with`. `Ok(None)` (the user has no settings yet) is a valid,
+/// cacheable value; request errors are logged and never cached, so a
+/// struggling user-settings service does not "stick" a stale default past
+/// its own recovery.
+async fn get_cached_user_settings(user_id: UserId) -> Option<UserSettings> {
+    match USER_SETTINGS_CACHE
+        .try_get_with(user_id, get_user_settings(user_id))
+        .await
+    {
+        Ok(settings) => settings,
+        Err(err) => {
+            log::error!("{err:?}");
+            None
+        }
+    }
+}
+
 pub async fn get_user_settings(user_id: UserId) -> anyhow::Result<Option<UserSettings>> {
     let response = CLIENT
         .get(format!(
@@ -122,25 +151,15 @@ pub async fn get_user_settings(user_id: UserId) -> anyhow::Result<Option<UserSet
 }
 
 pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartString; 3]> {
-    if let Some(cached_langs) = USER_LANGS_CACHE.get(&user_id).await {
-        return cached_langs;
-    }
-
     let default_lang_codes = smallvec!["ru".into(), "be".into(), "uk".into()];
 
-    match get_user_settings(user_id).await {
-        Ok(v) => {
-            let langs: SmallVec<[SmartString; 3]> = match v {
-                Some(v) => v.allowed_langs.into_iter().map(|lang| lang.code).collect(),
-                None => return default_lang_codes,
-            };
-            USER_LANGS_CACHE.insert(user_id, langs.clone()).await;
-            langs
-        }
-        Err(err) => {
-            log::error!("{err:?}");
-            default_lang_codes
-        }
+    match get_cached_user_settings(user_id).await {
+        Some(settings) => settings
+            .allowed_langs
+            .into_iter()
+            .map(|lang| lang.code)
+            .collect(),
+        None => default_lang_codes,
     }
 }
 
@@ -155,7 +174,7 @@ pub async fn create_or_update_user_settings(
     default_search: Option<DefaultSearchType>,
     file_name_lang: FileNameLang,
 ) -> anyhow::Result<UserSettings> {
-    USER_LANGS_CACHE.invalidate(&user_id).await;
+    USER_SETTINGS_CACHE.invalidate(&user_id).await;
 
     let default_search_json = match &default_search {
         Some(t) => serde_json::Value::String(t.as_api_str().to_string()),
@@ -184,11 +203,30 @@ pub async fn create_or_update_user_settings(
     Ok(response.json::<UserSettings>().await?)
 }
 
-/// Returns user's default search type from API. None if not set or on error.
+/// Returns the user's default search type from the shared settings cache.
+/// `None` if not set, the user has no settings, or the request failed.
 pub async fn get_user_default_search(user_id: UserId) -> Option<DefaultSearchType> {
-    match get_user_settings(user_id).await {
-        Ok(Some(s)) => s.default_search,
-        _ => None,
+    get_cached_user_settings(user_id)
+        .await
+        .and_then(|settings| settings.default_search)
+}
+
+/// Returns the user's `file_name_lang` setting via the shared settings
+/// cache. On any error or missing user, returns the default (`Normalized`).
+pub async fn get_user_file_name_lang(user_id: UserId) -> FileNameLang {
+    get_cached_user_settings(user_id)
+        .await
+        .map(|settings| settings.file_name_lang)
+        .unwrap_or_default()
+}
+
+/// Resolve `file_name_lang` for an `Option<u64>`. `None` means there is
+/// no user context (e.g. an internal call) and we fall back to the
+/// default, which is `Normalized`.
+pub async fn get_user_file_name_lang_for(user_id: Option<u64>) -> FileNameLang {
+    match user_id {
+        Some(uid) => get_user_file_name_lang(UserId(uid)).await,
+        None => FileNameLang::default(),
     }
 }
 
@@ -246,4 +284,33 @@ pub async fn mark_donate_notification_sent(chat_id: ChatId) -> anyhow::Result<()
         .error_for_status()?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn try_get_with_never_caches_an_error() {
+        let cache: Cache<u32, Option<u32>> = Cache::builder().build();
+        let key = 1u32;
+
+        let err_result = cache
+            .try_get_with(key, async {
+                Err::<Option<u32>, anyhow::Error>(anyhow::anyhow!("boom"))
+            })
+            .await;
+        assert!(err_result.is_err());
+        assert!(
+            !cache.contains_key(&key),
+            "an error must not be inserted into the cache"
+        );
+
+        let ok_result = cache
+            .try_get_with(key, async { Ok::<_, anyhow::Error>(Some(42u32)) })
+            .await
+            .unwrap();
+        assert_eq!(ok_result, Some(42));
+        assert!(cache.contains_key(&key));
+    }
 }

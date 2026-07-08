@@ -6,7 +6,6 @@ pub mod error_classification;
 pub mod internal;
 pub mod utils;
 
-use smartstring::alias::String as SmartString;
 use std::sync::LazyLock;
 use teloxide::adaptors::throttle::Limits;
 use teloxide::stop::{StopFlag, StopToken};
@@ -16,7 +15,6 @@ use tracing::log;
 use std::sync::Arc;
 use tokio::sync::watch;
 
-use smallvec::SmallVec;
 use tokio::sync::Semaphore;
 use tokio::time::{interval, sleep, Duration};
 
@@ -40,14 +38,6 @@ pub static USER_ACTIVITY_CACHE: LazyLock<Cache<UserId, ()>> = LazyLock::new(|| {
         .max_capacity(4096)
         .build()
 });
-
-pub static USER_LANGS_CACHE: LazyLock<Cache<UserId, SmallVec<[SmartString; 3]>>> =
-    LazyLock::new(|| {
-        Cache::builder()
-            .time_to_idle(Duration::from_secs(30 * 60))
-            .max_capacity(4096)
-            .build()
-    });
 
 pub static CHAT_DONATION_NOTIFICATIONS_CACHE: LazyLock<Cache<ChatId, ()>> = LazyLock::new(|| {
     Cache::builder()

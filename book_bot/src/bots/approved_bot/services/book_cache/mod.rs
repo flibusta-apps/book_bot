@@ -1,15 +1,12 @@
-use moka::future::Cache;
 use reqwest::StatusCode;
 use std::sync::LazyLock;
-use std::time::Duration;
-use teloxide::types::UserId;
 use tracing::log;
 
 use crate::{
     bots::approved_bot::modules::download::callback_data::DownloadQueryData,
     bots::approved_bot::services::{
         rate_limit::retry_on_429,
-        user_settings::{get_user_settings, FileNameLang},
+        user_settings::{get_user_file_name_lang_for, FileNameLang},
     },
     bots_manager::BotCache,
     config,
@@ -25,29 +22,6 @@ pub static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .build()
         .expect("Failed to create HTTP client")
 });
-
-pub static USER_FILE_NAME_LANG_CACHE: LazyLock<Cache<UserId, FileNameLang>> = LazyLock::new(|| {
-    Cache::builder()
-        .time_to_idle(Duration::from_secs(30 * 60))
-        .max_capacity(4096)
-        .build()
-});
-
-/// Returns the user's `file_name_lang` setting, using the cache.
-/// On any error or missing user, returns the default (`Normalized`).
-pub async fn get_user_file_name_lang(user_id: UserId) -> FileNameLang {
-    if let Some(cached) = USER_FILE_NAME_LANG_CACHE.get(&user_id).await {
-        return cached;
-    }
-
-    let value = match get_user_settings(user_id).await {
-        Ok(Some(s)) => s.file_name_lang,
-        _ => FileNameLang::default(),
-    };
-
-    USER_FILE_NAME_LANG_CACHE.insert(user_id, value).await;
-    value
-}
 
 /// Build a cache-server URL by appending the given path segments to the
 /// configured base. Path segments must already be percent-safe; the cache
@@ -196,16 +170,6 @@ pub async fn download_file(
         filename,
         caption,
     }))
-}
-
-/// Resolve `file_name_lang` for an `Option<u64>`. `None` means there is
-/// no user context (e.g. an internal call) and we fall back to the
-/// default, which is `Normalized`.
-pub(crate) async fn get_user_file_name_lang_for(user_id: Option<u64>) -> FileNameLang {
-    match user_id {
-        Some(uid) => get_user_file_name_lang(UserId(uid)).await,
-        None => FileNameLang::default(),
-    }
 }
 
 pub async fn download_file_by_link(
