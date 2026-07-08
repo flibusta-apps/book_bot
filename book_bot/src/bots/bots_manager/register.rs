@@ -60,7 +60,10 @@ async fn make_register_request(
 }
 
 pub async fn register(user_id: UserId, message_text: &str) -> RegisterStatus {
-    let token = super::utils::get_token(message_text).unwrap();
+    let token = match super::utils::get_token(message_text) {
+        Some(t) => t,
+        None => return RegisterStatus::WrongToken,
+    };
 
     let bot_username = match get_bot_username(token).await {
         Some(v) => v,

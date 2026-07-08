@@ -16,7 +16,10 @@ pub mod utils;
 
 #[log_handler("manager")]
 pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> anyhow::Result<()> {
-    let from_user = message.clone().from.unwrap();
+    let from_user = match message.from.clone() {
+        Some(user) => user,
+        None => return Ok(()),
+    };
 
     let text = message.text().unwrap_or("");
 
@@ -47,7 +50,7 @@ pub fn get_manager_handler(
     Update::filter_message().branch(
         Message::filter_text()
             .chain(dptree::filter(|message: Message| {
-                get_token(message.text().unwrap()).is_some()
+                get_token(message.text().unwrap_or_default()).is_some()
             }))
             .endpoint(message_handler),
     )
