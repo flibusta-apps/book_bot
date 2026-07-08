@@ -1,4 +1,5 @@
 use proc_macro::TokenStream;
+use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{parse_macro_input, FnArg, ItemFn, LitStr, Pat, PatType, Type, TypePath};
 
@@ -7,26 +8,29 @@ pub fn log_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let handler_name = parse_macro_input!(attr as LitStr);
     let input_fn = parse_macro_input!(item as ItemFn);
 
+    expand_log_handler(&handler_name, &input_fn).into()
+}
+
+fn expand_log_handler(handler_name: &LitStr, input_fn: &ItemFn) -> TokenStream2 {
     let fn_vis = &input_fn.vis;
     let fn_sig = &input_fn.sig;
     let fn_block = &input_fn.block;
     let fn_attrs = &input_fn.attrs;
 
-    let log_stmt = generate_log_stmt(&input_fn, &handler_name);
+    let log_stmt = generate_log_stmt(input_fn, handler_name);
 
     quote! {
         #(#fn_attrs)*
         #fn_vis #fn_sig {
             #log_stmt
             let mut __metrics_guard = crate::handler_metrics::HandlerMetricsGuard::new(#handler_name);
-            let __result: anyhow::Result<()> = #fn_block;
+            let __result: anyhow::Result<()> = async #fn_block.await;
             if __result.is_err() {
                 __metrics_guard.set_error();
             }
             __result
         }
     }
-    .into()
 }
 
 fn get_type_ident(ty: &Type) -> Option<String> {
@@ -76,5 +80,45 @@ fn generate_log_stmt(input_fn: &ItemFn, handler_name: &LitStr) -> proc_macro2::T
     // Fallback: log without user_id if no known type found
     quote! {
         tracing::info!(handler = #handler_name);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use syn::parse_str;
+
+    #[test]
+    fn wraps_handler_body_in_async_block_so_question_mark_is_captured() {
+        let handler_name: LitStr = parse_str(r#""test_handler""#).unwrap();
+        let input_fn: ItemFn = parse_str(
+            r#"
+            async fn my_handler() -> anyhow::Result<()> {
+                fails()?;
+                Ok(())
+            }
+            "#,
+        )
+        .unwrap();
+
+        let expanded = expand_log_handler(&handler_name, &input_fn).to_string();
+
+        let expected = quote! {
+            async fn my_handler() -> anyhow::Result<()> {
+                tracing::info!(handler = #handler_name);
+                let mut __metrics_guard = crate::handler_metrics::HandlerMetricsGuard::new(#handler_name);
+                let __result: anyhow::Result<()> = async {
+                    fails()?;
+                    Ok(())
+                }.await;
+                if __result.is_err() {
+                    __metrics_guard.set_error();
+                }
+                __result
+            }
+        }
+        .to_string();
+
+        assert_eq!(expanded, expected);
     }
 }
