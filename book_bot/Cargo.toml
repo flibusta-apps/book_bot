@@ -9,7 +9,7 @@ description = "Binary crate for the book_bot application."
 book_bot_macros = { path = "../book_bot_macros" }
 
 # Core runtime / async
-tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros", "signal"] }
 tokio-util = { version = "0.7.14", features = ["compat", "io"] }
 tokio-stream = "0.1.17"
 futures = "0.3.31"
@@ -46,7 +46,6 @@ teloxide = { version = "0.17.0", features = [
 
 # Utilities and helpers
 url = "2.5.4"
-ctrlc = { version = "3.4.5", features = ["termination"] }
 
 strum = "0.27.1"
 strum_macros = "0.27.1"

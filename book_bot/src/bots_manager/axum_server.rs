@@ -6,17 +6,9 @@ use axum::{extract::Path, routing::get};
 
 use axum_prometheus::PrometheusMetricLayer;
 use reqwest::StatusCode;
-use tokio::sync::Mutex;
-use tokio::time;
+use tokio::sync::{watch, Mutex};
 
-use std::time::Duration;
-use std::{
-    net::SocketAddr,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::{net::SocketAddr, sync::Arc};
 
 use teloxide::types::{Update, UpdateKind};
 
@@ -44,7 +36,7 @@ impl<B> tower_http::trace::MakeSpan<B> for BotIdMakeSpan {
     }
 }
 
-pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
+pub async fn start_axum_server(mut shutdown_rx: watch::Receiver<()>) {
     async fn telegram_request(
         State(start_bot_mutex): State<Arc<Mutex<()>>>,
         Path(token): Path<String>,
@@ -171,15 +163,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
 
         axum::serve(listener, router)
             .with_graceful_shutdown(async move {
-                let mut interval = time::interval(Duration::from_secs(1));
-
-                loop {
-                    if !stop_signal.load(Ordering::SeqCst) {
-                        break;
-                    };
-
-                    interval.tick().await;
-                }
+                let _ = shutdown_rx.changed().await;
             })
             .await
             .unwrap();

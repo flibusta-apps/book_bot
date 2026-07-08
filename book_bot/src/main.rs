@@ -1,11 +1,12 @@
 use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 use sentry::integrations::debug_images::DebugImagesIntegration;
 use sentry::types::Dsn;
 use sentry::ClientOptions;
 use sentry_tracing::EventFilter;
+use tokio::signal::unix::{signal, SignalKind};
+use tokio::sync::watch;
+use tracing::log;
 use tracing_subscriber::filter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -41,13 +42,23 @@ async fn main() {
         .with(sentry_layer)
         .init();
 
-    let running = Arc::new(AtomicBool::new(true));
-    let r = running.clone();
+    let (shutdown_tx, shutdown_rx) = watch::channel(());
 
-    ctrlc::set_handler(move || {
-        r.store(false, Ordering::SeqCst);
-    })
-    .expect("Error setting Ctrl-C handler");
+    tokio::spawn(async move {
+        let mut sigterm =
+            signal(SignalKind::terminate()).expect("Failed to install SIGTERM handler");
 
-    bots_manager::BotsManager::start(running).await;
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {
+                log::info!("Received SIGINT, shutting down...");
+            }
+            _ = sigterm.recv() => {
+                log::info!("Received SIGTERM, shutting down...");
+            }
+        }
+
+        let _ = shutdown_tx.send(());
+    });
+
+    bots_manager::BotsManager::start(shutdown_rx).await;
 }

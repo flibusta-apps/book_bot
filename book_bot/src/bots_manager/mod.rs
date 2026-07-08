@@ -13,12 +13,12 @@ use teloxide::stop::{StopFlag, StopToken};
 use tokio::task::JoinSet;
 use tracing::log;
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use tokio::sync::watch;
 
 use smallvec::SmallVec;
 use tokio::sync::Semaphore;
-use tokio::time::{sleep, Duration};
+use tokio::time::{interval, sleep, Duration};
 
 use teloxide::prelude::*;
 
@@ -311,33 +311,43 @@ impl BotsManager {
         }
     }
 
-    pub async fn start(running: Arc<AtomicBool>) {
+    pub async fn start(mut shutdown_rx: watch::Receiver<()>) {
         BotsManager::wait_for_telegram_api().await;
 
         BotsManager::check(true).await;
 
-        start_axum_server(running.clone()).await;
+        start_axum_server(shutdown_rx.clone()).await;
 
         let mut tick_number: i32 = 0;
+        let mut ticker = interval(Duration::from_secs(1));
 
         loop {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-
-            if !running.load(Ordering::SeqCst) {
-                BotsManager::stop_all().await;
-                return;
+            tokio::select! {
+                _ = shutdown_rx.changed() => {
+                    BotsManager::stop_all().await;
+                    return;
+                }
+                _ = ticker.tick() => {}
             }
 
-            if tick_number % 30 == 0 {
+            if BotsManager::should_run_bots_data_check(tick_number) {
                 BotsManager::check(false).await;
             }
 
-            if tick_number % 1800 == 600 {
+            if BotsManager::should_run_pending_updates_check(tick_number) {
                 BotsManager::check_pending_updates().await;
             }
 
             tick_number = (tick_number + 1) % 1800;
         }
+    }
+
+    fn should_run_bots_data_check(tick_number: i32) -> bool {
+        tick_number % 30 == 0
+    }
+
+    fn should_run_pending_updates_check(tick_number: i32) -> bool {
+        tick_number % 1800 == 600
     }
 }
 
@@ -566,5 +576,21 @@ mod tests {
         }
 
         assert_eq!(panicked, 1);
+    }
+
+    #[test]
+    fn bots_data_check_runs_every_30_ticks_starting_at_zero() {
+        assert!(BotsManager::should_run_bots_data_check(0));
+        assert!(!BotsManager::should_run_bots_data_check(1));
+        assert!(BotsManager::should_run_bots_data_check(30));
+        assert!(BotsManager::should_run_bots_data_check(60));
+    }
+
+    #[test]
+    fn pending_updates_check_runs_once_per_1800_tick_cycle() {
+        assert!(!BotsManager::should_run_pending_updates_check(0));
+        assert!(BotsManager::should_run_pending_updates_check(600));
+        assert!(!BotsManager::should_run_pending_updates_check(601));
+        assert!(!BotsManager::should_run_pending_updates_check(1799));
     }
 }
