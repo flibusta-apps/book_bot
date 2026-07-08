@@ -1,1 +1,9 @@
 target
+.git
+test_env
+graphify-out
+docs
+.github
+.DS_Store
+*.md
+scripts
