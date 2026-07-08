@@ -18,6 +18,7 @@ use tracing::log;
 use url::Url;
 
 use std::convert::Infallible;
+use std::sync::Arc;
 
 use crate::bots_manager::bot_manager_client::delete_bot;
 use crate::bots_manager::BOTS_ROUTES;
@@ -163,19 +164,24 @@ pub async fn start_bot(bot_data: &BotData) {
 
     let (stop_token, stop_flag, tx, listener) = get_listener();
 
-    tokio::spawn(async move {
+    let dispatcher_handle = Arc::new(tokio::spawn(async move {
         dispatcher
             .dispatch_with_listener(
                 listener,
                 CustomErrorHandler::with_custom_text("An error from the update listener"),
             )
             .await;
-    });
+    }));
 
     BOTS_ROUTES
         .insert(
             token.to_string(),
-            (stop_token, stop_flag, ClosableSender::new(tx)),
+            (
+                stop_token,
+                stop_flag,
+                ClosableSender::new(tx),
+                dispatcher_handle,
+            ),
         )
         .await;
 }

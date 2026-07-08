@@ -67,19 +67,19 @@ type StopTokenWithSender = (
     StopToken,
     StopFlag,
     ClosableSender<Result<Update, std::convert::Infallible>>,
+    Arc<tokio::task::JoinHandle<()>>,
 );
 
 pub static BOTS_ROUTES: LazyLock<Cache<String, StopTokenWithSender>> = LazyLock::new(|| {
     Cache::builder()
         .time_to_idle(Duration::from_secs(60 * 60))
-        .max_capacity(100)
-        .eviction_listener(|token: Arc<String>, value: StopTokenWithSender, _cause| {
+        .eviction_listener(|token: Arc<String>, value: StopTokenWithSender, cause| {
             log::info!(
-                "Stop Bot(token={})!",
+                "Stop Bot(token={}), cause={cause:?}!",
                 crate::bots_manager::utils::mask_token(&token)
             );
 
-            let (stop_token, _stop_flag, mut sender) = value;
+            let (stop_token, _stop_flag, mut sender, _dispatcher_handle) = value;
 
             stop_token.stop();
             sender.close();
@@ -156,7 +156,7 @@ impl BotsManager {
     }
 
     pub async fn stop_all() {
-        for (_, (stop_token, _, _)) in BOTS_ROUTES.iter() {
+        for (_, (stop_token, _, _, _)) in BOTS_ROUTES.iter() {
             stop_token.stop();
         }
 
@@ -286,5 +286,33 @@ impl BotsManager {
 
             tick_number = (tick_number + 1) % 1800;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use teloxide::stop::mk_stop_token;
+
+    #[tokio::test]
+    async fn invalidating_a_route_stops_its_token_and_closes_its_sender() {
+        let (stop_token, stop_flag) = mk_stop_token();
+        let (tx, _rx) = tokio::sync::mpsc::channel::<Result<Update, std::convert::Infallible>>(1);
+        let mut closable = ClosableSender::new(tx);
+        let handle = Arc::new(tokio::spawn(async {}));
+
+        let test_token = "test-route-invalidation-token".to_string();
+        BOTS_ROUTES
+            .insert(
+                test_token.clone(),
+                (stop_token, stop_flag.clone(), closable.clone(), handle),
+            )
+            .await;
+
+        BOTS_ROUTES.invalidate(&test_token).await;
+        BOTS_ROUTES.run_pending_tasks().await;
+
+        assert!(stop_flag.is_stopped());
+        assert!(closable.get().is_none());
     }
 }

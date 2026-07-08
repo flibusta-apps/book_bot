@@ -61,7 +61,7 @@ pub async fn start_axum_server(stop_signal: Arc<AtomicBool>) {
             return StatusCode::FORBIDDEN;
         }
 
-        let (_, stop_flag, r_tx) = match BOTS_ROUTES.get(&token).await {
+        let (_, stop_flag, r_tx, _dispatcher_handle) = match BOTS_ROUTES.get(&token).await {
             Some(tx) => tx,
             None => {
                 let bot_data = match BOTS_DATA.get(&token).await {
