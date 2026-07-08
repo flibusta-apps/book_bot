@@ -105,17 +105,25 @@ where
         let total_pages = self.pages;
         let footer = format!("\n\nСтраница {page}/{total_pages}");
 
-        let formated_items = self.format_items(max_size - title.len() - footer.len());
+        let formated_items = self.format_items(
+            max_size
+                .saturating_sub(title.len())
+                .saturating_sub(footer.len()),
+        );
 
         format!("{title}{formated_items}{footer}")
     }
 
     fn format_items(&self, max_size: usize) -> String {
+        if self.items.is_empty() {
+            return String::new();
+        }
+
         let separator = "\n\n\n";
         let separator_len: usize = separator.len();
 
         let items_count: usize = self.items.len();
-        let item_size: usize = (max_size - separator_len * items_count) / items_count;
+        let item_size: usize = max_size.saturating_sub(separator_len * items_count) / items_count;
 
         let format_result: Vec<FormatResult> = self
             .items
@@ -140,7 +148,7 @@ where
         let mut free_symbols: usize = format_result
             .iter()
             .filter(|item| item.current_size == item.max_size)
-            .map(|item| item_size - item.current_size)
+            .map(|item| item_size.saturating_sub(item.current_size))
             .sum();
 
         use std::borrow::Cow;
@@ -157,7 +165,7 @@ where
                     let new_item_size = item_size + free_symbols;
                     let new_formated_result = item.format(new_item_size);
 
-                    free_symbols = new_item_size - new_formated_result.current_size;
+                    free_symbols = new_item_size.saturating_sub(new_formated_result.current_size);
 
                     Cow::Owned(new_formated_result.result)
                 }
@@ -243,4 +251,58 @@ pub struct SequenceBook {
     pub annotation_exists: bool,
     pub year: i32,
     pub position: i32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bots::approved_bot::services::book_library::formatters::FormatResult;
+
+    // Minimal concrete types for testing Page::format_items
+    #[derive(Clone, Debug)]
+    struct FakeItem;
+
+    impl crate::bots::approved_bot::services::book_library::formatters::Format for FakeItem {
+        fn format(&self, max_size: usize) -> FormatResult {
+            let s = "x".to_string();
+            FormatResult {
+                current_size: s.len(),
+                max_size,
+                result: s,
+            }
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    struct FakeParent;
+
+    impl crate::bots::approved_bot::services::book_library::formatters::FormatTitle for FakeParent {
+        fn format_title(&self) -> String {
+            "parent".to_string()
+        }
+    }
+
+    #[test]
+    fn format_items_empty_does_not_panic() {
+        let page: Page<FakeItem, FakeParent> = Page {
+            items: vec![],
+            pages: 1,
+            parent_item: None,
+        };
+        let result = page.format_items(100);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn format_items_small_max_size_does_not_panic() {
+        let page: Page<FakeItem, FakeParent> = Page {
+            items: vec![FakeItem, FakeItem],
+            pages: 1,
+            parent_item: None,
+        };
+        // max_size smaller than the separators — previously could underflow
+        let result = page.format_items(2);
+        // should not panic; result may be truncated or empty
+        let _ = result;
+    }
 }

@@ -504,7 +504,7 @@ fn format_common(data: FormatData, max_size: usize) -> FormatResult {
         translators,
         sequences,
         genres,
-        max_size - required_data_len,
+        max_size.saturating_sub(required_data_len),
     );
 
     let result = format!(
