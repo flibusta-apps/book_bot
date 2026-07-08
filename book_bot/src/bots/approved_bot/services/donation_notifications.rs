@@ -17,6 +17,10 @@ use super::user_settings::{is_need_donate_notifications, mark_donate_notificatio
 /// when `check` reports a notification is needed, and `mark` only runs
 /// after `send` succeeds, so a failed Telegram send is never recorded as
 /// "sent" server-side, and a failed check never suppresses a future retry.
+/// A successful `Ok(())` — whether or not a notification was actually
+/// sent — caches the chat for the caller's TTL, throttling how often the
+/// server-side check runs; the server remains the source of truth for
+/// the notification schedule.
 async fn process_donation_notification<CheckFut, SendFut, MarkFut>(
     check: impl FnOnce() -> CheckFut,
     send: impl FnOnce() -> SendFut,
