@@ -22,6 +22,7 @@ use std::sync::Arc;
 
 use crate::bots_manager::bot_manager_client::delete_bot;
 use crate::bots_manager::BOTS_ROUTES;
+use crate::bots_manager::COMMANDS_SET_BOT_IDS;
 use crate::config;
 
 use super::closable_sender::ClosableSender;
@@ -148,13 +149,18 @@ pub async fn start_bot(bot_data: &BotData) {
 
     let (handler, commands) = crate::bots::get_bot_handler();
 
-    let set_command_result = match commands {
-        Some(v) => bot.set_my_commands::<Vec<BotCommand>>(v).send().await,
-        None => bot.delete_my_commands().send().await,
-    };
-    match set_command_result {
-        Ok(_) => (),
-        Err(err) => log::error!("{err:?}"),
+    if !COMMANDS_SET_BOT_IDS.contains_key(&bot_data.id) {
+        let set_command_result = match commands {
+            Some(v) => bot.set_my_commands::<Vec<BotCommand>>(v).send().await,
+            None => bot.delete_my_commands().send().await,
+        };
+
+        match set_command_result {
+            Ok(_) => {
+                COMMANDS_SET_BOT_IDS.insert(bot_data.id, ()).await;
+            }
+            Err(err) => log::error!("{err:?}"),
+        }
     }
 
     let mut dispatcher = Dispatcher::builder(bot.clone(), handler)
@@ -184,4 +190,19 @@ pub async fn start_bot(bot_data: &BotData) {
             ),
         )
         .await;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn commands_set_bot_ids_tracks_membership() {
+        let bot_id = 900_101;
+        assert!(!COMMANDS_SET_BOT_IDS.contains_key(&bot_id));
+
+        COMMANDS_SET_BOT_IDS.insert(bot_id, ()).await;
+
+        assert!(COMMANDS_SET_BOT_IDS.contains_key(&bot_id));
+    }
 }

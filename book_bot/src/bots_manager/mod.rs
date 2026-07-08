@@ -85,6 +85,8 @@ pub static BOTS_ROUTES: LazyLock<Cache<String, StopTokenWithSender>> = LazyLock:
 
 pub static BOTS_DATA: LazyLock<Cache<String, BotData>> = LazyLock::new(|| Cache::builder().build());
 pub static INITED_BOTS_IDS: LazyLock<Cache<u32, ()>> = LazyLock::new(|| Cache::builder().build());
+pub static COMMANDS_SET_BOT_IDS: LazyLock<Cache<u32, ()>> =
+    LazyLock::new(|| Cache::builder().build());
 
 async fn record_webhook_check_success(bot_id: u32) {
     WEBHOOK_CHECK_ERRORS_COUNT.insert(bot_id, 0).await;
@@ -124,6 +126,10 @@ fn decide_webhook_action(webhook_info: &teloxide::types::WebhookInfo) -> Webhook
     }
 
     WebhookAction::NoAction
+}
+
+fn record_manager_fetch_failure() {
+    metrics::counter!("bots_manager_fetch_failures_total").increment(1);
 }
 
 pub struct BotsManager;
@@ -178,9 +184,9 @@ impl BotsManager {
             });
         }
 
-        loop {
-            if set_webhook_tasks.join_next().await.is_none() {
-                break;
+        while let Some(res) = set_webhook_tasks.join_next().await {
+            if let Err(join_err) = res {
+                log::error!("set_webhook task panicked: {join_err:?}");
             }
         }
     }
@@ -191,7 +197,8 @@ impl BotsManager {
         let bots_data = match bots_data {
             Ok(v) => v,
             Err(err) => {
-                log::info!("{err:?}");
+                log::error!("Failed to fetch bots from the manager API: {err:?}");
+                record_manager_fetch_failure();
                 return;
             }
         };
@@ -485,5 +492,79 @@ mod tests {
             decide_webhook_action(&info),
             WebhookAction::NoAction
         ));
+    }
+
+    #[test]
+    fn manager_fetch_failure_increments_metric() {
+        use metrics::{
+            Counter, CounterFn, Gauge, Histogram, Key, KeyName, Metadata, Recorder, SharedString,
+            Unit,
+        };
+        use std::sync::Mutex as StdMutex;
+
+        #[derive(Default)]
+        struct CountingRecorder {
+            count: Arc<StdMutex<u64>>,
+        }
+
+        struct SharedCounter(Arc<StdMutex<u64>>);
+
+        impl CounterFn for SharedCounter {
+            fn increment(&self, value: u64) {
+                *self.0.lock().unwrap() += value;
+            }
+            fn absolute(&self, value: u64) {
+                *self.0.lock().unwrap() = value;
+            }
+        }
+
+        impl Recorder for CountingRecorder {
+            fn describe_counter(&self, _: KeyName, _: Option<Unit>, _: SharedString) {}
+            fn describe_gauge(&self, _: KeyName, _: Option<Unit>, _: SharedString) {}
+            fn describe_histogram(&self, _: KeyName, _: Option<Unit>, _: SharedString) {}
+
+            fn register_counter(&self, key: &Key, _: &Metadata<'_>) -> Counter {
+                if key.name() == "bots_manager_fetch_failures_total" {
+                    Counter::from_arc(Arc::new(SharedCounter(self.count.clone())))
+                } else {
+                    Counter::noop()
+                }
+            }
+
+            fn register_gauge(&self, _: &Key, _: &Metadata<'_>) -> Gauge {
+                Gauge::noop()
+            }
+
+            fn register_histogram(&self, _: &Key, _: &Metadata<'_>) -> Histogram {
+                Histogram::noop()
+            }
+        }
+
+        let recorder = CountingRecorder::default();
+        let count = recorder.count.clone();
+
+        metrics::with_local_recorder(&recorder, || {
+            record_manager_fetch_failure();
+            record_manager_fetch_failure();
+        });
+
+        assert_eq!(*count.lock().unwrap(), 2);
+    }
+
+    #[tokio::test]
+    async fn drains_all_set_webhook_tasks_including_ones_that_panic() {
+        let mut set: tokio::task::JoinSet<()> = tokio::task::JoinSet::new();
+        set.spawn(async {});
+        set.spawn(async { panic!("boom") });
+        set.spawn(async {});
+
+        let mut panicked = 0;
+        while let Some(res) = set.join_next().await {
+            if res.is_err() {
+                panicked += 1;
+            }
+        }
+
+        assert_eq!(panicked, 1);
     }
 }
