@@ -175,9 +175,9 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                             return Ok(());
                         }
                         Ok(Some(p)) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
-                        Err(_) => {
+                        Err(err) => {
                             safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
-                            return Ok(());
+                            return Err(err);
                         }
                     }
                 }
@@ -206,9 +206,9 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                             return Ok(());
                         }
                         Ok(Some(p)) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
-                        Err(_) => {
+                        Err(err) => {
                             safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
-                            return Ok(());
+                            return Err(err);
                         }
                     }
                 }
@@ -237,9 +237,9 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                             return Ok(());
                         }
                         Ok(Some(p)) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
-                        Err(_) => {
+                        Err(err) => {
                             safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
-                            return Ok(());
+                            return Err(err);
                         }
                     }
                 }
@@ -268,9 +268,9 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
                             return Ok(());
                         }
                         Ok(Some(p)) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
-                        Err(_) => {
+                        Err(err) => {
                             safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
-                            return Ok(());
+                            return Err(err);
                         }
                     }
                 }
