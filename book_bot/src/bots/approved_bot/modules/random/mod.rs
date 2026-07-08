@@ -104,7 +104,9 @@ where
         item_message,
         Some(InlineKeyboardMarkup {
             inline_keyboard: vec![vec![InlineKeyboardButton {
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(cq.data.unwrap()),
+                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
+                    cq.data.clone().unwrap_or_default(),
+                ),
                 text: String::from("Повторить?"),
             }]],
         }),

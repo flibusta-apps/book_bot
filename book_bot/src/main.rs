@@ -17,14 +17,18 @@ pub mod handler_metrics;
 
 #[tokio::main]
 async fn main() {
-    let options = ClientOptions {
-        dsn: Some(Dsn::from_str(&config::CONFIG.sentry_dsn).unwrap()),
-        default_integrations: false,
-        ..Default::default()
-    }
-    .add_integration(DebugImagesIntegration::new());
-
-    let _guard = sentry::init(options);
+    let _guard = if let Some(dsn_str) = &config::CONFIG.sentry_dsn {
+        let dsn = Dsn::from_str(dsn_str).unwrap_or_else(|_| panic!("Cannot parse SENTRY_DSN"));
+        let options = ClientOptions {
+            dsn: Some(dsn),
+            default_integrations: false,
+            ..Default::default()
+        }
+        .add_integration(DebugImagesIntegration::new());
+        sentry::init(options)
+    } else {
+        sentry::init(())
+    };
 
     let sentry_layer = sentry_tracing::layer().event_filter(|md| match md.level() {
         &tracing::Level::ERROR => EventFilter::Event,

@@ -20,10 +20,16 @@ impl<T> ClosableSender<T> {
     }
 
     pub fn get(&self) -> Option<mpsc::UnboundedSender<T>> {
-        self.origin.read().unwrap().clone()
+        self.origin
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     pub fn close(&mut self) {
-        self.origin.write().unwrap().take();
+        self.origin
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
     }
 }

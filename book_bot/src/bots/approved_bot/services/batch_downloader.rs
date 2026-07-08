@@ -61,9 +61,8 @@ pub struct Task {
 pub async fn create_task(data: CreateTaskData, user_id: Option<u64>) -> anyhow::Result<Task> {
     let mut request = CLIENT
         .post(format!("{}/api/", &config::CONFIG.batch_downloader_url))
-        .body(serde_json::to_string(&data).unwrap())
-        .header("Authorization", &config::CONFIG.batch_downloader_api_key)
-        .header("Content-Type", "application/json");
+        .json(&data)
+        .header("Authorization", &config::CONFIG.batch_downloader_api_key);
 
     if let Some(uid) = user_id {
         request = request.header("X-User-Id", uid.to_string());

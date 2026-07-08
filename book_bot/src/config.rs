@@ -25,7 +25,7 @@ pub struct Config {
     pub public_batch_downloader_url: String,
     pub batch_downloader_api_key: String,
 
-    pub sentry_dsn: String,
+    pub sentry_dsn: Option<String>,
 }
 
 fn get_env(env: &'static str) -> String {
@@ -41,7 +41,9 @@ impl Config {
                 }),
 
             webhook_base_url: get_env("WEBHOOK_BASE_URL"),
-            webhook_port: get_env("WEBHOOK_PORT").parse().unwrap(),
+            webhook_port: get_env("WEBHOOK_PORT")
+                .parse()
+                .unwrap_or_else(|_| panic!("Cannot parse WEBHOOK_PORT")),
             webhook_secret_token: get_env("WEBHOOK_SECRET_TOKEN"),
 
             manager_url: get_env("MANAGER_URL"),
@@ -61,7 +63,7 @@ impl Config {
             public_batch_downloader_url: get_env("PUBLIC_BATCH_DOWNLOADER_URL"),
             batch_downloader_api_key: get_env("BATCH_DOWNLOADER_API_KEY"),
 
-            sentry_dsn: get_env("SENTRY_DSN"),
+            sentry_dsn: std::env::var("SENTRY_DSN").ok(),
         }
     }
 }
