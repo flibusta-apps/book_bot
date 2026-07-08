@@ -41,7 +41,7 @@ pub static USER_ACTIVITY_CACHE: LazyLock<Cache<UserId, ()>> = LazyLock::new(|| {
 
 pub static CHAT_DONATION_NOTIFICATIONS_CACHE: LazyLock<Cache<ChatId, ()>> = LazyLock::new(|| {
     Cache::builder()
-        .time_to_idle(Duration::from_secs(24 * 60 * 60))
+        .time_to_live(Duration::from_secs(24 * 60 * 60))
         .max_capacity(4096)
         .build()
 });
