@@ -474,7 +474,10 @@ async fn wait_archive(
         return Ok(());
     }
 
-    let content_size = task.content_size.unwrap();
+    let Some(content_size) = task.content_size else {
+        send_archive_link(&bot, message.chat.id, message.id, &task).await?;
+        return Ok(());
+    };
 
     if content_size > 1024 * 1024 * 1024 {
         send_archive_link(&bot, message.chat.id, message.id, &task).await?;
