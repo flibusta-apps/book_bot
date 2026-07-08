@@ -402,7 +402,7 @@ mod tests {
     async fn invalidating_a_route_stops_its_token_and_closes_its_sender() {
         let (stop_token, stop_flag) = mk_stop_token();
         let (tx, _rx) = tokio::sync::mpsc::channel::<Result<Update, std::convert::Infallible>>(1);
-        let mut closable = ClosableSender::new(tx);
+        let closable = ClosableSender::new(tx);
         let handle = Arc::new(tokio::spawn(async {}));
 
         let test_token = "test-route-invalidation-token".to_string();
