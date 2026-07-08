@@ -1,4 +1,3 @@
-use base64::{engine::general_purpose, Engine};
 use moka::future::Cache;
 use reqwest::StatusCode;
 use std::sync::LazyLock;
@@ -130,6 +129,21 @@ pub async fn get_cached_message(
     Ok(Some(cached))
 }
 
+fn decode_b64_header(headers: &reqwest::header::HeaderMap, name: &str) -> anyhow::Result<String> {
+    use anyhow::Context as _;
+    use base64::{engine::general_purpose, Engine as _};
+
+    let raw = headers
+        .get(name)
+        .ok_or_else(|| anyhow::anyhow!("missing response header: {name}"))?;
+    let decoded_bytes = general_purpose::STANDARD
+        .decode(raw)
+        .with_context(|| format!("invalid base64 in header {name}"))?;
+    std::str::from_utf8(&decoded_bytes)
+        .with_context(|| format!("non-UTF8 content in header {name}"))
+        .map(|s| s.to_string())
+}
+
 pub async fn download_file(
     download_data: &DownloadQueryData,
     user_id: Option<u64>,
@@ -174,23 +188,8 @@ pub async fn download_file(
 
     let headers = response.headers();
 
-    let base64_encoder = general_purpose::STANDARD;
-
-    let filename = std::str::from_utf8(
-        &base64_encoder
-            .decode(headers.get("x-filename-b64").unwrap())
-            .unwrap(),
-    )
-    .unwrap()
-    .to_string();
-
-    let caption = std::str::from_utf8(
-        &base64_encoder
-            .decode(headers.get("x-caption-b64").unwrap())
-            .unwrap(),
-    )
-    .unwrap()
-    .to_string();
+    let filename = decode_b64_header(headers, "x-filename-b64")?;
+    let caption = decode_b64_header(headers, "x-caption-b64")?;
 
     Ok(Some(DownloadFile {
         response,
@@ -224,4 +223,41 @@ pub async fn download_file_by_link(
         filename: filename.to_string(),
         caption: "".to_string(),
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::decode_b64_header;
+    use reqwest::header::HeaderMap;
+
+    #[test]
+    fn missing_header_returns_err() {
+        let headers = HeaderMap::new();
+        assert!(decode_b64_header(&headers, "x-filename-b64").is_err());
+    }
+
+    #[test]
+    fn invalid_base64_returns_err() {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-test", "not!!base64".parse().unwrap());
+        assert!(decode_b64_header(&headers, "x-test").is_err());
+    }
+
+    #[test]
+    fn non_utf8_returns_err() {
+        use base64::{engine::general_purpose, Engine as _};
+        let mut headers = HeaderMap::new();
+        let encoded = general_purpose::STANDARD.encode([0xFF, 0xFE]);
+        headers.insert("x-test", encoded.parse().unwrap());
+        assert!(decode_b64_header(&headers, "x-test").is_err());
+    }
+
+    #[test]
+    fn valid_header_decoded() {
+        use base64::{engine::general_purpose, Engine as _};
+        let mut headers = HeaderMap::new();
+        let encoded = general_purpose::STANDARD.encode("hello.epub");
+        headers.insert("x-test", encoded.parse().unwrap());
+        assert_eq!(decode_b64_header(&headers, "x-test").unwrap(), "hello.epub");
+    }
 }
