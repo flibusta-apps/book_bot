@@ -347,7 +347,13 @@ impl BotsManager {
 
         BotsManager::check(true).await;
 
-        start_axum_server(shutdown_rx.clone()).await;
+        let server_handle = match start_axum_server(shutdown_rx.clone()).await {
+            Ok(handle) => handle,
+            Err(err) => {
+                log::error!("Failed to start webhook server: {err}");
+                std::process::exit(1);
+            }
+        };
 
         let mut tick_number: i32 = 0;
         let mut ticker = interval(Duration::from_secs(1));
@@ -359,6 +365,11 @@ impl BotsManager {
                     return;
                 }
                 _ = ticker.tick() => {}
+            }
+
+            if server_handle.is_finished() {
+                log::error!("Webhook server task exited unexpectedly; shutting down");
+                std::process::exit(1);
             }
 
             if BotsManager::should_run_bots_data_check(tick_number) {

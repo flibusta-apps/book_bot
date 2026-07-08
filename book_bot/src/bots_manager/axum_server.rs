@@ -36,7 +36,14 @@ impl<B> tower_http::trace::MakeSpan<B> for BotIdMakeSpan {
     }
 }
 
-pub async fn start_axum_server(mut shutdown_rx: watch::Receiver<()>) {
+async fn bind_webhook_listener(port: u16) -> std::io::Result<tokio::net::TcpListener> {
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    tokio::net::TcpListener::bind(addr).await
+}
+
+pub async fn start_axum_server(
+    mut shutdown_rx: watch::Receiver<()>,
+) -> std::io::Result<tokio::task::JoinHandle<()>> {
     async fn telegram_request(
         State(start_bot_mutex): State<Arc<Mutex<()>>>,
         Path(token): Path<String>,
@@ -155,11 +162,14 @@ pub async fn start_axum_server(mut shutdown_rx: watch::Receiver<()>) {
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         );
 
-    tokio::spawn(async move {
-        log::info!("Start webserver...");
+    let listener = bind_webhook_listener(config::CONFIG.webhook_port).await?;
+    log::info!(
+        "Webhook server listening on port {}",
+        config::CONFIG.webhook_port
+    );
 
-        let addr = SocketAddr::from(([0, 0, 0, 0], config::CONFIG.webhook_port));
-        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let handle = tokio::spawn(async move {
+        log::info!("Start webserver...");
 
         axum::serve(listener, router)
             .with_graceful_shutdown(async move {
@@ -170,4 +180,21 @@ pub async fn start_axum_server(mut shutdown_rx: watch::Receiver<()>) {
 
         log::info!("Webserver shutdown...");
     });
+
+    Ok(handle)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn bind_webhook_listener_fails_when_port_already_taken() {
+        let first = bind_webhook_listener(0).await.unwrap();
+        let port = first.local_addr().unwrap().port();
+
+        let second = bind_webhook_listener(port).await;
+
+        assert!(second.is_err());
+    }
 }
