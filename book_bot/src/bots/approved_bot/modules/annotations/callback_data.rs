@@ -24,7 +24,12 @@ impl FromStr for AnnotationCallbackData {
 
         let an_type = &caps["an_type"];
         let id: u32 = caps["id"].parse().map_err(|_| CallbackQueryParseError)?;
-        let page: u32 = caps["page"].parse().map_err(|_| CallbackQueryParseError)?;
+        let page: u32 = std::cmp::max(
+            1,
+            caps["page"]
+                .parse::<u32>()
+                .map_err(|_| CallbackQueryParseError)?,
+        );
 
         match an_type {
             "a" => Ok(AnnotationCallbackData::Author { id, page }),
@@ -56,5 +61,41 @@ impl GetPaginationCallbackData for AnnotationCallbackData {
             },
         }
         .to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AnnotationCallbackData;
+    use std::str::FromStr;
+
+    #[test]
+    fn page_zero_normalized_to_one_book() {
+        let cd = AnnotationCallbackData::from_str("b_an_5_0").unwrap();
+        match cd {
+            AnnotationCallbackData::Book { page, .. } => assert_eq!(page, 1),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn page_zero_normalized_to_one_author() {
+        let cd = AnnotationCallbackData::from_str("a_an_5_0").unwrap();
+        match cd {
+            AnnotationCallbackData::Author { page, .. } => assert_eq!(page, 1),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn normal_page_preserved() {
+        let cd = AnnotationCallbackData::from_str("b_an_42_3").unwrap();
+        match cd {
+            AnnotationCallbackData::Book { id, page } => {
+                assert_eq!(id, 42);
+                assert_eq!(page, 3);
+            }
+            _ => panic!("wrong variant"),
+        }
     }
 }

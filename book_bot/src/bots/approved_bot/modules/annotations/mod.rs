@@ -108,7 +108,10 @@ where
 
     let annotation_text = annotation.get_text();
     let chunked_text = split_text_to_chunks(annotation_text, 512);
-    let current_text = chunked_text.first().unwrap();
+    let current_text = match chunked_text.first() {
+        Some(t) => t,
+        None => return Ok(()),
+    };
 
     let callback_data = match command {
         AnnotationCommand::Book { id } => AnnotationCallbackData::Book { id, page: 1 },
@@ -158,7 +161,7 @@ where
         None => return Ok(()),
     };
 
-    let request_page: usize = page.try_into().unwrap();
+    let request_page: usize = page.try_into().unwrap_or(1);
 
     let annotation_text = annotation.get_text();
     let chunked_text = split_text_to_chunks(annotation_text, 512);
@@ -168,7 +171,11 @@ where
     } else {
         chunked_text.len()
     };
-    let new_text = chunked_text.get(page_index - 1).unwrap();
+
+    let new_text = match chunked_text.get(page_index.saturating_sub(1)) {
+        Some(t) => t,
+        None => return Ok(()),
+    };
 
     let keyboard =
         generic_get_pagination_keyboard(page, chunked_text.len().try_into()?, callback_data, false);

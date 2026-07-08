@@ -25,7 +25,12 @@ impl FromStr for BookCallbackData {
 
         let an_type = &caps["an_type"];
         let id: u32 = caps["id"].parse().map_err(|_| CallbackQueryParseError)?;
-        let page: u32 = caps["page"].parse().map_err(|_| CallbackQueryParseError)?;
+        let page: u32 = std::cmp::max(
+            1,
+            caps["page"]
+                .parse::<u32>()
+                .map_err(|_| CallbackQueryParseError)?,
+        );
 
         match an_type {
             "a" => Ok(BookCallbackData::Author { id, page }),
@@ -63,5 +68,32 @@ impl GetPaginationCallbackData for BookCallbackData {
             },
         }
         .to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BookCallbackData;
+    use std::str::FromStr;
+
+    #[test]
+    fn page_zero_normalized_to_one() {
+        let cd = BookCallbackData::from_str("ba_5_0").unwrap();
+        match cd {
+            BookCallbackData::Author { page, .. } => assert_eq!(page, 1),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn normal_page_preserved() {
+        let cd = BookCallbackData::from_str("bs_7_4").unwrap();
+        match cd {
+            BookCallbackData::Sequence { id, page } => {
+                assert_eq!(id, 7);
+                assert_eq!(page, 4);
+            }
+            _ => panic!("wrong variant"),
+        }
     }
 }
