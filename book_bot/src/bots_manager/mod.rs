@@ -94,14 +94,26 @@ pub struct BotsManager;
 
 impl BotsManager {
     async fn check_bots_data(bots: &[BotData]) {
+        let fresh_tokens: std::collections::HashSet<&str> = bots
+            .iter()
+            .map(|bot_data| bot_data.token.as_str())
+            .collect();
+
         for bot_data in bots.iter() {
-            if BOTS_DATA.contains_key(&bot_data.token) {
-                continue;
-            }
+            BOTS_DATA
+                .insert(bot_data.token.clone(), bot_data.clone())
+                .await;
+        }
 
-            let bot_data: BotData = bot_data.clone();
+        let stale_tokens: Vec<String> = BOTS_DATA
+            .iter()
+            .filter(|(token, _)| !fresh_tokens.contains(token.as_str()))
+            .map(|(token, _)| token.as_str().to_string())
+            .collect();
 
-            BOTS_DATA.insert(bot_data.token.clone(), bot_data).await;
+        for token in stale_tokens {
+            BOTS_DATA.invalidate(&token).await;
+            BOTS_ROUTES.remove(&token).await;
         }
     }
 
@@ -314,5 +326,60 @@ mod tests {
 
         assert!(stop_flag.is_stopped());
         assert!(closable.get().is_none());
+    }
+
+    fn fake_route() -> StopTokenWithSender {
+        let (stop_token, stop_flag) = mk_stop_token();
+        let (tx, _rx) = tokio::sync::mpsc::channel::<Result<Update, std::convert::Infallible>>(1);
+        let handle = Arc::new(tokio::spawn(async {}));
+        (stop_token, stop_flag, ClosableSender::new(tx), handle)
+    }
+
+    #[tokio::test]
+    async fn sync_upserts_changes_and_removes_bots_absent_from_the_fresh_list() {
+        let kept_token = "sync-test-kept-token".to_string();
+        let removed_token = "sync-test-removed-token".to_string();
+
+        BOTS_DATA
+            .insert(
+                kept_token.clone(),
+                BotData {
+                    id: 101,
+                    token: kept_token.clone(),
+                    cache: BotCache::Cache,
+                },
+            )
+            .await;
+        BOTS_DATA
+            .insert(
+                removed_token.clone(),
+                BotData {
+                    id: 102,
+                    token: removed_token.clone(),
+                    cache: BotCache::Cache,
+                },
+            )
+            .await;
+        BOTS_ROUTES
+            .insert(removed_token.clone(), fake_route())
+            .await;
+
+        let fresh = vec![BotData {
+            id: 101,
+            token: kept_token.clone(),
+            cache: BotCache::NoCache,
+        }];
+        BotsManager::check_bots_data(&fresh).await;
+        BOTS_DATA.run_pending_tasks().await;
+        BOTS_ROUTES.run_pending_tasks().await;
+
+        assert!(!BOTS_DATA.contains_key(&removed_token));
+        assert!(!BOTS_ROUTES.contains_key(&removed_token));
+
+        let kept = BOTS_DATA
+            .get(&kept_token)
+            .await
+            .expect("kept bot should remain");
+        assert_eq!(kept.cache, BotCache::NoCache);
     }
 }
