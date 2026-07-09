@@ -96,4 +96,50 @@ mod tests {
             _ => panic!("wrong variant"),
         }
     }
+
+    #[test]
+    fn round_trip_author() {
+        let cd = BookCallbackData::Author { id: 1, page: 2 };
+        match BookCallbackData::from_str(&cd.to_string()).unwrap() {
+            BookCallbackData::Author { id, page } => {
+                assert_eq!(id, 1);
+                assert_eq!(page, 2);
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_translator() {
+        let cd = BookCallbackData::Translator { id: 3, page: 4 };
+        match BookCallbackData::from_str(&cd.to_string()).unwrap() {
+            BookCallbackData::Translator { id, page } => {
+                assert_eq!(id, 3);
+                assert_eq!(page, 4);
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_sequence() {
+        let cd = BookCallbackData::Sequence { id: 5, page: 6 };
+        match BookCallbackData::from_str(&cd.to_string()).unwrap() {
+            BookCallbackData::Sequence { id, page } => {
+                assert_eq!(id, 5);
+                assert_eq!(page, 6);
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn rejects_foreign_prefix() {
+        assert!(BookCallbackData::from_str("bx_5_1").is_err());
+    }
+
+    #[test]
+    fn rejects_non_numeric_id() {
+        assert!(BookCallbackData::from_str("ba_abc_1").is_err());
+    }
 }

@@ -80,3 +80,63 @@ impl GetPaginationCallbackData for SearchCallbackData {
         .to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SearchCallbackData;
+    use std::str::FromStr;
+
+    #[test]
+    fn round_trip_book() {
+        let cd = SearchCallbackData::Book { page: 3 };
+        match SearchCallbackData::from_str(&cd.to_string()).unwrap() {
+            SearchCallbackData::Book { page } => assert_eq!(page, 3),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_authors() {
+        let cd = SearchCallbackData::Authors { page: 4 };
+        match SearchCallbackData::from_str(&cd.to_string()).unwrap() {
+            SearchCallbackData::Authors { page } => assert_eq!(page, 4),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_sequences() {
+        let cd = SearchCallbackData::Sequences { page: 5 };
+        match SearchCallbackData::from_str(&cd.to_string()).unwrap() {
+            SearchCallbackData::Sequences { page } => assert_eq!(page, 5),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_translators() {
+        let cd = SearchCallbackData::Translators { page: 6 };
+        match SearchCallbackData::from_str(&cd.to_string()).unwrap() {
+            SearchCallbackData::Translators { page } => assert_eq!(page, 6),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn page_zero_normalized_to_one() {
+        match SearchCallbackData::from_str("sb_0").unwrap() {
+            SearchCallbackData::Book { page } => assert_eq!(page, 1),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn rejects_foreign_prefix() {
+        assert!(SearchCallbackData::from_str("sx_1").is_err());
+    }
+
+    #[test]
+    fn rejects_non_numeric_page() {
+        assert!(SearchCallbackData::from_str("sb_abc").is_err());
+    }
+}

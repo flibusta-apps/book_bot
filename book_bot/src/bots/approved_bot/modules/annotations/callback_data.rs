@@ -98,4 +98,38 @@ mod tests {
             _ => panic!("wrong variant"),
         }
     }
+
+    #[test]
+    fn round_trip_book() {
+        let cd = AnnotationCallbackData::Book { id: 10, page: 2 };
+        match AnnotationCallbackData::from_str(&cd.to_string()).unwrap() {
+            AnnotationCallbackData::Book { id, page } => {
+                assert_eq!(id, 10);
+                assert_eq!(page, 2);
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_author() {
+        let cd = AnnotationCallbackData::Author { id: 11, page: 5 };
+        match AnnotationCallbackData::from_str(&cd.to_string()).unwrap() {
+            AnnotationCallbackData::Author { id, page } => {
+                assert_eq!(id, 11);
+                assert_eq!(page, 5);
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn rejects_foreign_prefix() {
+        assert!(AnnotationCallbackData::from_str("x_an_5_1").is_err());
+    }
+
+    #[test]
+    fn rejects_non_numeric_id() {
+        assert!(AnnotationCallbackData::from_str("b_an_abc_1").is_err());
+    }
 }

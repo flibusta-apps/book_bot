@@ -175,12 +175,12 @@ async fn get_genre_metas_handler(
             .enumerate()
             .map(|(index, genre_meta)| {
                 vec![InlineKeyboardButton {
-                    kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(format!(
-                        "{}_{index}",
+                    kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
                         RandomCallbackData::Genres {
-                            index: index as u32
+                            index: index as u32,
                         }
-                    )),
+                        .to_string(),
+                    ),
                     text: genre_meta,
                 }]
             })
@@ -230,11 +230,9 @@ async fn get_genres_by_meta_handler(
         .into_iter()
         .map(|genre| {
             vec![InlineKeyboardButton {
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(format!(
-                    "{}_{}",
-                    RandomCallbackData::RandomBookByGenre { id: genre.id },
-                    genre.id
-                )),
+                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
+                    RandomCallbackData::RandomBookByGenre { id: genre.id }.to_string(),
+                ),
                 text: genre.description,
             }]
         })
