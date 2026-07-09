@@ -158,6 +158,10 @@ pub async fn download_file_by_link(
 ) -> anyhow::Result<Option<DownloadFile>> {
     let response = HTTP_CLIENT.get(link).send().await?;
 
+    // Intentionally: any non-200 (success or error) collapses to `None`
+    // here, unlike the other functions in this module — this doesn't fit
+    // check_status's empty-vs-error split and isn't a bug spec 08 called
+    // out, so it's left as-is rather than "consistency-fixed".
     if response.status() != StatusCode::OK {
         return Ok(None);
     };

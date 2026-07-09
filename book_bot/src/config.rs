@@ -12,6 +12,12 @@ pub struct Config {
     pub manager_url: String,
     pub manager_api_key: String,
 
+    // `user_settings_url`, `book_server_url`, `cache_server_url`,
+    // `batch_downloader_url`, and `public_batch_downloader_url` are appended
+    // to via `services::build_url`'s `path_segments_mut().extend(...)`,
+    // which appends onto whatever path the base URL already has rather than
+    // replacing it. These must be scheme+host+port only (no path component)
+    // or the appended API paths will be nested under it.
     pub user_settings_url: reqwest::Url,
     pub user_settings_api_key: String,
 
