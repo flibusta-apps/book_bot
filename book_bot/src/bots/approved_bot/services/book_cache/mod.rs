@@ -1,12 +1,13 @@
 use reqwest::StatusCode;
-use std::sync::LazyLock;
 use tracing::log;
 
 use crate::{
     bots::approved_bot::modules::download::callback_data::DownloadQueryData,
     bots::approved_bot::services::{
+        build_url, check_response, check_status,
         rate_limit::retry_on_429,
         user_settings::{get_user_file_name_lang_for, FileNameLang},
+        HTTP_CLIENT,
     },
     bots_manager::BotCache,
     config,
@@ -15,27 +16,6 @@ use crate::{
 use self::types::{CachedMessage, DownloadFile};
 
 pub mod types;
-
-pub static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
-    reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .expect("Failed to create HTTP client")
-});
-
-/// Build a cache-server URL by appending the given path segments to the
-/// configured base. Path segments must already be percent-safe; the cache
-/// IDs and file types are controlled by the server, so we pass them
-/// through directly.
-fn build_cache_url<'a>(
-    segments: impl IntoIterator<Item = &'a str>,
-) -> anyhow::Result<reqwest::Url> {
-    let mut url = config::CONFIG.cache_server_url.clone();
-    url.path_segments_mut()
-        .map_err(|_| anyhow::anyhow!("cache_server_url has cannot-be-a-base scheme"))?
-        .extend(segments);
-    Ok(url)
-}
 
 pub async fn get_cached_message(
     download_data: &DownloadQueryData,
@@ -56,7 +36,10 @@ pub async fn get_cached_message(
         FileNameLang::Original
     );
 
-    let mut url = build_cache_url(["api", "v1", &id.to_string(), format, ""])?;
+    let mut url = build_url(
+        &config::CONFIG.cache_server_url,
+        ["api", "v1", &id.to_string(), format, ""],
+    )?;
     {
         let mut q = url.query_pairs_mut();
         q.append_pair("copy", &is_need_copy.to_string());
@@ -66,7 +49,7 @@ pub async fn get_cached_message(
     }
 
     let response = retry_on_429(user_id.is_some(), || {
-        let mut req = CLIENT
+        let mut req = HTTP_CLIENT
             .get(url.clone())
             .header("Authorization", &config::CONFIG.cache_server_api_key);
 
@@ -78,29 +61,25 @@ pub async fn get_cached_message(
     })
     .await?;
 
-    if response.status() == StatusCode::NO_CONTENT {
-        return Ok(None);
-    };
-
-    let response = response.error_for_status()?;
-
-    let cached: CachedMessage = response.json().await?;
+    let cached: Option<CachedMessage> = check_response(response, &[StatusCode::NO_CONTENT]).await?;
 
     // The server echoes back the mode it actually used. If it disagrees
     // with what we requested, we're talking to an older / misconfigured
     // server and subsequent `download_file` calls will miss the cache.
-    if let Some(echo) = cached.is_normalized {
-        let echoed_original = !echo;
-        if echoed_original != requested_original {
-            log::warn!(
-                "cache server echoed is_normalized={echo} for {id}/{format} \
-                 but client requested original={requested_original}; \
-                 cache mode may be inconsistent"
-            );
+    if let Some(cached) = &cached {
+        if let Some(echo) = cached.is_normalized {
+            let echoed_original = !echo;
+            if echoed_original != requested_original {
+                log::warn!(
+                    "cache server echoed is_normalized={echo} for {id}/{format} \
+                     but client requested original={requested_original}; \
+                     cache mode may be inconsistent"
+                );
+            }
         }
     }
 
-    Ok(Some(cached))
+    Ok(cached)
 }
 
 fn decode_b64_header(headers: &reqwest::header::HeaderMap, name: &str) -> anyhow::Result<String> {
@@ -136,13 +115,16 @@ pub async fn download_file(
         FileNameLang::Original
     );
 
-    let mut url = build_cache_url(["api", "v1", "download", &id.to_string(), format, ""])?;
+    let mut url = build_url(
+        &config::CONFIG.cache_server_url,
+        ["api", "v1", "download", &id.to_string(), format, ""],
+    )?;
     if original {
         url.query_pairs_mut().append_pair("normalized", "false");
     }
 
     let response = retry_on_429(user_id.is_some(), || {
-        let mut req = CLIENT
+        let mut req = HTTP_CLIENT
             .get(url.clone())
             .header("Authorization", &config::CONFIG.cache_server_api_key);
 
@@ -154,11 +136,9 @@ pub async fn download_file(
     })
     .await?;
 
-    if response.status() == StatusCode::NO_CONTENT {
+    let Some(response) = check_status(response, &[StatusCode::NO_CONTENT]).await? else {
         return Ok(None);
     };
-
-    let response = response.error_for_status()?;
 
     let headers = response.headers();
 
@@ -176,7 +156,7 @@ pub async fn download_file_by_link(
     filename: &str,
     link: String,
 ) -> anyhow::Result<Option<DownloadFile>> {
-    let response = CLIENT.get(link).send().await?;
+    let response = HTTP_CLIENT.get(link).send().await?;
 
     if response.status() != StatusCode::OK {
         return Ok(None);
