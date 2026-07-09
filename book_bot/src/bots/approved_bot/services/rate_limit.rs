@@ -49,6 +49,11 @@ const DEFAULT_RETRY_AFTER_SECS: u64 = 5;
 /// Maximum number of retry attempts for a rate-limited request.
 const MAX_RETRIES: u32 = 3;
 
+/// Upper bound on how long we'll sleep for a single retry, regardless of
+/// what the server's `Retry-After` says — protects against a server
+/// requesting an hour-long wait and stalling the calling handler.
+const MAX_WAIT: Duration = Duration::from_secs(30);
+
 impl RateLimitInfo {
     /// Parse a 429 response: reads the body once, prefers `Retry-After` header.
     ///
@@ -123,11 +128,28 @@ where
             ));
         }
 
+        if info.retry_after > MAX_WAIT {
+            warn!(
+                "Rate limited: server-requested retry_after={}s exceeds MAX_WAIT={}s, \
+                 aborting instead of sleeping, operation={:?}",
+                info.retry_after.as_secs(),
+                MAX_WAIT.as_secs(),
+                info.operation,
+            );
+            return Err(anyhow::anyhow!(
+                "rate_limit_exceeded (retry_after too long): operation={}, retry_after={}s",
+                info.operation
+                    .map(|op| op.to_string())
+                    .unwrap_or_else(|| "unknown".into()),
+                info.retry_after.as_secs(),
+            ));
+        }
+
         let backoff = Duration::from_secs(2u64.saturating_pow(attempt));
         let wait = info.retry_after.max(backoff);
 
         warn!(
-            "Rate limited (attempt {}/{}, max), operation={:?}, waiting {}s",
+            "Rate limited (attempt {}/{}), operation={:?}, waiting {}s",
             attempt + 1,
             max_attempts,
             info.operation,
@@ -209,5 +231,32 @@ mod tests {
     #[test]
     fn max_retries_constant() {
         assert_eq!(MAX_RETRIES, 3);
+    }
+
+    #[test]
+    fn max_wait_constant() {
+        assert_eq!(MAX_WAIT, Duration::from_secs(30));
+    }
+
+    #[tokio::test]
+    async fn retry_on_429_aborts_immediately_when_retry_after_exceeds_max_wait() {
+        let make_response = || async {
+            let http_response = http::Response::builder()
+                .status(429)
+                .header("Retry-After", "3600")
+                .body(Vec::<u8>::new())
+                .unwrap();
+            Ok::<_, reqwest::Error>(reqwest::Response::from(http_response))
+        };
+
+        let start = std::time::Instant::now();
+        let result = retry_on_429(true, make_response).await;
+        let elapsed = start.elapsed();
+
+        assert!(result.is_err());
+        assert!(
+            elapsed < Duration::from_secs(1),
+            "must not sleep when retry_after exceeds MAX_WAIT, took {elapsed:?}"
+        );
     }
 }
