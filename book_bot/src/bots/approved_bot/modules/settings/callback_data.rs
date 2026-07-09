@@ -5,7 +5,7 @@ use smartstring::alias::String as SmartString;
 use std::sync::LazyLock;
 
 static RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^lang_(?P<action>(off)|(on))_(?P<code>[a-zA-z]+)$").unwrap());
+    LazyLock::new(|| Regex::new(r"^lang_(?P<action>(off)|(on))_(?P<code>[a-zA-Z]+)$").unwrap());
 
 #[derive(Clone)]
 pub enum SettingsCallbackData {
@@ -96,5 +96,127 @@ impl Display for SettingsCallbackData {
             SettingsCallbackData::FileNameLang { value } => write!(f, "filename_lang_{value}"),
             SettingsCallbackData::FileNameLangBack => write!(f, "filename_lang_back"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SettingsCallbackData;
+    use std::str::FromStr;
+
+    #[test]
+    fn round_trip_settings_menu() {
+        match SettingsCallbackData::from_str(&SettingsCallbackData::Settings.to_string()).unwrap() {
+            SettingsCallbackData::Settings => {}
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_on() {
+        let cd = SettingsCallbackData::On { code: "ru".into() };
+        match SettingsCallbackData::from_str(&cd.to_string()).unwrap() {
+            SettingsCallbackData::On { code } => assert_eq!(code, "ru"),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_off() {
+        let cd = SettingsCallbackData::Off { code: "en".into() };
+        match SettingsCallbackData::from_str(&cd.to_string()).unwrap() {
+            SettingsCallbackData::Off { code } => assert_eq!(code, "en"),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_default_search_menu() {
+        match SettingsCallbackData::from_str(&SettingsCallbackData::DefaultSearchMenu.to_string())
+            .unwrap()
+        {
+            SettingsCallbackData::DefaultSearchMenu => {}
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_default_search() {
+        let cd = SettingsCallbackData::DefaultSearch {
+            value: "book".into(),
+        };
+        match SettingsCallbackData::from_str(&cd.to_string()).unwrap() {
+            SettingsCallbackData::DefaultSearch { value } => assert_eq!(value, "book"),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_default_search_back() {
+        match SettingsCallbackData::from_str(&SettingsCallbackData::DefaultSearchBack.to_string())
+            .unwrap()
+        {
+            SettingsCallbackData::DefaultSearchBack => {}
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_lang_settings_back() {
+        match SettingsCallbackData::from_str(&SettingsCallbackData::LangSettingsBack.to_string())
+            .unwrap()
+        {
+            SettingsCallbackData::LangSettingsBack => {}
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_file_name_lang_menu() {
+        match SettingsCallbackData::from_str(&SettingsCallbackData::FileNameLangMenu.to_string())
+            .unwrap()
+        {
+            SettingsCallbackData::FileNameLangMenu => {}
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_file_name_lang() {
+        let cd = SettingsCallbackData::FileNameLang {
+            value: "original".into(),
+        };
+        match SettingsCallbackData::from_str(&cd.to_string()).unwrap() {
+            SettingsCallbackData::FileNameLang { value } => assert_eq!(value, "original"),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn round_trip_file_name_lang_back() {
+        match SettingsCallbackData::from_str(&SettingsCallbackData::FileNameLangBack.to_string())
+            .unwrap()
+        {
+            SettingsCallbackData::FileNameLangBack => {}
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn accepts_multi_letter_language_code() {
+        match SettingsCallbackData::from_str("lang_on_eng").unwrap() {
+            SettingsCallbackData::On { code } => assert_eq!(code, "eng"),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn rejects_garbage_language_code() {
+        assert!(SettingsCallbackData::from_str("lang_on__").is_err());
+    }
+
+    #[test]
+    fn rejects_foreign_prefix() {
+        assert!(SettingsCallbackData::from_str("totally_unknown").is_err());
     }
 }
