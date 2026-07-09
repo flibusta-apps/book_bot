@@ -40,6 +40,7 @@ use crate::{
                     get_author_books_available_types, get_book, get_sequence_books_available_types,
                     get_translator_books_available_types,
                 },
+                build_url,
                 donation_notifications::send_donation_notification,
                 user_settings::{
                     get_user_file_name_lang_for, get_user_or_default_lang_codes, FileNameLang,
@@ -371,11 +372,11 @@ async fn send_archive_link(
     message_id: MessageId,
     task: &Task,
 ) -> BotHandlerInternal {
-    let link = format!(
-        "{}/api/download/{}",
-        config::CONFIG.public_batch_downloader_url,
-        task.id
-    );
+    let link = build_url(
+        &config::CONFIG.public_batch_downloader_url,
+        ["api", "download", &task.id],
+    )?
+    .to_string();
 
     safe_edit_message_text_html(
         bot,
@@ -485,11 +486,11 @@ async fn wait_archive(
         return Ok(());
     }
 
-    let link = format!(
-        "{}/api/download/{}",
-        config::CONFIG.batch_downloader_url,
-        task.id
-    );
+    let link = build_url(
+        &config::CONFIG.batch_downloader_url,
+        ["api", "download", &task.id],
+    )?
+    .to_string();
 
     let downloaded_data = match download_file_by_link(
         task.result_filename.as_deref().unwrap_or_default(),
