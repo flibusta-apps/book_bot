@@ -15,7 +15,7 @@ pub struct Config {
     pub user_settings_url: String,
     pub user_settings_api_key: String,
 
-    pub book_server_url: String,
+    pub book_server_url: reqwest::Url,
     pub book_server_api_key: String,
 
     pub cache_server_url: reqwest::Url,
@@ -52,7 +52,8 @@ impl Config {
             user_settings_url: get_env("USER_SETTINGS_URL"),
             user_settings_api_key: get_env("USER_SETTINGS_API_KEY"),
 
-            book_server_url: get_env("BOOK_SERVER_URL"),
+            book_server_url: reqwest::Url::parse(&get_env("BOOK_SERVER_URL"))
+                .unwrap_or_else(|_| panic!("Cannot parse url from BOOK_SERVER_URL env variable")),
             book_server_api_key: get_env("BOOK_SERVER_API_KEY"),
 
             cache_server_url: reqwest::Url::parse(&get_env("CACHE_SERVER_URL"))
