@@ -9,14 +9,10 @@ use std::time::Duration;
 use teloxide::types::{ChatId, UserId};
 use tracing::log;
 
-use crate::config;
-
-pub static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
-    reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .expect("Failed to create HTTP client")
-});
+use crate::{
+    bots::approved_bot::services::{build_url, check_response, check_status, HTTP_CLIENT},
+    config,
+};
 
 /// API values: "book" | "author" | "series" | "translator"
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -132,22 +128,18 @@ async fn get_cached_user_settings(user_id: UserId) -> Option<UserSettings> {
 }
 
 pub async fn get_user_settings(user_id: UserId) -> anyhow::Result<Option<UserSettings>> {
-    let response = CLIENT
-        .get(format!(
-            "{}/users/{}",
-            &config::CONFIG.user_settings_url,
-            user_id
-        ))
+    let url = build_url(
+        &config::CONFIG.user_settings_url,
+        ["users", &user_id.to_string()],
+    )?;
+
+    let response = HTTP_CLIENT
+        .get(url)
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
-        .await?
-        .error_for_status()?;
+        .await?;
 
-    if response.status() == StatusCode::NO_CONTENT {
-        return Ok(None);
-    }
-
-    Ok(Some(response.json::<UserSettings>().await?))
+    check_response(response, &[StatusCode::NOT_FOUND, StatusCode::NO_CONTENT]).await
 }
 
 pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartString; 3]> {
@@ -191,16 +183,19 @@ pub async fn create_or_update_user_settings(
         "file_name_lang": file_name_lang.as_api_str(),
     });
 
-    let response = CLIENT
-        .post(format!("{}/users/", &config::CONFIG.user_settings_url))
+    let url = build_url(&config::CONFIG.user_settings_url, ["users", ""])?;
+
+    let response = HTTP_CLIENT
+        .post(url)
         .body(body.to_string())
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .header("Content-Type", "application/json")
         .send()
-        .await?
-        .error_for_status()?;
+        .await?;
 
-    Ok(response.json::<UserSettings>().await?)
+    check_response(response, &[])
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("user-settings service returned an empty response"))
 }
 
 /// Returns the user's default search type from the shared settings cache.
@@ -231,26 +226,32 @@ pub async fn get_user_file_name_lang_for(user_id: Option<u64>) -> FileNameLang {
 }
 
 pub async fn get_langs() -> anyhow::Result<Vec<Lang>> {
-    let response = CLIENT
-        .get(format!("{}/languages/", &config::CONFIG.user_settings_url))
+    let url = build_url(&config::CONFIG.user_settings_url, ["languages", ""])?;
+
+    let response = HTTP_CLIENT
+        .get(url)
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
-        .await?
-        .error_for_status()?;
+        .await?;
 
-    Ok(response.json::<Vec<Lang>>().await?)
+    check_response(response, &[])
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("user-settings service returned an empty response"))
 }
 
 pub async fn update_user_activity(user_id: UserId) -> anyhow::Result<()> {
-    CLIENT
-        .post(format!(
-            "{}/users/{user_id}/update_activity",
-            &config::CONFIG.user_settings_url
-        ))
+    let url = build_url(
+        &config::CONFIG.user_settings_url,
+        ["users", &user_id.to_string(), "update_activity"],
+    )?;
+
+    let response = HTTP_CLIENT
+        .post(url)
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
-        .await?
-        .error_for_status()?;
+        .await?;
+
+    check_status(response, &[]).await?;
 
     Ok(())
 }
@@ -259,29 +260,36 @@ pub async fn is_need_donate_notifications(
     chat_id: ChatId,
     is_private: bool,
 ) -> anyhow::Result<bool> {
-    let response = CLIENT
-        .get(format!(
-            "{}/donate_notifications/{chat_id}/is_need_send?is_private={is_private}",
-            &config::CONFIG.user_settings_url
-        ))
+    let url = build_url(
+        &config::CONFIG.user_settings_url,
+        ["donate_notifications", &chat_id.to_string(), "is_need_send"],
+    )?;
+
+    let response = HTTP_CLIENT
+        .get(url)
+        .query(&[("is_private", is_private.to_string())])
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
-        .await?
-        .error_for_status()?;
+        .await?;
 
-    Ok(response.json::<bool>().await?)
+    check_response(response, &[])
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("user-settings service returned an empty response"))
 }
 
 pub async fn mark_donate_notification_sent(chat_id: ChatId) -> anyhow::Result<()> {
-    CLIENT
-        .post(format!(
-            "{}/donate_notifications/{chat_id}",
-            &config::CONFIG.user_settings_url
-        ))
+    let url = build_url(
+        &config::CONFIG.user_settings_url,
+        ["donate_notifications", &chat_id.to_string()],
+    )?;
+
+    let response = HTTP_CLIENT
+        .post(url)
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
-        .await?
-        .error_for_status()?;
+        .await?;
+
+    check_status(response, &[]).await?;
 
     Ok(())
 }
@@ -312,5 +320,25 @@ mod tests {
             .unwrap();
         assert_eq!(ok_result, Some(42));
         assert!(cache.contains_key(&key));
+    }
+
+    #[tokio::test]
+    async fn a_404_from_the_user_settings_service_is_not_an_error() {
+        use crate::bots::approved_bot::services::check_response;
+
+        let http_response = http::Response::builder()
+            .status(404)
+            .body(Vec::<u8>::new())
+            .unwrap();
+        let response = reqwest::Response::from(http_response);
+
+        let result: anyhow::Result<Option<UserSettings>> =
+            check_response(response, &[StatusCode::NOT_FOUND, StatusCode::NO_CONTENT]).await;
+
+        assert!(result.is_ok(), "404 must not be an Err");
+        assert!(
+            result.unwrap().is_none(),
+            "404 must mean 'no settings for this user', i.e. None"
+        );
     }
 }
