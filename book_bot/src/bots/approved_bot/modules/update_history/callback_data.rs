@@ -34,6 +34,7 @@ impl FromStr for UpdateLogCallbackData {
         let page: u32 = caps["page"]
             .parse()
             .map_err(|_| strum::ParseError::VariantNotFound)?;
+        let page: u32 = std::cmp::max(1, page);
 
         Ok(UpdateLogCallbackData { from, to, page })
     }
@@ -60,5 +61,41 @@ impl GetPaginationCallbackData for UpdateLogCallbackData {
             page: target_page,
         }
         .to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::UpdateLogCallbackData;
+    use chrono::NaiveDate;
+    use std::str::FromStr;
+
+    #[test]
+    fn round_trip() {
+        let cd = UpdateLogCallbackData {
+            from: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+            to: NaiveDate::from_ymd_opt(2024, 1, 31).unwrap(),
+            page: 3,
+        };
+        let parsed = UpdateLogCallbackData::from_str(&cd.to_string()).unwrap();
+        assert_eq!(parsed.from, cd.from);
+        assert_eq!(parsed.to, cd.to);
+        assert_eq!(parsed.page, cd.page);
+    }
+
+    #[test]
+    fn page_zero_normalized_to_one() {
+        let parsed = UpdateLogCallbackData::from_str("update_log_2024-01-01_2024-01-31_0").unwrap();
+        assert_eq!(parsed.page, 1);
+    }
+
+    #[test]
+    fn rejects_garbage() {
+        assert!(UpdateLogCallbackData::from_str("not_a_thing").is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_date() {
+        assert!(UpdateLogCallbackData::from_str("update_log_bad-date_2024-01-31_1").is_err());
     }
 }
