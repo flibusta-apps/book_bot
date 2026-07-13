@@ -1,7 +1,7 @@
 pub fn split_text_to_chunks(text: &str, width: usize) -> Vec<String> {
     let mut result: Vec<String> = vec![];
 
-    let chunks = textwrap::wrap(text, 512)
+    let chunks = textwrap::wrap(text, width)
         .into_iter()
         .filter(|text| !text.replace('\r', "").is_empty())
         .map(|text| text.to_string());
@@ -45,5 +45,23 @@ mod tests {
         let result = split_text_to_chunks(input, 512);
 
         assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn wrap_width_is_honored_not_hardcoded() {
+        // 20 chars of plain text, wrapped at width 10, should never
+        // produce a line longer than 10 chars — this fails today because
+        // `textwrap::wrap` is hardcoded to 512 regardless of `width`.
+        let input = "aaaaaaaaaa bbbbbbbbbb";
+        let result = split_text_to_chunks(input, 10);
+        for chunk in &result {
+            for line in chunk.split('\n') {
+                assert!(
+                    line.len() <= 10,
+                    "line {line:?} (len {}) exceeds width 10",
+                    line.len()
+                );
+            }
+        }
     }
 }
