@@ -6,11 +6,7 @@ use chrono::{prelude::*, Duration};
 
 use crate::bots::{
     approved_bot::{
-        modules::utils::{
-            constants::{ERROR_TRY_AGAIN, TELEGRAM_MESSAGE_MAX_LENGTH},
-            message_text::is_message_text_equals,
-            telegram_utils::{safe_edit_message_text, safe_send_message},
-        },
+        modules::utils::{constants::ERROR_TRY_AGAIN, telegram_utils::safe_send_message},
         services::book_library::get_uploaded_books,
         tools::filter_callback_query,
     },
@@ -25,7 +21,7 @@ use teloxide::{
 
 use self::{callback_data::UpdateLogCallbackData, commands::UpdateLogCommand};
 
-use super::utils::pagination::generic_get_pagination_keyboard;
+use super::utils::pagination::{paginate, PaginationTexts};
 
 #[log_handler("update_history")]
 async fn update_log_command(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
@@ -100,92 +96,31 @@ async fn update_log_pagination_handler(
 
     let header = format!("Обновление каталога ({from} - {to}):\n\n");
 
-    let mut items_page = match get_uploaded_books(
-        update_callback_data.page,
-        update_callback_data
-            .from
-            .format("%Y-%m-%d")
-            .to_string()
-            .into(),
-        update_callback_data
-            .to
-            .format("%Y-%m-%d")
-            .to_string()
-            .into(),
-    )
-    .await?
-    {
-        Some(v) => v,
-        None => {
-            safe_send_message(
-                &bot,
-                message.chat().id,
-                "Нет новых книг за этот период.",
-                None,
-            )
-            .await?;
-            return Ok(());
-        }
-    };
+    const NO_NEW_BOOKS: &str = "Нет новых книг за этот период.";
 
-    if items_page.pages == 0 {
-        safe_send_message(
-            &bot,
-            message.chat().id,
-            "Нет новых книг за этот период.",
-            None,
-        )
-        .await?;
-        return Ok(());
-    }
+    let from = update_callback_data.from;
+    let to = update_callback_data.to;
 
-    if update_callback_data.page > items_page.pages {
-        items_page = match get_uploaded_books(
-            items_page.pages,
-            update_callback_data
-                .from
-                .format("%Y-%m-%d")
-                .to_string()
-                .into(),
-            update_callback_data
-                .to
-                .format("%Y-%m-%d")
-                .to_string()
-                .into(),
-        )
-        .await?
-        {
-            Some(v) => v,
-            None => {
-                safe_send_message(
-                    &bot,
-                    message.chat().id,
-                    "Нет новых книг за этот период.",
-                    None,
-                )
-                .await?;
-                return Ok(());
-            }
-        };
-    }
-
-    let page = update_callback_data.page;
-    let total_pages = items_page.pages;
-
-    let formatted_page = items_page.format(page, TELEGRAM_MESSAGE_MAX_LENGTH);
-
-    let message_text = format!("{header}{formatted_page}");
-    if is_message_text_equals(cq.message, &message_text) {
-        return Ok(());
-    }
-
-    let keyboard = generic_get_pagination_keyboard(page, total_pages, update_callback_data, true);
-    safe_edit_message_text(
+    paginate(
         &bot,
         message.chat().id,
         message.id(),
-        message_text,
-        Some(keyboard),
+        cq.message,
+        update_callback_data.page,
+        &header,
+        move |p| {
+            get_uploaded_books(
+                p,
+                from.format("%Y-%m-%d").to_string().into(),
+                to.format("%Y-%m-%d").to_string().into(),
+            )
+        },
+        update_callback_data,
+        PaginationTexts {
+            not_found: NO_NEW_BOOKS,
+            no_items: NO_NEW_BOOKS,
+            error_try_later: None,
+        },
     )
     .await
 }
