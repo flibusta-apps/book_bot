@@ -11,18 +11,12 @@ use teloxide::{
 use self::commands::HelpCommand;
 use super::utils::telegram_utils::safe_send_message_html;
 
-fn escape_html(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-}
-
 #[log_handler("help")]
 pub async fn help_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let name = message
         .from
         .as_ref()
-        .map(|user| escape_html(&user.first_name))
+        .map(|user| teloxide::utils::html::escape(&user.first_name))
         .unwrap_or_else(|| "пользователь".to_string());
 
     safe_send_message_html(

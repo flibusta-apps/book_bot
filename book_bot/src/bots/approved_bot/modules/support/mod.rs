@@ -10,12 +10,6 @@ use teloxide::{
 
 use crate::bots::approved_bot::modules::utils::telegram_utils::safe_send_message_html;
 
-fn escape_html(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-}
-
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase")]
 enum SupportCommand {
@@ -29,10 +23,10 @@ pub async fn support_command_handler(
     bot: &CacheMe<Throttle<Bot>>,
 ) -> BotHandlerInternal {
     let username = match message.from.as_ref() {
-        Some(user) if !user.is_bot => escape_html(&user.first_name),
+        Some(user) if !user.is_bot => teloxide::utils::html::escape(&user.first_name),
         Some(user) if user.is_bot => match message.reply_to_message() {
             Some(v) => match &v.from {
-                Some(v) => escape_html(&v.first_name),
+                Some(v) => teloxide::utils::html::escape(&v.first_name),
                 None => "пользователь".to_string(),
             },
             None => "пользователь".to_string(),
