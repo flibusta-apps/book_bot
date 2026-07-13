@@ -225,64 +225,20 @@ impl FormatVectorsCounts {
         self.sum() > 0
     }
 
-    fn sub(self) -> Self {
-        let Self {
-            mut authors,
-            mut translators,
-            mut sequences,
-            mut genres,
-        } = self;
-
-        if genres > 0 {
-            genres -= 1;
-
-            return Self {
-                authors,
-                translators,
-                sequences,
-                genres,
-            };
+    fn sub(mut self) -> Self {
+        for count in [
+            &mut self.genres,
+            &mut self.sequences,
+            &mut self.translators,
+            &mut self.authors,
+        ] {
+            if *count > 0 {
+                *count -= 1;
+                break;
+            }
         }
 
-        if sequences > 0 {
-            sequences -= 1;
-
-            return Self {
-                authors,
-                translators,
-                sequences,
-                genres,
-            };
-        }
-
-        if translators > 0 {
-            translators -= 1;
-
-            return Self {
-                authors,
-                translators,
-                sequences,
-                genres,
-            };
-        }
-
-        if authors > 0 {
-            authors -= 1;
-
-            return Self {
-                authors,
-                translators,
-                sequences,
-                genres,
-            };
-        }
-
-        Self {
-            authors,
-            translators,
-            sequences,
-            genres,
-        }
+        self
     }
 }
 
@@ -568,7 +524,7 @@ impl Format for SequenceBook {
 
 #[cfg(test)]
 mod tests {
-    use super::format_list;
+    use super::{format_list, FormatVectorsCounts};
 
     #[test]
     fn count_zero_yields_empty_string() {
@@ -597,6 +553,106 @@ mod tests {
         assert_eq!(
             format_list(&items, 2, "Header:\n", |s| s.clone()),
             "Header:\na\nb\nи др.\n"
+        );
+    }
+
+    #[test]
+    fn sub_decrements_genres_first() {
+        let counts = FormatVectorsCounts {
+            authors: 1,
+            translators: 1,
+            sequences: 1,
+            genres: 1,
+        }
+        .sub();
+        assert_eq!(
+            (
+                counts.authors,
+                counts.translators,
+                counts.sequences,
+                counts.genres
+            ),
+            (1, 1, 1, 0)
+        );
+    }
+
+    #[test]
+    fn sub_decrements_sequences_when_genres_already_zero() {
+        let counts = FormatVectorsCounts {
+            authors: 1,
+            translators: 1,
+            sequences: 1,
+            genres: 0,
+        }
+        .sub();
+        assert_eq!(
+            (
+                counts.authors,
+                counts.translators,
+                counts.sequences,
+                counts.genres
+            ),
+            (1, 1, 0, 0)
+        );
+    }
+
+    #[test]
+    fn sub_decrements_translators_when_genres_and_sequences_zero() {
+        let counts = FormatVectorsCounts {
+            authors: 1,
+            translators: 1,
+            sequences: 0,
+            genres: 0,
+        }
+        .sub();
+        assert_eq!(
+            (
+                counts.authors,
+                counts.translators,
+                counts.sequences,
+                counts.genres
+            ),
+            (1, 0, 0, 0)
+        );
+    }
+
+    #[test]
+    fn sub_decrements_authors_last() {
+        let counts = FormatVectorsCounts {
+            authors: 1,
+            translators: 0,
+            sequences: 0,
+            genres: 0,
+        }
+        .sub();
+        assert_eq!(
+            (
+                counts.authors,
+                counts.translators,
+                counts.sequences,
+                counts.genres
+            ),
+            (0, 0, 0, 0)
+        );
+    }
+
+    #[test]
+    fn sub_is_a_no_op_when_all_already_zero() {
+        let counts = FormatVectorsCounts {
+            authors: 0,
+            translators: 0,
+            sequences: 0,
+            genres: 0,
+        }
+        .sub();
+        assert_eq!(
+            (
+                counts.authors,
+                counts.translators,
+                counts.sequences,
+                counts.genres
+            ),
+            (0, 0, 0, 0)
         );
     }
 }
