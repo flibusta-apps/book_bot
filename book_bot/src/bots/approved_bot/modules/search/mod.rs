@@ -59,7 +59,7 @@ where
     let chat_id = cq.chat_id();
     let user_id = cq.from.id;
     let message_id = cq.message.as_ref().map(|message| message.id());
-    let query = get_query(cq.clone());
+    let query = get_query(&cq);
 
     let (chat_id, query, message_id) = match (chat_id, query, message_id) {
         (Some(chat_id), Some(query), Some(message_id)) => (chat_id, query, message_id),
