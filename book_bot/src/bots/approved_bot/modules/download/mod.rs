@@ -1,19 +1,13 @@
+pub mod archive;
 pub mod callback_data;
 pub mod commands;
+pub mod file_send;
 pub mod keyboards;
 
 use super::utils::constants::*;
-use super::utils::telegram_utils::{
-    safe_copy_message, safe_delete_message, safe_edit_message_text, safe_edit_message_text_html,
-    safe_send_document, safe_send_message_with_reply,
-};
+use super::utils::telegram_utils::safe_send_message_with_reply;
 
 use book_bot_macros::log_handler;
-
-use std::time::Duration;
-
-use chrono::Utc;
-use futures::TryStreamExt;
 
 use teloxide::{
     adaptors::{CacheMe, Throttle},
@@ -22,181 +16,33 @@ use teloxide::{
     prelude::*,
     types::*,
 };
-use tokio::time::{self};
-use tracing::log;
 
-use crate::{
-    bots::{
-        approved_bot::{
-            modules::download::callback_data::DownloadArchiveQueryData,
-            services::{
-                batch_downloader::{
-                    create_task, get_task, CreateTaskData, Task, TaskObjectType, TaskStatus,
-                },
-                book_cache::{
-                    download_file, download_file_by_link, get_cached_message,
-                    types::{CachedMessage, DownloadFile},
-                },
-                book_library::{
-                    get_author_books_available_types, get_book, get_sequence_books_available_types,
-                    get_translator_books_available_types,
-                },
-                build_url,
-                donation_notifications::send_donation_notification,
-                user_settings::{
-                    get_user_file_name_lang_for, get_user_or_default_lang_codes, FileNameLang,
-                },
+use crate::bots::{
+    approved_bot::{
+        services::{
+            book_library::{
+                get_author_books_available_types, get_book, get_sequence_books_available_types,
+                get_translator_books_available_types,
             },
-            tools::filter_callback_query,
+            user_settings::get_user_or_default_lang_codes,
         },
-        BotHandlerInternal,
+        tools::filter_callback_query,
     },
-    bots_manager::BotCache,
-    config,
+    BotHandlerInternal,
 };
+use crate::bots_manager::BotCache;
 
 use self::{
-    callback_data::{CheckArchiveStatus, DownloadQueryData},
+    archive::download_archive,
+    callback_data::{CheckArchiveStatus, DownloadArchiveQueryData, DownloadQueryData},
     commands::{DownloadArchiveCommand, StartDownloadCommand},
-    keyboards::{
-        get_check_keyboard, get_download_archive_format_keyboard, get_download_format_keyboard,
-    },
+    file_send::download_handler,
+    keyboards::{get_download_archive_format_keyboard, get_download_format_keyboard},
 };
 
 use super::utils::filter_command::filter_command;
 
-async fn _send_cached(
-    message: &MaybeInaccessibleMessage,
-    bot: &CacheMe<Throttle<Bot>>,
-    cached_message: CachedMessage,
-) -> BotHandlerInternal {
-    safe_copy_message(
-        bot,
-        ChatId(cached_message.chat_id),
-        message.chat().id,
-        MessageId(cached_message.message_id),
-    )
-    .await
-}
-
-async fn send_cached_message(
-    message: MaybeInaccessibleMessage,
-    bot: CacheMe<Throttle<Bot>>,
-    download_data: DownloadQueryData,
-    need_delete_message: bool,
-    cache: BotCache,
-    user_id: Option<u64>,
-) -> BotHandlerInternal {
-    'cached: {
-        if let Ok(v) = get_cached_message(&download_data, cache, user_id).await {
-            let cached = match v {
-                Some(v) => v,
-                None => break 'cached,
-            };
-
-            if _send_cached(&message, &bot, cached).await.is_ok() {
-                if need_delete_message {
-                    if let MaybeInaccessibleMessage::Regular(message) = &message {
-                        let _ = safe_delete_message(&bot, message.chat.id, message.id).await;
-                    }
-                }
-
-                match send_donation_notification(&bot, &message).await {
-                    Ok(_) => (),
-                    Err(err) => log::error!("{err:?}"),
-                }
-
-                return Ok(());
-            }
-        };
-    }
-
-    send_with_download_from_channel(message, bot, download_data, need_delete_message, user_id)
-        .await?;
-
-    Ok(())
-}
-
-async fn _send_downloaded_file(
-    message: &MaybeInaccessibleMessage,
-    bot: &CacheMe<Throttle<Bot>>,
-    downloaded_data: DownloadFile,
-) -> BotHandlerInternal {
-    let DownloadFile {
-        response,
-        filename,
-        caption,
-    } = downloaded_data;
-
-    let stream = response.bytes_stream().map_err(std::io::Error::other);
-    let data = tokio_util::io::StreamReader::new(stream);
-
-    let document = InputFile::read(data).file_name(filename);
-
-    safe_send_document(bot, message.chat().id, document, caption).await?;
-
-    send_donation_notification(bot, message).await?;
-
-    Ok(())
-}
-
-async fn send_with_download_from_channel(
-    message: MaybeInaccessibleMessage,
-    bot: CacheMe<Throttle<Bot>>,
-    download_data: DownloadQueryData,
-    need_delete_message: bool,
-    user_id: Option<u64>,
-) -> BotHandlerInternal {
-    let downloaded_file = match download_file(&download_data, user_id).await? {
-        Some(v) => v,
-        None => {
-            return Ok(());
-        }
-    };
-
-    _send_downloaded_file(&message, &bot, downloaded_file).await?;
-
-    if need_delete_message {
-        if let MaybeInaccessibleMessage::Regular(message) = message {
-            let _ = safe_delete_message(&bot, message.chat.id, message.id).await;
-        };
-    }
-
-    Ok(())
-}
-
-async fn download_handler(
-    message: MaybeInaccessibleMessage,
-    bot: CacheMe<Throttle<Bot>>,
-    cache: BotCache,
-    download_data: DownloadQueryData,
-    need_delete_message: bool,
-    user_id: Option<u64>,
-) -> BotHandlerInternal {
-    match cache {
-        BotCache::Original | BotCache::Cache => {
-            send_cached_message(
-                message,
-                bot,
-                download_data,
-                need_delete_message,
-                cache,
-                user_id,
-            )
-            .await
-        }
-        BotCache::NoCache => {
-            send_with_download_from_channel(
-                message,
-                bot,
-                download_data,
-                need_delete_message,
-                user_id,
-            )
-            .await
-        }
-    }
-}
+use archive::wait_archive;
 
 #[log_handler("download")]
 async fn get_download_keyboard_handler(
@@ -294,255 +140,6 @@ async fn get_download_archive_keyboard_handler(
         Some(keyboard),
     )
     .await?;
-
-    Ok(())
-}
-
-async fn send_error_message(bot: &CacheMe<Throttle<Bot>>, chat_id: ChatId, message_id: MessageId) {
-    let _ = safe_edit_message_text(
-        bot,
-        chat_id,
-        message_id,
-        ERROR_TRY_LATER,
-        Some(InlineKeyboardMarkup {
-            inline_keyboard: vec![],
-        }),
-    )
-    .await;
-}
-
-async fn send_archive_link(
-    bot: &CacheMe<Throttle<Bot>>,
-    chat_id: ChatId,
-    message_id: MessageId,
-    task: &Task,
-) -> BotHandlerInternal {
-    let link = build_url(
-        &config::CONFIG.public_batch_downloader_url,
-        ["api", "download", &task.id],
-    )?
-    .to_string();
-
-    safe_edit_message_text_html(
-        bot,
-        chat_id,
-        message_id,
-        format!(
-            "Файл не может быть загружен в чат! \n \
-                    Вы можете скачать его <a href=\"{link}\">по ссылке</a> (работает 3 часа)"
-        ),
-        Some(InlineKeyboardMarkup {
-            inline_keyboard: vec![],
-        }),
-    )
-    .await?;
-
-    Ok(())
-}
-
-async fn wait_archive(
-    bot: CacheMe<Throttle<Bot>>,
-    task_id: String,
-    input_message: MaybeInaccessibleMessage,
-) -> BotHandlerInternal {
-    let mut interval = time::interval(Duration::from_secs(15));
-
-    let message = match input_message {
-        MaybeInaccessibleMessage::Regular(message) => message,
-        _ => {
-            send_error_message(&bot, input_message.chat().id, input_message.id()).await;
-            return Ok(());
-        }
-    };
-
-    let task = loop {
-        interval.tick().await;
-
-        let task = match get_task(&task_id).await {
-            Ok(v) => v,
-            Err(err) => {
-                send_error_message(&bot, message.chat.id, message.id).await;
-                log::error!("{err:?}");
-                return Err(err);
-            }
-        };
-
-        if !matches!(task.status, TaskStatus::InProgress | TaskStatus::Archiving) {
-            break task;
-        }
-
-        let now = Utc::now().format("%H:%M:%S UTC").to_string();
-
-        safe_edit_message_text(
-            &bot,
-            message.chat.id,
-            message.id,
-            format!(
-                "Статус: \n ⏳ {} \n\nОбновлено в {now}",
-                task.status_description
-            ),
-            Some(get_check_keyboard(task.id)),
-        )
-        .await?;
-    };
-
-    if task.status == TaskStatus::Failed {
-        let is_rate_limit = task
-            .error_message
-            .as_deref()
-            .map(|msg| msg.to_lowercase().contains("rate limit"))
-            .unwrap_or(false);
-
-        if is_rate_limit {
-            log::warn!(
-                "Rate limit hit for user {} on task {}",
-                message.chat.id,
-                task.id
-            );
-            let _ = safe_edit_message_text(
-                &bot,
-                message.chat.id,
-                message.id,
-                RATE_LIMIT_ERROR,
-                Some(InlineKeyboardMarkup {
-                    inline_keyboard: vec![],
-                }),
-            )
-            .await;
-        } else {
-            log::error!("Task {} failed: {:?}", task.id, task.error_message);
-            send_error_message(&bot, message.chat.id, message.id).await;
-        }
-        return Ok(());
-    }
-
-    if task.status != TaskStatus::Complete {
-        send_error_message(&bot, message.chat.id, message.id).await;
-        return Ok(());
-    }
-
-    let Some(content_size) = task.content_size else {
-        send_archive_link(&bot, message.chat.id, message.id, &task).await?;
-        return Ok(());
-    };
-
-    if content_size > 1024 * 1024 * 1024 {
-        send_archive_link(&bot, message.chat.id, message.id, &task).await?;
-        return Ok(());
-    }
-
-    let link = build_url(
-        &config::CONFIG.batch_downloader_url,
-        ["api", "download", &task.id],
-    )?
-    .to_string();
-
-    let downloaded_data = match download_file_by_link(
-        task.result_filename.as_deref().unwrap_or_default(),
-        link,
-    )
-    .await
-    {
-        Ok(v) => match v {
-            Some(v) => v,
-            None => {
-                send_error_message(&bot, message.chat.id, message.id).await;
-                return Ok(());
-            }
-        },
-        Err(err) => {
-            send_error_message(&bot, message.chat.id, message.id).await;
-            log::warn!("{err:?}");
-            return Err(err);
-        }
-    };
-
-    match _send_downloaded_file(
-        &MaybeInaccessibleMessage::Regular(message.clone()),
-        &bot,
-        downloaded_data,
-    )
-    .await
-    {
-        Ok(_) => (),
-        Err(err) => {
-            send_archive_link(&bot, message.chat.id, message.id, &task).await?;
-            log::warn!("{err:?}");
-        }
-    }
-
-    let _ = safe_delete_message(&bot, message.chat.id, message.id).await;
-
-    Ok(())
-}
-
-#[log_handler("download")]
-async fn download_archive(
-    cq: CallbackQuery,
-    download_archive_query_data: DownloadArchiveQueryData,
-    bot: CacheMe<Throttle<Bot>>,
-) -> BotHandlerInternal {
-    let allowed_langs = get_user_or_default_lang_codes(cq.from.id).await;
-
-    let (id, file_type, task_type) = match download_archive_query_data {
-        DownloadArchiveQueryData::Sequence { id, file_type } => {
-            (id, file_type, TaskObjectType::Sequence)
-        }
-        DownloadArchiveQueryData::Author { id, file_type } => {
-            (id, file_type, TaskObjectType::Author)
-        }
-        DownloadArchiveQueryData::Translator { id, file_type } => {
-            (id, file_type, TaskObjectType::Translator)
-        }
-    };
-
-    let Some(message) = cq.message else {
-        return Ok(());
-    };
-
-    let user_id = cq.from.id.0;
-
-    // `normalized` mirrors the cache server's `?normalized=` parameter.
-    // Default for the server is `true` (transliterated names); we send
-    // `false` only when the user opted into original Cyrillic names.
-    let normalized = !matches!(
-        get_user_file_name_lang_for(Some(user_id)).await,
-        FileNameLang::Original
-    );
-
-    let task = create_task(
-        CreateTaskData {
-            object_id: id,
-            object_type: task_type,
-            file_format: file_type,
-            allowed_langs,
-            normalized,
-        },
-        Some(user_id),
-    )
-    .await;
-
-    let task = match task {
-        Ok(v) => v,
-        Err(err) => {
-            send_error_message(&bot, message.chat().id, message.id()).await;
-            log::error!("{err:?}");
-            return Err(err);
-        }
-    };
-
-    safe_edit_message_text(
-        &bot,
-        message.chat().id,
-        message.id(),
-        "⏳ Подготовка архива...",
-        Some(get_check_keyboard(task.id.clone())),
-    )
-    .await?;
-
-    if let Err(err) = wait_archive(bot, task.id, message).await {
-        log::error!("{err:?}");
-    }
 
     Ok(())
 }
