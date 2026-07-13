@@ -66,12 +66,71 @@ impl CommandParse<Self> for DownloadArchiveCommand {
     }
 }
 
+impl DownloadArchiveCommand {
+    pub fn to_query_data(
+        &self,
+        file_type: String,
+    ) -> crate::bots::approved_bot::modules::download::callback_data::DownloadArchiveQueryData {
+        use crate::bots::approved_bot::modules::download::callback_data::DownloadArchiveQueryData;
+
+        match *self {
+            DownloadArchiveCommand::Sequence { id } => {
+                DownloadArchiveQueryData::Sequence { id, file_type }
+            }
+            DownloadArchiveCommand::Author { id } => {
+                DownloadArchiveQueryData::Author { id, file_type }
+            }
+            DownloadArchiveCommand::Translator { id } => {
+                DownloadArchiveQueryData::Translator { id, file_type }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{DownloadArchiveCommand, StartDownloadCommand};
     use crate::bots::approved_bot::modules::utils::filter_command::{
         strip_bot_mention, CommandParse,
     };
+
+    use super::super::callback_data::DownloadArchiveQueryData;
+
+    #[test]
+    fn to_query_data_sequence() {
+        let cmd = DownloadArchiveCommand::Sequence { id: 3 };
+        match cmd.to_query_data("fb2".to_string()) {
+            DownloadArchiveQueryData::Sequence { id, file_type } => {
+                assert_eq!(id, 3);
+                assert_eq!(file_type, "fb2");
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn to_query_data_author() {
+        let cmd = DownloadArchiveCommand::Author { id: 4 };
+        match cmd.to_query_data("epub".to_string()) {
+            DownloadArchiveQueryData::Author { id, file_type } => {
+                assert_eq!(id, 4);
+                assert_eq!(file_type, "epub");
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn to_query_data_translator() {
+        let cmd = DownloadArchiveCommand::Translator { id: 6 };
+        match cmd.to_query_data("zip".to_string()) {
+            DownloadArchiveQueryData::Translator { id, file_type } => {
+                assert_eq!(id, 6);
+                assert_eq!(file_type, "zip");
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
 
     #[test]
     fn round_trip_start_download() {
