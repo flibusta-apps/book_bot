@@ -23,7 +23,7 @@ use crate::bots::{
             book_library::{
                 formatters::{Format, FormatTitle},
                 search_author, search_book, search_sequence, search_translator,
-                types::Page,
+                types::{Empty, Page},
             },
             user_settings::{get_user_default_search, get_user_or_default_lang_codes},
         },
@@ -101,6 +101,23 @@ where
     .await
 }
 
+async fn search_first_page<T, Fut>(
+    query: String,
+    allowed_langs: SmallVec<[SmartString; 3]>,
+    search_fn: fn(String, u32, SmallVec<[SmartString; 3]>) -> Fut,
+) -> anyhow::Result<Option<(String, u32)>>
+where
+    T: Format + Clone + Debug,
+    Fut: std::future::Future<Output = anyhow::Result<Option<Page<T, Empty>>>>,
+{
+    match search_fn(query, 1, allowed_langs).await {
+        Ok(None) => Ok(None),
+        Ok(Some(p)) if p.pages == 0 => Ok(None),
+        Ok(Some(p)) => Ok(Some((p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages))),
+        Err(err) => Err(err),
+    }
+}
+
 #[log_handler("search")]
 pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> BotHandlerInternal {
     let query = message.text().map(|t| t.trim()).filter(|t| !t.is_empty());
@@ -113,130 +130,44 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
             let query_owned = query.to_string();
             let chat_id = message.chat.id;
 
-            let (formatted, pages) = match &search_data {
+            let not_found_text = match &search_data {
+                SearchCallbackData::Book { .. } => BOOKS_NOT_FOUND,
+                SearchCallbackData::Authors { .. } => AUTHORS_NOT_FOUND,
+                SearchCallbackData::Sequences { .. } => SEQUENCES_NOT_FOUND,
+                SearchCallbackData::Translators { .. } => TRANSLATORS_NOT_FOUND,
+            };
+
+            let result = match &search_data {
                 SearchCallbackData::Book { .. } => {
-                    match search_book(query_owned, 1, allowed_langs).await {
-                        Ok(None) => {
-                            safe_send_message_with_reply(
-                                &bot,
-                                chat_id,
-                                BOOKS_NOT_FOUND,
-                                ReplyParameters::new(message.id),
-                                None,
-                            )
-                            .await?;
-                            return Ok(());
-                        }
-                        Ok(Some(p)) if p.pages == 0 => {
-                            safe_send_message_with_reply(
-                                &bot,
-                                chat_id,
-                                BOOKS_NOT_FOUND,
-                                ReplyParameters::new(message.id),
-                                None,
-                            )
-                            .await?;
-                            return Ok(());
-                        }
-                        Ok(Some(p)) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
-                        Err(err) => {
-                            safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
-                            return Err(err);
-                        }
-                    }
+                    search_first_page(query_owned, allowed_langs, search_book).await
                 }
                 SearchCallbackData::Authors { .. } => {
-                    match search_author(query_owned, 1, allowed_langs).await {
-                        Ok(None) => {
-                            safe_send_message_with_reply(
-                                &bot,
-                                chat_id,
-                                AUTHORS_NOT_FOUND,
-                                ReplyParameters::new(message.id),
-                                None,
-                            )
-                            .await?;
-                            return Ok(());
-                        }
-                        Ok(Some(p)) if p.pages == 0 => {
-                            safe_send_message_with_reply(
-                                &bot,
-                                chat_id,
-                                AUTHORS_NOT_FOUND,
-                                ReplyParameters::new(message.id),
-                                None,
-                            )
-                            .await?;
-                            return Ok(());
-                        }
-                        Ok(Some(p)) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
-                        Err(err) => {
-                            safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
-                            return Err(err);
-                        }
-                    }
+                    search_first_page(query_owned, allowed_langs, search_author).await
                 }
                 SearchCallbackData::Sequences { .. } => {
-                    match search_sequence(query_owned, 1, allowed_langs).await {
-                        Ok(None) => {
-                            safe_send_message_with_reply(
-                                &bot,
-                                chat_id,
-                                SEQUENCES_NOT_FOUND,
-                                ReplyParameters::new(message.id),
-                                None,
-                            )
-                            .await?;
-                            return Ok(());
-                        }
-                        Ok(Some(p)) if p.pages == 0 => {
-                            safe_send_message_with_reply(
-                                &bot,
-                                chat_id,
-                                SEQUENCES_NOT_FOUND,
-                                ReplyParameters::new(message.id),
-                                None,
-                            )
-                            .await?;
-                            return Ok(());
-                        }
-                        Ok(Some(p)) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
-                        Err(err) => {
-                            safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
-                            return Err(err);
-                        }
-                    }
+                    search_first_page(query_owned, allowed_langs, search_sequence).await
                 }
                 SearchCallbackData::Translators { .. } => {
-                    match search_translator(query_owned, 1, allowed_langs).await {
-                        Ok(None) => {
-                            safe_send_message_with_reply(
-                                &bot,
-                                chat_id,
-                                TRANSLATORS_NOT_FOUND,
-                                ReplyParameters::new(message.id),
-                                None,
-                            )
-                            .await?;
-                            return Ok(());
-                        }
-                        Ok(Some(p)) if p.pages == 0 => {
-                            safe_send_message_with_reply(
-                                &bot,
-                                chat_id,
-                                TRANSLATORS_NOT_FOUND,
-                                ReplyParameters::new(message.id),
-                                None,
-                            )
-                            .await?;
-                            return Ok(());
-                        }
-                        Ok(Some(p)) => (p.format(1, TELEGRAM_MESSAGE_MAX_LENGTH), p.pages),
-                        Err(err) => {
-                            safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
-                            return Err(err);
-                        }
-                    }
+                    search_first_page(query_owned, allowed_langs, search_translator).await
+                }
+            };
+
+            let (formatted, pages) = match result {
+                Ok(Some(v)) => v,
+                Ok(None) => {
+                    safe_send_message_with_reply(
+                        &bot,
+                        chat_id,
+                        not_found_text,
+                        ReplyParameters::new(message.id),
+                        None,
+                    )
+                    .await?;
+                    return Ok(());
+                }
+                Err(err) => {
+                    safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
+                    return Err(err);
                 }
             };
 
@@ -349,4 +280,68 @@ pub fn get_search_handler() -> crate::bots::BotHandler {
                     },
                 ),
         )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::search_first_page;
+    use crate::bots::approved_bot::services::book_library::types::{Empty, Page, SearchBook};
+    use smallvec::smallvec;
+
+    async fn fake_found(
+        _query: String,
+        _page: u32,
+        _allowed_langs: smallvec::SmallVec<[smartstring::alias::String; 3]>,
+    ) -> anyhow::Result<Option<Page<SearchBook, Empty>>> {
+        Ok(Some(Page {
+            items: vec![],
+            pages: 2,
+            parent_item: None,
+        }))
+    }
+
+    async fn fake_zero_pages(
+        _query: String,
+        _page: u32,
+        _allowed_langs: smallvec::SmallVec<[smartstring::alias::String; 3]>,
+    ) -> anyhow::Result<Option<Page<SearchBook, Empty>>> {
+        Ok(Some(Page {
+            items: vec![],
+            pages: 0,
+            parent_item: None,
+        }))
+    }
+
+    async fn fake_not_found(
+        _query: String,
+        _page: u32,
+        _allowed_langs: smallvec::SmallVec<[smartstring::alias::String; 3]>,
+    ) -> anyhow::Result<Option<Page<SearchBook, Empty>>> {
+        Ok(None)
+    }
+
+    #[tokio::test]
+    async fn returns_formatted_page_and_pages_on_success() {
+        let result = search_first_page("q".to_string(), smallvec!["ru".into()], fake_found)
+            .await
+            .unwrap();
+        let (_, pages) = result.expect("expected Some");
+        assert_eq!(pages, 2);
+    }
+
+    #[tokio::test]
+    async fn returns_none_on_zero_pages() {
+        let result = search_first_page("q".to_string(), smallvec!["ru".into()], fake_zero_pages)
+            .await
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn returns_none_when_search_fn_returns_none() {
+        let result = search_first_page("q".to_string(), smallvec!["ru".into()], fake_not_found)
+            .await
+            .unwrap();
+        assert!(result.is_none());
+    }
 }
