@@ -18,12 +18,7 @@ use teloxide::{
 
 use crate::bots::{
     approved_bot::{
-        modules::utils::{
-            message_text::is_message_text_equals,
-            telegram_utils::{
-                safe_edit_message_text, safe_send_message, safe_send_message_with_reply,
-            },
-        },
+        modules::utils::telegram_utils::{safe_send_message, safe_send_message_with_reply},
         services::{
             book_library::{
                 formatters::{Format, FormatTitle},
@@ -42,7 +37,7 @@ use self::{
     utils::get_query,
 };
 
-use super::utils::pagination::generic_get_pagination_keyboard;
+use super::utils::pagination::{generic_get_pagination_keyboard, paginate, PaginationTexts};
 
 #[log_handler("search")]
 async fn generic_search_pagination_handler<T, P, Fut>(
@@ -81,60 +76,29 @@ where
         SearchCallbackData::Translators { page } => page,
     };
 
-    let mut items_page = match items_getter(query.clone(), page, allowed_langs.clone()).await {
-        Ok(Some(v)) => v,
-        Ok(None) => {
-            let message_text = match search_data {
-                SearchCallbackData::Book { .. } => BOOKS_NOT_FOUND,
-                SearchCallbackData::Authors { .. } => AUTHORS_NOT_FOUND,
-                SearchCallbackData::Sequences { .. } => SEQUENCES_NOT_FOUND,
-                SearchCallbackData::Translators { .. } => TRANSLATORS_NOT_FOUND,
-            };
-
-            safe_send_message(&bot, chat_id, message_text, None).await?;
-            return Ok(());
-        }
-        Err(err) => {
-            safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
-
-            return Err(err);
-        }
+    let not_found_text = match search_data {
+        SearchCallbackData::Book { .. } => BOOKS_NOT_FOUND,
+        SearchCallbackData::Authors { .. } => AUTHORS_NOT_FOUND,
+        SearchCallbackData::Sequences { .. } => SEQUENCES_NOT_FOUND,
+        SearchCallbackData::Translators { .. } => TRANSLATORS_NOT_FOUND,
     };
 
-    if items_page.pages == 0 {
-        let message_text = match search_data {
-            SearchCallbackData::Book { .. } => BOOKS_NOT_FOUND,
-            SearchCallbackData::Authors { .. } => AUTHORS_NOT_FOUND,
-            SearchCallbackData::Sequences { .. } => SEQUENCES_NOT_FOUND,
-            SearchCallbackData::Translators { .. } => TRANSLATORS_NOT_FOUND,
-        };
-
-        safe_send_message(&bot, chat_id, message_text, None).await?;
-        return Ok(());
-    };
-
-    if page > items_page.pages {
-        items_page = match items_getter(query, items_page.pages, allowed_langs).await {
-            Ok(Some(v)) => v,
-            Ok(None) => {
-                safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
-                return Ok(());
-            }
-            Err(err) => {
-                safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
-
-                return Err(err);
-            }
-        };
-    }
-
-    let formatted_page = items_page.format(page, TELEGRAM_MESSAGE_MAX_LENGTH);
-    if is_message_text_equals(cq.message, &formatted_page) {
-        return Ok(());
-    }
-
-    let keyboard = generic_get_pagination_keyboard(page, items_page.pages, search_data, true);
-    safe_edit_message_text(&bot, chat_id, message_id, formatted_page, Some(keyboard)).await
+    paginate(
+        &bot,
+        chat_id,
+        message_id,
+        cq.message,
+        page,
+        "",
+        |p| items_getter(query.clone(), p, allowed_langs.clone()),
+        search_data,
+        PaginationTexts {
+            not_found: not_found_text,
+            no_items: not_found_text,
+            error_try_later: Some(ERROR_TRY_LATER),
+        },
+    )
+    .await
 }
 
 #[log_handler("search")]
