@@ -115,100 +115,24 @@ impl FormatInline for BookTranslator {
     }
 }
 
-fn format_authors(authors: &[BookAuthor], count: usize) -> String {
-    if count == 0 {
+fn format_list<T>(items: &[T], count: usize, header: &str, fmt: impl Fn(&T) -> String) -> String {
+    if count == 0 || items.is_empty() {
         return "".to_string();
     }
 
-    match !authors.is_empty() {
-        true => {
-            let formated_authors = authors[..min(count, authors.len())]
-                .iter()
-                .map(|author| author.format_inline())
-                .collect::<Vec<String>>()
-                .join("\n");
+    let formatted_items = items[..min(count, items.len())]
+        .iter()
+        .map(fmt)
+        .collect::<Vec<String>>()
+        .join("\n");
 
-            let post_fix = if authors.len() > count {
-                "\nи др."
-            } else {
-                ""
-            };
-            format!("Авторы:\n{formated_authors}{post_fix}\n")
-        }
-        false => "".to_string(),
-    }
-}
+    let post_fix = if items.len() > count {
+        "\nи др."
+    } else {
+        ""
+    };
 
-fn format_translators(translators: &[BookTranslator], count: usize) -> String {
-    if count == 0 {
-        return "".to_string();
-    }
-
-    match !translators.is_empty() {
-        true => {
-            let formated_translators = translators[..min(count, translators.len())]
-                .iter()
-                .map(|translator| translator.format_inline())
-                .collect::<Vec<String>>()
-                .join("\n");
-
-            let post_fix = if translators.len() > count {
-                "\nи др."
-            } else {
-                ""
-            };
-            format!("Переводчики:\n{formated_translators}{post_fix}\n")
-        }
-        false => "".to_string(),
-    }
-}
-
-fn format_sequences(sequences: &[Sequence], count: usize) -> String {
-    if count == 0 {
-        return "".to_string();
-    }
-
-    match !sequences.is_empty() {
-        true => {
-            let formated_sequences: String = sequences[..min(count, sequences.len())]
-                .iter()
-                .map(|sequence| sequence.format(NO_LIMIT).result)
-                .collect::<Vec<String>>()
-                .join("\n");
-
-            let post_fix = if sequences.len() > count {
-                "\nи др."
-            } else {
-                ""
-            };
-            format!("Серии:\n{formated_sequences}{post_fix}\n")
-        }
-        false => "".to_string(),
-    }
-}
-
-fn format_genres(genres: &[BookGenre], count: usize) -> String {
-    if count == 0 {
-        return "".to_string();
-    }
-
-    match !genres.is_empty() {
-        true => {
-            let formated_genres: String = genres[..min(count, genres.len())]
-                .iter()
-                .map(|genre| genre.format())
-                .collect::<Vec<String>>()
-                .join("\n");
-
-            let post_fix = if genres.len() > count {
-                "\nи др."
-            } else {
-                ""
-            };
-            format!("Жанры:\n{formated_genres}{post_fix}\n")
-        }
-        false => "".to_string(),
-    }
+    format!("{header}{formatted_items}{post_fix}\n")
 }
 
 impl Format for Author {
@@ -410,10 +334,19 @@ fn format_vectors(
     };
 
     let mut result = FormatVectorsResult {
-        authors: format_authors(authors, counts.authors),
-        translators: format_translators(translators, counts.translators),
-        sequences: format_sequences(sequences, counts.sequences),
-        genres: format_genres(genres, counts.genres),
+        authors: format_list(authors, counts.authors, "Авторы:\n", |a| {
+            a.format_inline()
+        }),
+        translators: format_list(
+            translators,
+            counts.translators,
+            "Переводчики:\n",
+            |t| t.format_inline(),
+        ),
+        sequences: format_list(sequences, counts.sequences, "Серии:\n", |s| {
+            s.format(NO_LIMIT).result
+        }),
+        genres: format_list(genres, counts.genres, "Жанры:\n", |g| g.format()),
         max_result_size: 0,
     };
 
@@ -423,10 +356,19 @@ fn format_vectors(
         counts = counts.sub();
 
         result = FormatVectorsResult {
-            authors: format_authors(authors, counts.authors),
-            translators: format_translators(translators, counts.translators),
-            sequences: format_sequences(sequences, counts.sequences),
-            genres: format_genres(genres, counts.genres),
+            authors: format_list(authors, counts.authors, "Авторы:\n", |a| {
+                a.format_inline()
+            }),
+            translators: format_list(
+                translators,
+                counts.translators,
+                "Переводчики:\n",
+                |t| t.format_inline(),
+            ),
+            sequences: format_list(sequences, counts.sequences, "Серии:\n", |s| {
+                s.format(NO_LIMIT).result
+            }),
+            genres: format_list(genres, counts.genres, "Жанры:\n", |g| g.format()),
             max_result_size: 0,
         };
     }
@@ -621,5 +563,40 @@ impl Format for SequenceBook {
             },
             max_size,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_list;
+
+    #[test]
+    fn count_zero_yields_empty_string() {
+        let items = vec!["a".to_string(), "b".to_string()];
+        assert_eq!(format_list(&items, 0, "Header:\n", |s| s.clone()), "");
+    }
+
+    #[test]
+    fn empty_items_yields_empty_string_even_with_positive_count() {
+        let items: Vec<String> = vec![];
+        assert_eq!(format_list(&items, 5, "Header:\n", |s| s.clone()), "");
+    }
+
+    #[test]
+    fn formats_up_to_count_items_with_header_and_no_suffix_when_exact() {
+        let items = vec!["a".to_string(), "b".to_string()];
+        assert_eq!(
+            format_list(&items, 2, "Header:\n", |s| s.clone()),
+            "Header:\na\nb\n"
+        );
+    }
+
+    #[test]
+    fn truncates_to_count_and_appends_i_dr_suffix_when_more_items_exist() {
+        let items = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        assert_eq!(
+            format_list(&items, 2, "Header:\n", |s| s.clone()),
+            "Header:\na\nb\nи др.\n"
+        );
     }
 }
