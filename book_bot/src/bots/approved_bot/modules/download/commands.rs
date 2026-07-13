@@ -2,7 +2,6 @@ use std::fmt::Display;
 
 use regex::Regex;
 use std::sync::LazyLock;
-use strum_macros::EnumIter;
 
 use crate::bots::approved_bot::modules::utils::{
     errors::CommandParseError, filter_command::CommandParse,
@@ -35,7 +34,7 @@ impl CommandParse<Self> for StartDownloadCommand {
     }
 }
 
-#[derive(Clone, EnumIter)]
+#[derive(Clone)]
 pub enum DownloadArchiveCommand {
     Sequence { id: u32 },
     Author { id: u32 },

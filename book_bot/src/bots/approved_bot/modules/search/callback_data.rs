@@ -2,7 +2,6 @@ use std::{fmt::Display, str::FromStr};
 
 use regex::Regex;
 use std::sync::LazyLock;
-use strum_macros::EnumIter;
 
 use crate::bots::approved_bot::{
     modules::utils::pagination::GetPaginationCallbackData,
@@ -12,7 +11,7 @@ use crate::bots::approved_bot::{
 static RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(?P<search_type>s[abst])_(?P<page>\d+)$").unwrap());
 
-#[derive(Clone, EnumIter)]
+#[derive(Clone)]
 pub enum SearchCallbackData {
     Book { page: u32 },
     Authors { page: u32 },

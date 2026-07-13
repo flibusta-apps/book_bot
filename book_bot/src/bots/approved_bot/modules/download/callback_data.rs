@@ -2,7 +2,6 @@ use std::{fmt::Display, str::FromStr};
 
 use regex::Regex;
 use std::sync::LazyLock;
-use strum_macros::EnumIter;
 
 use crate::bots::approved_bot::modules::utils::errors::{
     CallbackQueryParseError, CommandParseError,
@@ -18,7 +17,7 @@ static RE_ARCHIVE: LazyLock<Regex> = LazyLock::new(|| {
 static RE_CHECK: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^check_da_(?P<task_id>\w+)$").unwrap());
 
-#[derive(Clone, EnumIter)]
+#[derive(Clone)]
 pub enum DownloadQueryData {
     DownloadData { book_id: u32, file_type: String },
 }
@@ -46,7 +45,7 @@ impl FromStr for DownloadQueryData {
     }
 }
 
-#[derive(Clone, EnumIter)]
+#[derive(Clone)]
 pub enum DownloadArchiveQueryData {
     Sequence { id: u32, file_type: String },
     Author { id: u32, file_type: String },
