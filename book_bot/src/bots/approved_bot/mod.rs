@@ -26,8 +26,8 @@ use self::{
 };
 
 use super::{
-    bots_manager::get_manager_handler, ignore_channel_messages, ignore_chat_join_request,
-    ignore_chat_member_update, ignore_user_edited_message, BotCommands, BotHandler,
+    ignore_channel_messages, ignore_chat_join_request, ignore_chat_member_update,
+    ignore_user_edited_message, registration::get_manager_handler, BotCommands, BotHandler,
 };
 
 async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) -> Option<()> {

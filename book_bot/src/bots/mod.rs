@@ -1,5 +1,5 @@
 mod approved_bot;
-pub mod bots_manager;
+pub mod registration;
 
 use teloxide::prelude::*;
 
