@@ -105,7 +105,6 @@ pub async fn safe_edit_message_reply_markup(
 /// - `NotEnoughRights*` → Ok(()) (can't act, suppress)
 /// - `MessageTextIsEmpty` → Ok(()) (suppress, shouldn't crash)
 /// - Other errors → Err
-#[allow(dead_code)]
 pub async fn safe_send_message(
     bot: &CacheMe<Throttle<Bot>>,
     chat_id: ChatId,
@@ -139,7 +138,6 @@ pub async fn safe_send_message(
 /// - `NotEnoughRights*` → Ok(()) (can't act, suppress)
 /// - `MessageTextIsEmpty` → Ok(()) (suppress, shouldn't crash)
 /// - Other errors → Err
-#[allow(dead_code)]
 pub async fn safe_send_message_html(
     bot: &CacheMe<Throttle<Bot>>,
     chat_id: ChatId,
@@ -171,7 +169,6 @@ pub async fn safe_send_message_html(
 /// Safely edit message text with HTML parse mode, handling common Telegram API errors.
 ///
 /// Same error handling as `safe_edit_message_text`, but sets HTML parse mode.
-#[allow(dead_code)]
 pub async fn safe_edit_message_text_html(
     bot: &CacheMe<Throttle<Bot>>,
     chat_id: ChatId,
@@ -226,7 +223,6 @@ pub async fn safe_edit_message_text_html(
 ///
 /// - `NotEnoughRights*` → Ok(()) (can't act, suppress)
 /// - Other errors → Err
-#[allow(dead_code)]
 pub async fn safe_send_document(
     bot: &CacheMe<Throttle<Bot>>,
     chat_id: ChatId,
@@ -257,7 +253,6 @@ pub async fn safe_send_document(
 /// - `MessageToDeleteNotFound` → Ok(()) (message already deleted)
 /// - `NotEnoughRights*` → Ok(()) (can't act, suppress)
 /// - Other errors → Err
-#[allow(dead_code)]
 pub async fn safe_delete_message(
     bot: &CacheMe<Throttle<Bot>>,
     chat_id: ChatId,
@@ -282,7 +277,6 @@ pub async fn safe_delete_message(
 ///
 /// Callback query responses are non-critical UX hints. If they fail
 /// (e.g., the query is too old), there's nothing actionable to do.
-#[allow(dead_code)]
 pub async fn safe_answer_callback_query(
     bot: &CacheMe<Throttle<Bot>>,
     callback_query_id: CallbackQueryId,
@@ -299,7 +293,6 @@ pub async fn safe_answer_callback_query(
 /// Safely answer a callback query with text and optional alert, suppressing all errors.
 ///
 /// Same as `safe_answer_callback_query` but supports text and alert parameters.
-#[allow(dead_code)]
 pub async fn safe_answer_callback_query_with_text(
     bot: &CacheMe<Throttle<Bot>>,
     callback_query_id: CallbackQueryId,

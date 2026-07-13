@@ -2,8 +2,6 @@
 //! whether an error is an expected/normal Telegram API response or a
 //! genuine unexpected error that needs investigation.
 
-#![allow(dead_code)] // Used by custom_error_handler and main.rs Sentry filter
-
 /// Category of a Telegram API error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorCategory {
