@@ -114,8 +114,6 @@ where
     }
 }
 
-// TEMPORARY: removed in Task 8 when book/mod.rs becomes the first caller.
-#[allow(dead_code)]
 pub struct PaginationTexts<'a> {
     /// Sent when the fetcher's first call returns `Ok(None)` (the parent
     /// entity — author/translator/sequence/search query — doesn't exist).
@@ -135,8 +133,6 @@ pub struct PaginationTexts<'a> {
 /// (extracting the query/id from the callback data, building the
 /// `fetcher` closure, and resolving `chat_id`/`message_id` from the
 /// incoming `CallbackQuery`).
-// TEMPORARY: removed in Task 8 when book/mod.rs becomes the first caller.
-#[allow(dead_code)]
 #[allow(clippy::too_many_arguments)]
 pub async fn paginate<T, P, Fut>(
     bot: &CacheMe<Throttle<Bot>>,

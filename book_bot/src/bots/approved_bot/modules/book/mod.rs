@@ -17,10 +17,8 @@ use teloxide::{
     prelude::*,
     types::ReplyParameters,
 };
-use tracing::log;
 
 use crate::bots::approved_bot::{
-    modules::utils::message_text::is_message_text_equals,
     services::{
         book_library::{
             formatters::{Format, FormatTitle},
@@ -36,8 +34,8 @@ use self::{callback_data::BookCallbackData, commands::BookCommand};
 
 use super::utils::{
     filter_command::filter_command,
-    pagination::generic_get_pagination_keyboard,
-    telegram_utils::{safe_edit_message_text, safe_send_message, safe_send_message_with_reply},
+    pagination::{generic_get_pagination_keyboard, paginate, PaginationTexts},
+    telegram_utils::{safe_send_message, safe_send_message_with_reply},
 };
 
 #[log_handler("book")]
@@ -170,53 +168,22 @@ where
 
     let allowed_langs = get_user_or_default_lang_codes(user_id).await;
 
-    let mut items_page = match books_getter(id, page, allowed_langs.clone()).await {
-        Ok(Some(v)) => v,
-        Ok(None) => {
-            match safe_send_message(&bot, chat_id, NOT_FOUND, None).await {
-                Ok(_) => (),
-                Err(err) => log::error!("{err:?}"),
-            }
-            return Ok(());
-        }
-        Err(err) => {
-            match safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await {
-                Ok(_) => (),
-                Err(err) => log::error!("{err:?}"),
-            }
-            return Err(err);
-        }
-    };
-
-    if items_page.pages == 0 {
-        safe_send_message(&bot, chat_id, BOOKS_NOT_FOUND, None).await?;
-        return Ok(());
-    };
-
-    if page > items_page.pages {
-        items_page = match books_getter(id, items_page.pages, allowed_langs).await {
-            Ok(Some(v)) => v,
-            Ok(None) => {
-                safe_send_message(&bot, chat_id, NOT_FOUND, None).await?;
-                return Ok(());
-            }
-            Err(err) => {
-                safe_send_message(&bot, chat_id, ERROR_TRY_LATER, None).await?;
-
-                return Err(err);
-            }
-        };
-    }
-
-    let formatted_page = items_page.format(page, TELEGRAM_MESSAGE_MAX_LENGTH);
-
-    let keyboard = generic_get_pagination_keyboard(page, items_page.pages, callback_data, true);
-
-    if is_message_text_equals(cq.message, &formatted_page) {
-        return Ok(());
-    }
-
-    safe_edit_message_text(&bot, chat_id, message_id, formatted_page, Some(keyboard)).await
+    paginate(
+        &bot,
+        chat_id,
+        message_id,
+        cq.message,
+        page,
+        "",
+        |p| books_getter(id, p, allowed_langs.clone()),
+        callback_data,
+        PaginationTexts {
+            not_found: NOT_FOUND,
+            no_items: BOOKS_NOT_FOUND,
+            error_try_later: Some(ERROR_TRY_LATER),
+        },
+    )
+    .await
 }
 
 pub fn get_book_handler() -> crate::bots::BotHandler {
