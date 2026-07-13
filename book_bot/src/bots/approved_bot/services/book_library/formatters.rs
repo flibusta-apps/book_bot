@@ -5,7 +5,7 @@ use crate::bots::approved_bot::modules::download::commands::{
 };
 
 use super::types::{
-    Author, AuthorBook, Book, BookAuthor, BookGenre, BookTranslator, Empty, SearchBook, Sequence,
+    Author, AuthorBook, Book, BookGenre, Empty, Person, PersonKind, SearchBook, Sequence,
     SequenceBook, Translator, TranslatorBook,
 };
 
@@ -37,39 +37,24 @@ impl FormatTitle for Empty {
     }
 }
 
-impl FormatTitle for BookAuthor {
+impl FormatTitle for Person {
     fn format_title(&self) -> String {
-        let BookAuthor {
+        let Person {
             id,
             last_name,
             first_name,
             middle_name,
+            kind,
         } = self;
 
         if *id == 0 {
             return "".to_string();
         }
 
-        let command = (DownloadArchiveCommand::Author { id: *id }).to_string();
-
-        format!("👤 {last_name} {first_name} {middle_name}\nСкачать все книги архивом: {command}")
-    }
-}
-
-impl FormatTitle for BookTranslator {
-    fn format_title(&self) -> String {
-        let BookTranslator {
-            id,
-            first_name,
-            last_name,
-            middle_name,
-        } = self;
-
-        if *id == 0 {
-            return "".to_string();
-        }
-
-        let command = (DownloadArchiveCommand::Translator { id: *id }).to_string();
+        let command = match kind {
+            PersonKind::Author => (DownloadArchiveCommand::Author { id: *id }).to_string(),
+            PersonKind::Translator => (DownloadArchiveCommand::Translator { id: *id }).to_string(),
+        };
 
         format!("👤 {last_name} {first_name} {middle_name}\nСкачать все книги архивом: {command}")
     }
@@ -89,29 +74,22 @@ impl FormatTitle for Sequence {
     }
 }
 
-impl FormatInline for BookAuthor {
+impl FormatInline for Person {
     fn format_inline(&self) -> String {
-        let BookAuthor {
+        let Person {
             id,
             last_name,
             first_name,
             middle_name,
+            kind,
         } = self;
 
-        format!("👤 {last_name} {first_name} {middle_name} /a_{id}")
-    }
-}
+        let prefix = match kind {
+            PersonKind::Author => "a",
+            PersonKind::Translator => "t",
+        };
 
-impl FormatInline for BookTranslator {
-    fn format_inline(&self) -> String {
-        let BookTranslator {
-            id,
-            first_name,
-            last_name,
-            middle_name,
-        } = self;
-
-        format!("👤 {last_name} {first_name} {middle_name} /t_{id}")
+        format!("👤 {last_name} {first_name} {middle_name} /{prefix}_{id}")
     }
 }
 
@@ -276,8 +254,8 @@ impl FormatVectorsResult {
 }
 
 fn format_vectors(
-    authors: &[BookAuthor],
-    translators: &[BookTranslator],
+    authors: &[Person],
+    translators: &[Person],
     sequences: &[Sequence],
     genres: &[BookGenre],
     max_size: usize,
@@ -337,8 +315,8 @@ struct FormatData<'a> {
     pub title: &'a str,
     pub lang: &'a str,
     pub annotation_exists: bool,
-    pub authors: &'a [BookAuthor],
-    pub translators: &'a [BookTranslator],
+    pub authors: &'a [Person],
+    pub translators: &'a [Person],
     pub sequences: &'a [Sequence],
     pub genres: &'a [BookGenre],
     pub year: i32,
@@ -524,7 +502,55 @@ impl Format for SequenceBook {
 
 #[cfg(test)]
 mod tests {
-    use super::{format_list, FormatVectorsCounts};
+    use super::super::types::{Person, PersonKind};
+    use super::{format_list, FormatInline, FormatTitle, FormatVectorsCounts};
+
+    fn make_person(kind: PersonKind) -> Person {
+        Person {
+            id: 7,
+            first_name: "F".to_string(),
+            last_name: "L".to_string(),
+            middle_name: "M".to_string(),
+            kind,
+        }
+    }
+
+    #[test]
+    fn format_inline_uses_a_prefix_for_authors() {
+        let p = make_person(PersonKind::Author);
+        assert_eq!(p.format_inline(), "👤 L F M /a_7");
+    }
+
+    #[test]
+    fn format_inline_uses_t_prefix_for_translators() {
+        let p = make_person(PersonKind::Translator);
+        assert_eq!(p.format_inline(), "👤 L F M /t_7");
+    }
+
+    #[test]
+    fn format_title_is_empty_for_id_zero() {
+        let mut p = make_person(PersonKind::Author);
+        p.id = 0;
+        assert_eq!(p.format_title(), "");
+    }
+
+    #[test]
+    fn format_title_uses_author_archive_command() {
+        let p = make_person(PersonKind::Author);
+        assert_eq!(
+            p.format_title(),
+            "👤 L F M\nСкачать все книги архивом: /da_a_7"
+        );
+    }
+
+    #[test]
+    fn format_title_uses_translator_archive_command() {
+        let p = make_person(PersonKind::Translator);
+        assert_eq!(
+            p.format_title(),
+            "👤 L F M\nСкачать все книги архивом: /da_t_7"
+        );
+    }
 
     #[test]
     fn count_zero_yields_empty_string() {

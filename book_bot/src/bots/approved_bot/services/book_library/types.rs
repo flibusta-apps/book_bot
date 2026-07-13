@@ -4,20 +4,46 @@ use smallvec::SmallVec;
 
 use super::formatters::{Format, FormatResult, FormatTitle};
 
-#[derive(Default, Deserialize, Debug, Clone)]
-pub struct BookAuthor {
-    pub id: u32,
-    pub first_name: String,
-    pub last_name: String,
-    pub middle_name: String,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PersonKind {
+    Author,
+    Translator,
 }
 
-#[derive(Default, Deserialize, Debug, Clone)]
-pub struct BookTranslator {
+#[derive(Deserialize, Debug, Clone)]
+pub struct Person {
     pub id: u32,
     pub first_name: String,
     pub last_name: String,
     pub middle_name: String,
+    #[serde(skip, default = "default_person_kind")]
+    pub kind: PersonKind,
+}
+
+fn default_person_kind() -> PersonKind {
+    PersonKind::Author
+}
+
+fn deserialize_authors<'de, D>(d: D) -> Result<Vec<Person>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let mut people = Vec::<Person>::deserialize(d)?;
+    for p in &mut people {
+        p.kind = PersonKind::Author;
+    }
+    Ok(people)
+}
+
+fn deserialize_translators<'de, D>(d: D) -> Result<Vec<Person>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let mut people = Vec::<Person>::deserialize(d)?;
+    for p in &mut people {
+        p.kind = PersonKind::Translator;
+    }
+    Ok(people)
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -69,6 +95,10 @@ pub struct Genre {
 #[derive(Default, Deserialize, Debug, Clone)]
 pub struct Empty {}
 
+fn none_parent_item<P>() -> Option<P> {
+    None
+}
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct Page<T, P> {
     pub items: Vec<T>,
@@ -79,7 +109,7 @@ pub struct Page<T, P> {
     // pub size: u32,
     pub pages: u32,
 
-    #[serde(default)]
+    #[serde(default = "none_parent_item")]
     pub parent_item: Option<P>,
 }
 
@@ -198,8 +228,10 @@ pub struct Book {
     pub lang: String,
     pub available_types: SmallVec<[String; 4]>,
     pub annotation_exists: bool,
-    pub authors: Vec<BookAuthor>,
-    pub translators: Vec<BookTranslator>,
+    #[serde(deserialize_with = "deserialize_authors")]
+    pub authors: Vec<Person>,
+    #[serde(deserialize_with = "deserialize_translators")]
+    pub translators: Vec<Person>,
     pub sequences: Vec<Sequence>,
     pub genres: Vec<BookGenre>,
     pub year: i32,
@@ -213,8 +245,10 @@ pub struct SearchBook {
     pub title: String,
     pub lang: String,
     pub annotation_exists: bool,
-    pub authors: Vec<BookAuthor>,
-    pub translators: Vec<BookTranslator>,
+    #[serde(deserialize_with = "deserialize_authors")]
+    pub authors: Vec<Person>,
+    #[serde(deserialize_with = "deserialize_translators")]
+    pub translators: Vec<Person>,
     pub sequences: Vec<Sequence>,
     pub year: i32,
 }
@@ -225,7 +259,8 @@ pub struct AuthorBook {
     pub title: String,
     pub lang: String,
     pub annotation_exists: bool,
-    pub translators: Vec<BookTranslator>,
+    #[serde(deserialize_with = "deserialize_translators")]
+    pub translators: Vec<Person>,
     pub sequences: Vec<Sequence>,
     pub year: i32,
 }
@@ -236,7 +271,8 @@ pub struct TranslatorBook {
     pub title: String,
     pub lang: String,
     pub annotation_exists: bool,
-    pub authors: Vec<BookAuthor>,
+    #[serde(deserialize_with = "deserialize_authors")]
+    pub authors: Vec<Person>,
     pub sequences: Vec<Sequence>,
     pub year: i32,
 }
@@ -246,8 +282,10 @@ pub struct SequenceBook {
     pub id: u32,
     pub title: String,
     pub lang: String,
-    pub authors: Vec<BookAuthor>,
-    pub translators: Vec<BookTranslator>,
+    #[serde(deserialize_with = "deserialize_authors")]
+    pub authors: Vec<Person>,
+    #[serde(deserialize_with = "deserialize_translators")]
+    pub translators: Vec<Person>,
     pub annotation_exists: bool,
     pub year: i32,
     pub position: i32,

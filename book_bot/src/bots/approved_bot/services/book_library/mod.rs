@@ -167,7 +167,7 @@ pub async fn get_author_books(
     id: u32,
     page: u32,
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<Option<types::Page<types::AuthorBook, types::BookAuthor>>> {
+) -> anyhow::Result<Option<types::Page<types::AuthorBook, types::Person>>> {
     let mut params = get_allowed_langs_params(&allowed_langs);
 
     params.push(("page", page.to_string().into()));
@@ -180,17 +180,25 @@ pub async fn get_translator_books(
     id: u32,
     page: u32,
     allowed_langs: SmallVec<[SmartString; 3]>,
-) -> anyhow::Result<Option<types::Page<types::TranslatorBook, types::BookTranslator>>> {
+) -> anyhow::Result<Option<types::Page<types::TranslatorBook, types::Person>>> {
     let mut params = get_allowed_langs_params(&allowed_langs);
 
     params.push(("page", page.to_string().into()));
     params.push(("size", PAGE_SIZE.to_string().into()));
 
-    _make_request(
+    let mut result: Option<types::Page<types::TranslatorBook, types::Person>> = _make_request(
         &["api", "v1", "translators", &id.to_string(), "books"],
         params,
     )
-    .await
+    .await?;
+
+    if let Some(page) = result.as_mut() {
+        if let Some(parent) = page.parent_item.as_mut() {
+            parent.kind = types::PersonKind::Translator;
+        }
+    }
+
+    Ok(result)
 }
 
 pub async fn get_sequence_books(
