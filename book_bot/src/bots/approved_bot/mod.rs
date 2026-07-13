@@ -9,9 +9,7 @@ use teloxide::{
 };
 
 use crate::{
-    bots::approved_bot::services::user_settings::{
-        create_or_update_user_settings, get_user_settings,
-    },
+    bots::approved_bot::services::user_settings::{get_user_settings, save_user_settings},
     bots_manager::USER_ACTIVITY_CACHE,
 };
 
@@ -47,18 +45,9 @@ async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) 
                 .map(|s| s.file_name_lang)
                 .unwrap_or_default();
 
-            if create_or_update_user_settings(
-                user.id,
-                &user.last_name.unwrap_or("".to_string()),
-                &user.first_name,
-                &user.username.unwrap_or("".to_string()),
-                &me.username.clone().unwrap_or("".to_string()),
-                allowed_langs,
-                default_search,
-                file_name_lang,
-            )
-            .await
-            .is_ok()
+            if save_user_settings(&user, &me, allowed_langs, default_search, file_name_lang)
+                .await
+                .is_ok()
             {
                 update_result = update_user_activity(user.id).await;
             }

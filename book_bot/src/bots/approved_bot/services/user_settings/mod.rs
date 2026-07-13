@@ -198,6 +198,30 @@ pub async fn create_or_update_user_settings(
         .ok_or_else(|| anyhow::anyhow!("user-settings service returned an empty response"))
 }
 
+/// Thin wrapper around `create_or_update_user_settings` that does the
+/// `Option<String>` → `&str` unpacking shared by every settings-mutation
+/// call site (`settings::mod`'s three handlers, and the background
+/// activity-update fallback in `approved_bot::mod`).
+pub async fn save_user_settings(
+    user: &teloxide::types::User,
+    me: &teloxide::types::Me,
+    allowed_langs: SmallVec<[SmartString; 3]>,
+    default_search: Option<DefaultSearchType>,
+    file_name_lang: FileNameLang,
+) -> anyhow::Result<UserSettings> {
+    create_or_update_user_settings(
+        user.id,
+        user.last_name.as_deref().unwrap_or(""),
+        &user.first_name,
+        user.username.as_deref().unwrap_or(""),
+        me.username.as_deref().unwrap_or_default(),
+        allowed_langs,
+        default_search,
+        file_name_lang,
+    )
+    .await
+}
+
 /// Returns the user's default search type from the shared settings cache.
 /// `None` if not set, the user has no settings, or the request failed.
 pub async fn get_user_default_search(user_id: UserId) -> Option<DefaultSearchType> {

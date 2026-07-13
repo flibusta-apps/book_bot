@@ -15,8 +15,8 @@ use crate::bots::{
             safe_edit_message_reply_markup, safe_edit_message_text, safe_send_message,
         },
         services::user_settings::{
-            create_or_update_user_settings, get_langs, get_user_or_default_lang_codes,
-            get_user_settings, DefaultSearchType, FileNameLang, Lang,
+            get_langs, get_user_or_default_lang_codes, get_user_settings, save_user_settings,
+            DefaultSearchType, FileNameLang, Lang,
         },
         tools::filter_callback_query,
     },
@@ -302,18 +302,9 @@ async fn settings_callback_handler(
                 .as_ref()
                 .map(|s| s.file_name_lang)
                 .unwrap_or_default();
-            if create_or_update_user_settings(
-                user.id,
-                &user.last_name.unwrap_or("".to_string()),
-                &user.first_name,
-                user.username.as_deref().unwrap_or(""),
-                me.username.as_deref().unwrap_or_default(),
-                allowed_langs,
-                default_search,
-                file_name_lang,
-            )
-            .await
-            .is_err()
+            if save_user_settings(&user, &me, allowed_langs, default_search, file_name_lang)
+                .await
+                .is_err()
             {
                 safe_answer_callback_query_with_text(
                     &bot,
@@ -349,18 +340,9 @@ async fn settings_callback_handler(
                 None => get_user_or_default_lang_codes(user.id).await,
             };
             let default_search = current.as_ref().and_then(|s| s.default_search);
-            if create_or_update_user_settings(
-                user.id,
-                &user.last_name.unwrap_or("".to_string()),
-                &user.first_name,
-                user.username.as_deref().unwrap_or(""),
-                me.username.as_deref().unwrap_or_default(),
-                allowed_langs,
-                default_search,
-                file_name_lang,
-            )
-            .await
-            .is_err()
+            if save_user_settings(&user, &me, allowed_langs, default_search, file_name_lang)
+                .await
+                .is_err()
             {
                 safe_answer_callback_query_with_text(
                     &bot,
@@ -428,12 +410,9 @@ async fn settings_callback_handler(
         .map(|s| s.file_name_lang)
         .unwrap_or_default();
 
-    if let Err(err) = create_or_update_user_settings(
-        user.id,
-        &user.last_name.unwrap_or("".to_string()),
-        &user.first_name,
-        &user.username.unwrap_or("".to_string()),
-        me.username.as_deref().unwrap_or_default(),
+    if let Err(err) = save_user_settings(
+        &user,
+        &me,
         allowed_langs_set.clone().into_iter().collect(),
         default_search,
         file_name_lang,
