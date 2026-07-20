@@ -1,23 +1,27 @@
-use std::fmt;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("failed to parse callback query data")]
 pub struct CallbackQueryParseError;
 
-impl fmt::Display for CallbackQueryParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-impl std::error::Error for CallbackQueryParseError {}
-
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("failed to parse command")]
 pub struct CommandParseError;
 
-impl fmt::Display for CommandParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn callback_query_parse_error_has_readable_message() {
+        assert_eq!(
+            CallbackQueryParseError.to_string(),
+            "failed to parse callback query data"
+        );
+    }
+
+    #[test]
+    fn command_parse_error_has_readable_message() {
+        assert_eq!(CommandParseError.to_string(), "failed to parse command");
     }
 }
-
-impl std::error::Error for CommandParseError {}
