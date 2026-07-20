@@ -67,7 +67,7 @@ async fn set_webhook_with_retry(bot_data: &BotData, max_retries: u32) -> bool {
 
     let host = format!(
         "{}:{}",
-        &config::CONFIG.webhook_base_url,
+        config::CONFIG.webhook_base_url,
         config::CONFIG.webhook_port
     );
     let url = Url::parse(&format!("{host}/{token}/"))
