@@ -25,9 +25,6 @@ pub fn mask_uri_path(path: &str) -> String {
 /// appending `…` when truncated. Char-based (not byte-based) so it never
 /// panics on multi-byte UTF-8 input, unlike `mask_token`'s byte slicing
 /// (which is safe there only because bot tokens are ASCII).
-// Not yet used outside tests until the following commit wires it into
-// axum_server.rs; suppresses the dead_code lint for that one intermediate commit.
-#[allow(dead_code)]
 pub fn truncate_for_log(s: &str, max_chars: usize) -> String {
     if s.chars().count() <= max_chars {
         s.to_string()

@@ -17,7 +17,7 @@ use tower_http::trace::{self, TraceLayer};
 use tracing::log;
 use tracing::Level;
 
-use crate::bots_manager::utils::{mask_token, mask_uri_path};
+use crate::bots_manager::utils::{mask_token, mask_uri_path, truncate_for_log};
 use crate::bots_manager::{internal::start_bot, BOTS_DATA, BOTS_ROUTES};
 use crate::config;
 
@@ -105,6 +105,11 @@ pub async fn start_axum_server(
 
         match serde_json::from_str::<Update>(&input) {
             Ok(mut update) => {
+                // teloxide-core parses updates it doesn't recognize into
+                // `UpdateKind::Error(Value::default())`, discarding the raw
+                // payload in the process. Re-parse the same input as a bare
+                // `Value` here so downstream handlers still see the original
+                // update body instead of an empty default.
                 if let UpdateKind::Error(value) = &mut update.kind {
                     *value = serde_json::from_str(&input).unwrap_or_default();
                 }
@@ -129,10 +134,10 @@ pub async fn start_axum_server(
                 }
             }
             Err(error) => {
-                log::error!(
-                    "Cannot parse an update.\nError: {error:?}\nValue: {input}\n\
-                     This is a bug in teloxide-core, please open an issue here: \
-                     https://github.com/teloxide/teloxide/issues."
+                log::error!("Failed to parse incoming Telegram update: {error}");
+                log::debug!(
+                    "Malformed update payload: {}",
+                    truncate_for_log(&input, 2000)
                 );
             }
         };
