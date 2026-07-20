@@ -6,7 +6,7 @@ A Telegram bot that serves book search, download, and annotation lookups, backed
 
 - **`bots_manager`** (`book_bot/src/bots_manager`) — polls a manager service (`MANAGER_URL`) for the list of approved bot tokens and spins up one Telegram long-polling bot instance per token.
 - **Approved bot** (`book_bot/src/bots/approved_bot`) — the actual command/callback handlers (search, download, annotations, settings, update history, random).
-- **Webhook server** (`axum`, wired in `main.rs`) — exposes a `/health` endpoint (used by the Docker `HEALTHCHECK`) and Prometheus metrics via `axum-prometheus`.
+- **Webhook server** (`axum`, in `book_bot/src/bots_manager/axum_server.rs`, started from `main.rs`) — exposes a `/health` endpoint (used by the Docker `HEALTHCHECK`) and Prometheus metrics via `axum-prometheus`.
 - **External services** the bot talks to over HTTP, each with its own base URL + API key: a book manager/registration service, a user-settings service, a book-library/annotations service, a cache service, and a batch-downloader service. See the env table below.
 - Errors are tracked via Sentry (`sentry` + `sentry-tracing`) when `SENTRY_DSN` is set; logs go through `tracing`, filtered by `RUST_LOG`.
 
@@ -34,16 +34,48 @@ All variables below are read once at startup by `Config::load()` in `book_bot/sr
 | `SENTRY_DSN` | no | Sentry DSN; error reporting is skipped entirely if unset |
 | `RUST_LOG` | no | `tracing`/`EnvFilter` directive (e.g. `debug,tower_http=warn`); defaults to `info` |
 
-`test_env/dev.env` has a working example set of values for local development (against the mock services described below), and `test_env/db.json` shows the shape the manager service returns (`token`, `status`, `cache` per bot).
+`test_env/` is a **gitignored, developer-local** directory (see `.gitignore`) for local-only secrets and mock-service scaffolding — it is never committed, so it does not exist after a fresh clone. Set it up yourself as described below.
 
 ## Running locally
 
-1. Start the local dependencies (a local Telegram Bot API server + a mock manager service):
-   ```bash
-   cd test_env
-   docker compose up
+1. Recreate `test_env/docker-compose.yml` with a local Telegram Bot API server and a mock manager service:
+   ```yaml
+   services:
+     telegram_bot_api:
+       image: aiogram/telegram-bot-api:latest
+       environment:
+         TELEGRAM_LOCAL: 1
+         TELEGRAM_API_ID: 39920
+         TELEGRAM_API_HASH: 0f4dd1c80b30e70e2af60ef61f6ded02
+       ports:
+         - 8081:8081
+         - 8082:8082
+
+     json_server:
+       image: clue/json-server
+       command: --watch /data/db.json
+       ports:
+         - 3000:80
+       volumes:
+         - ./db.json:/data/db.json
    ```
-2. Load the example env and run the bot:
+   (`TELEGRAM_API_ID`/`TELEGRAM_API_HASH` above are the standard public test credentials used with a local `telegram-bot-api` instance, not a secret specific to this project.)
+
+2. Add `test_env/db.json`, the mock response `MANAGER_URL` needs to return — one entry per bot token you want to test with:
+   ```json
+   {
+     "api": [
+       { "id": 1, "token": "<your test bot token>", "status": "approved", "cache": "no_cache" }
+     ]
+   }
+   ```
+
+3. Start the mocks:
+   ```bash
+   cd test_env && docker compose up
+   ```
+
+4. Create `test_env/dev.env` with `export VAR=value` lines for **every required variable** in the table above (all 15 — a partial file will panic at startup on the first missing one), then load it and run the bot:
    ```bash
    source test_env/dev.env
    cargo run --bin book_bot
@@ -55,10 +87,10 @@ The production image is built from `docker/build.dockerfile` (multi-stage: `carg
 
 ```bash
 docker build -f docker/build.dockerfile -t book_bot .
-docker run --env-file test_env/dev.env -p 8080:8080 book_bot
+docker run --env-file test_env/dev.env -p <WEBHOOK_PORT>:<WEBHOOK_PORT> book_bot
 ```
 
-The container's `HEALTHCHECK` polls `http://localhost:${WEBHOOK_PORT}/health`.
+Map the port to whatever `WEBHOOK_PORT` you set in `test_env/dev.env` — the container's `HEALTHCHECK` polls `http://localhost:${WEBHOOK_PORT}/health`.
 
 ## Tests
 
