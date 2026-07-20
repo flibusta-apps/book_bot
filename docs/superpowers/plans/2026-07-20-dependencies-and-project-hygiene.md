@@ -426,8 +426,10 @@ The production image is built from `docker/build.dockerfile` (multi-stage: `carg
 
 ```bash
 docker build -f docker/build.dockerfile -t book_bot .
-docker run --env-file test_env/dev.env -p <WEBHOOK_PORT>:<WEBHOOK_PORT> book_bot
+docker run --env-file <(sed 's/^export //' test_env/dev.env) -p <WEBHOOK_PORT>:<WEBHOOK_PORT> book_bot
 ```
+
+Docker's `--env-file` expects plain `KEY=VALUE` lines and does not strip a leading `export ` — the `sed` above converts `test_env/dev.env`'s `export KEY=VALUE` lines (needed for `source` in "Running locally") into the format `--env-file` accepts.
 
 Map the port to whatever `WEBHOOK_PORT` you set in `test_env/dev.env` — the container's `HEALTHCHECK` polls `http://localhost:${WEBHOOK_PORT}/health`.
 
@@ -439,7 +441,7 @@ cargo test --workspace
 
 ## Dependency hygiene
 
-- `Cargo.lock` currently pins duplicate major versions of a few transitive crates (e.g. two `http` majors pulled in by `axum`/`reqwest`/`teloxide`, three `rand` majors, multiple `windows-sys` majors). This is expected in a 380+ package dependency tree with several independently-versioned ecosystems (axum vs. teloxide vs. reqwest) and isn't independently fixable without upstream changes.
+- `Cargo.lock` currently pins duplicate major versions of a few transitive crates (e.g. two `http` majors pulled in by `axum`/`reqwest`/`teloxide`, three `rand` majors, multiple `windows-sys` majors, two `syn` majors via `thiserror-impl`). This is expected in a 380+ package dependency tree with several independently-versioned ecosystems (axum vs. teloxide vs. reqwest) and isn't independently fixable without upstream changes.
 - Periodically run `cargo update` and `cargo tree -d` to check whether any duplication has become prunable, and `cargo tree -i <crate>@<version>` to find which direct dependency pulls in a specific duplicate.
 ```
 
