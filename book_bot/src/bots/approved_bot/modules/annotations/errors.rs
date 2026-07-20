@@ -1,17 +1,27 @@
-use std::fmt;
+use thiserror::Error;
 
 use super::commands::AnnotationCommand;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("annotation text for {command:?} is not normal text: {text:?}")]
 pub struct AnnotationFormatError {
-    pub _command: AnnotationCommand,
-    pub _text: String,
+    pub command: AnnotationCommand,
+    pub text: String,
 }
 
-impl fmt::Display for AnnotationFormatError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{self:?}")
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bots::approved_bot::modules::annotations::commands::AnnotationCommand;
+
+    #[test]
+    fn message_includes_command_and_text() {
+        let err = AnnotationFormatError {
+            command: AnnotationCommand::Book { id: 42 },
+            text: "   \n  ".to_string(),
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("Book"));
+        assert!(msg.contains("42"));
     }
 }
-
-impl std::error::Error for AnnotationFormatError {}
