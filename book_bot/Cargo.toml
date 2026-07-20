@@ -47,8 +47,7 @@ teloxide = { version = "0.17.0", features = [
 # Utilities and helpers
 url = "2.5.4"
 
-strum = "0.27.1"
-strum_macros = "0.27.1"
+strum = { version = "0.27", features = ["derive"] }
 
 base64 = "0.22.1"
 textwrap = "0.16.2"
