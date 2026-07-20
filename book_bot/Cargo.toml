@@ -54,7 +54,6 @@ base64 = "0.22.1"
 textwrap = "0.16.2"
 regex = "1.11.1"
 chrono = "0.4.40"
-dateparser = "0.2.1"
 
 smallvec = { version = "1.14.0", features = ["serde"] }
 smartstring = { version = "1.0.1", features = ["serde"] }

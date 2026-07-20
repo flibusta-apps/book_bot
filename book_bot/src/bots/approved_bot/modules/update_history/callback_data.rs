@@ -1,7 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
 use chrono::NaiveDate;
-use dateparser::parse;
 use regex::Regex;
 use std::sync::LazyLock;
 
@@ -25,12 +24,10 @@ impl FromStr for UpdateLogCallbackData {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let caps = RE.captures(s).ok_or(strum::ParseError::VariantNotFound)?;
 
-        let from: NaiveDate = parse(&caps["from"])
-            .map_err(|_| strum::ParseError::VariantNotFound)?
-            .date_naive();
-        let to: NaiveDate = parse(&caps["to"])
-            .map_err(|_| strum::ParseError::VariantNotFound)?
-            .date_naive();
+        let from = NaiveDate::parse_from_str(&caps["from"], "%Y-%m-%d")
+            .map_err(|_| strum::ParseError::VariantNotFound)?;
+        let to = NaiveDate::parse_from_str(&caps["to"], "%Y-%m-%d")
+            .map_err(|_| strum::ParseError::VariantNotFound)?;
         let page: u32 = caps["page"]
             .parse()
             .map_err(|_| strum::ParseError::VariantNotFound)?;
