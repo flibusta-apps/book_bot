@@ -1,3 +1,4 @@
+use futures::StreamExt;
 use reqwest::header::RETRY_AFTER;
 use serde::Deserialize;
 use std::time::Duration;
@@ -46,6 +47,11 @@ pub struct RateLimitInfo {
 /// Default wait when neither `Retry-After` header nor body `retry_after_secs` is present.
 const DEFAULT_RETRY_AFTER_SECS: u64 = 5;
 
+/// Upper bound on how many bytes of a 429 response body we'll buffer before
+/// giving up on parsing it — protects against a misbehaving/compromised
+/// upstream returning an arbitrarily large body.
+const MAX_RATE_LIMIT_BODY_BYTES: usize = 16 * 1024;
+
 /// Maximum number of retry attempts for a rate-limited request.
 const MAX_RETRIES: u32 = 3;
 
@@ -53,6 +59,39 @@ const MAX_RETRIES: u32 = 3;
 /// what the server's `Retry-After` says — protects against a server
 /// requesting an hour-long wait and stalling the calling handler.
 const MAX_WAIT: Duration = Duration::from_secs(30);
+
+/// Reads a response body, aborting if it exceeds `MAX_RATE_LIMIT_BODY_BYTES`
+/// (checking both the declared `Content-Length` and the actual bytes streamed,
+/// since a chunked/compromised upstream can omit or lie about the former).
+async fn read_bounded_body(response: reqwest::Response) -> Option<String> {
+    if let Some(len) = response.content_length() {
+        if len > MAX_RATE_LIMIT_BODY_BYTES as u64 {
+            warn!("429 body declares {len} bytes, exceeds limit, skipping parse");
+            return None;
+        }
+    }
+
+    let mut stream = response.bytes_stream();
+    let mut buf = Vec::new();
+
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            Ok(bytes) => {
+                buf.extend_from_slice(&bytes);
+                if buf.len() > MAX_RATE_LIMIT_BODY_BYTES {
+                    warn!("429 body exceeded {MAX_RATE_LIMIT_BODY_BYTES} bytes while streaming, aborting read");
+                    return None;
+                }
+            }
+            Err(err) => {
+                warn!("Failed to read 429 body: {err}");
+                return None;
+            }
+        }
+    }
+
+    String::from_utf8(buf).ok()
+}
 
 impl RateLimitInfo {
     /// Parse a 429 response: reads the body once, prefers `Retry-After` header.
@@ -65,19 +104,16 @@ impl RateLimitInfo {
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.parse::<u64>().ok());
 
-        // Read body once, try to parse as RateLimitError for operation details.
-        let (body_secs, operation) = match response.text().await {
-            Ok(text) => match serde_json::from_str::<RateLimitError>(&text) {
+        // Read body once (bounded), try to parse as RateLimitError for operation details.
+        let (body_secs, operation) = match read_bounded_body(response).await {
+            Some(text) => match serde_json::from_str::<RateLimitError>(&text) {
                 Ok(rl) => (Some(rl.retry_after_secs), Some(rl.operation)),
                 Err(err) => {
                     warn!("Failed to parse 429 body: {err}, body: {text}");
                     (None, None)
                 }
             },
-            Err(err) => {
-                warn!("Failed to read 429 body: {err}");
-                (None, None)
-            }
+            None => (None, None),
         };
 
         let secs = from_header.unwrap_or(body_secs.unwrap_or(DEFAULT_RETRY_AFTER_SECS));
@@ -236,6 +272,27 @@ mod tests {
     #[test]
     fn max_wait_constant() {
         assert_eq!(MAX_WAIT, Duration::from_secs(30));
+    }
+
+    #[tokio::test]
+    async fn from_response_falls_back_to_default_when_body_exceeds_size_limit() {
+        // A misbehaving/compromised upstream returns a body far larger than any
+        // real rate-limit payload. `from_response` must not buffer the whole
+        // thing — it should fall back to the default retry_after instead.
+        let oversized_body = "x".repeat(MAX_RATE_LIMIT_BODY_BYTES + 1);
+        let http_response = http::Response::builder()
+            .status(429)
+            .body(oversized_body.into_bytes())
+            .unwrap();
+        let response = reqwest::Response::from(http_response);
+
+        let info = RateLimitInfo::from_response(response).await;
+
+        assert_eq!(
+            info.retry_after,
+            Duration::from_secs(DEFAULT_RETRY_AFTER_SECS)
+        );
+        assert_eq!(info.operation, None);
     }
 
     #[tokio::test]

@@ -46,8 +46,12 @@ pub static CHAT_DONATION_NOTIFICATIONS_CACHE: LazyLock<Cache<ChatId, ()>> = Lazy
         .build()
 });
 
-pub static WEBHOOK_CHECK_ERRORS_COUNT: LazyLock<Cache<u32, u32>> =
-    LazyLock::new(|| Cache::builder().build());
+pub static WEBHOOK_CHECK_ERRORS_COUNT: LazyLock<Cache<u32, u32>> = LazyLock::new(|| {
+    Cache::builder()
+        .max_capacity(10_000)
+        .time_to_live(Duration::from_secs(60 * 60))
+        .build()
+});
 
 type StopTokenWithSender = (
     StopToken,

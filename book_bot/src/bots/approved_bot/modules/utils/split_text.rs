@@ -20,7 +20,8 @@ pub fn split_text_to_chunks(text: &str, width: usize) -> Vec<String> {
             continue;
         }
 
-        result[index] += &format!("\n{}", &val);
+        result[index].push('\n');
+        result[index].push_str(&val);
     }
 
     result
@@ -59,6 +60,23 @@ mod tests {
                 assert!(
                     line.len() <= 10,
                     "line {line:?} (len {}) exceeds width 10",
+                    line.len()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn wrap_width_above_512_is_honored() {
+        let word = "a".repeat(20);
+        let input = std::iter::repeat_n(word, 50).collect::<Vec<_>>().join(" ");
+        let width = 1000;
+        let result = split_text_to_chunks(&input, width);
+        for chunk in &result {
+            for line in chunk.split('\n') {
+                assert!(
+                    line.len() <= width,
+                    "line {line:?} (len {}) exceeds width {width}",
                     line.len()
                 );
             }
