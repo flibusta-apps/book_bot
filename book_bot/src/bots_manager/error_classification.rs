@@ -19,6 +19,7 @@ pub fn classify_telegram_error(error_string: &str) -> ErrorCategory {
         || is_network_error(error_string)
         || is_permission_error(error_string)
         || is_message_state_error(error_string)
+        || is_infra_error(error_string)
     {
         ErrorCategory::Expected
     } else {
@@ -80,5 +81,55 @@ fn is_message_state_error(s: &str) -> bool {
         || s.contains("text must be non-empty")
         || s.contains("Bad Request: message to be replied not found")
         || s.contains("migrated to a supergroup")
-        || s.contains("internal Server Error")
+}
+
+/// Telegram-side 5xx responses. These are transient infrastructure
+/// failures on Telegram's end (not something this service can act on),
+/// so they're treated as Expected like other network blips — logged at
+/// WARN, not sent to Sentry. Matched case-insensitively because Telegram
+/// returns "Internal Server Error" with a capital I, and the exact casing
+/// isn't a contract worth depending on.
+fn is_infra_error(s: &str) -> bool {
+    s.to_ascii_lowercase().contains("internal server error")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn internal_server_error_is_classified_as_expected() {
+        assert_eq!(
+            classify_telegram_error("Internal Server Error"),
+            ErrorCategory::Expected
+        );
+    }
+
+    #[test]
+    fn internal_server_error_matches_regardless_of_case() {
+        assert_eq!(
+            classify_telegram_error("internal server error"),
+            ErrorCategory::Expected
+        );
+        assert_eq!(
+            classify_telegram_error("INTERNAL SERVER ERROR"),
+            ErrorCategory::Expected
+        );
+    }
+
+    #[test]
+    fn message_state_error_is_still_classified_as_expected() {
+        assert_eq!(
+            classify_telegram_error("Bad Request: message is not modified"),
+            ErrorCategory::Expected
+        );
+    }
+
+    #[test]
+    fn unrecognized_error_is_classified_as_unexpected() {
+        assert_eq!(
+            classify_telegram_error("some genuinely new error shape"),
+            ErrorCategory::Unexpected
+        );
+    }
 }
