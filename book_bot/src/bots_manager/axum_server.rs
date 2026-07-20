@@ -134,9 +134,19 @@ pub async fn start_axum_server(
                 }
             }
             Err(error) => {
-                log::error!("Failed to parse incoming Telegram update: {error}");
+                // `error`'s Display can itself embed a fragment of the
+                // offending field's raw value on a type-mismatch (e.g.
+                // serde_json renders `invalid type: string "<value>",
+                // expected i64` — verified empirically). Since this log is
+                // ERROR-level and therefore Sentry-bound (main.rs's
+                // event_filter), only log the content-free error category
+                // here; the full error text and payload go to DEBUG only.
+                log::error!(
+                    "Failed to parse incoming Telegram update: {:?}",
+                    error.classify()
+                );
                 log::debug!(
-                    "Malformed update payload: {}",
+                    "Parse error detail: {error}\nMalformed update payload: {}",
                     truncate_for_log(&input, 2000)
                 );
             }
