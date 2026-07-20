@@ -21,6 +21,22 @@ pub fn mask_uri_path(path: &str) -> String {
     path.to_string()
 }
 
+/// Truncates `s` to at most `max_chars` characters for safe logging,
+/// appending `…` when truncated. Char-based (not byte-based) so it never
+/// panics on multi-byte UTF-8 input, unlike `mask_token`'s byte slicing
+/// (which is safe there only because bot tokens are ASCII).
+// Not yet used outside tests until the following commit wires it into
+// axum_server.rs; suppresses the dead_code lint for that one intermediate commit.
+#[allow(dead_code)]
+pub fn truncate_for_log(s: &str, max_chars: usize) -> String {
+    if s.chars().count() <= max_chars {
+        s.to_string()
+    } else {
+        let truncated: String = s.chars().take(max_chars).collect();
+        format!("{truncated}…")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -49,5 +65,21 @@ mod tests {
     fn mask_uri_path_no_token() {
         assert_eq!(mask_uri_path("/metrics"), "/metrics");
         assert_eq!(mask_uri_path("/health"), "/health");
+    }
+
+    #[test]
+    fn truncate_for_log_leaves_short_strings_untouched() {
+        assert_eq!(truncate_for_log("hello", 10), "hello");
+    }
+
+    #[test]
+    fn truncate_for_log_truncates_and_marks_long_strings() {
+        assert_eq!(truncate_for_log("hello world", 5), "hello…");
+    }
+
+    #[test]
+    fn truncate_for_log_is_char_safe_on_multibyte_input() {
+        // "héllo wörld" — truncating by raw byte offset 5 would land mid-character; char-based truncation must not panic.
+        assert_eq!(truncate_for_log("héllo wörld", 5), "héllo…");
     }
 }
