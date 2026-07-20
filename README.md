@@ -61,7 +61,7 @@ All variables below are read once at startup by `Config::load()` in `book_bot/sr
    ```
    (`TELEGRAM_API_ID`/`TELEGRAM_API_HASH` above are the standard public test credentials used with a local `telegram-bot-api` instance, not a secret specific to this project.)
 
-2. Add `test_env/db.json`, the mock response `MANAGER_URL` needs to return — one entry per bot token you want to test with:
+2. Add `test_env/db.json`. `json-server` exposes each top-level key of this file as its own route, so the `api` key below is served at `/api` — set `MANAGER_URL=http://localhost:3000/api` accordingly (unlike the other `*_URL` variables, `MANAGER_URL` is used as-is with no path appended, so it must include `/api`):
    ```json
    {
      "api": [
