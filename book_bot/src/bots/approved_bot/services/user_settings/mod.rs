@@ -142,15 +142,25 @@ pub async fn get_user_settings(user_id: UserId) -> anyhow::Result<Option<UserSet
     check_response(response, &[StatusCode::NOT_FOUND, StatusCode::NO_CONTENT]).await
 }
 
+/// De-dups the language codes coming from a `UserSettings` record, keeping
+/// first-seen order. The user-settings service is expected to store unique
+/// codes, but stale/legacy records (or a misbehaving writer) can contain
+/// repeats; sending `allowed_langs=uk&allowed_langs=uk&...` to the
+/// book-library API is harmless but wasteful, so we collapse them here.
+fn dedupe_lang_codes(allowed_langs: SmallVec<[Lang; 3]>) -> SmallVec<[SmartString; 3]> {
+    let mut seen = std::collections::HashSet::with_capacity(allowed_langs.len());
+    allowed_langs
+        .into_iter()
+        .map(|lang| lang.code)
+        .filter(|code| seen.insert(code.clone()))
+        .collect()
+}
+
 pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartString; 3]> {
     let default_lang_codes = smallvec!["ru".into(), "be".into(), "uk".into()];
 
     match get_cached_user_settings(user_id).await {
-        Some(settings) => settings
-            .allowed_langs
-            .into_iter()
-            .map(|lang| lang.code)
-            .collect(),
+        Some(settings) => dedupe_lang_codes(settings.allowed_langs),
         None => default_lang_codes,
     }
 }
@@ -321,6 +331,38 @@ pub async fn mark_donate_notification_sent(chat_id: ChatId) -> anyhow::Result<()
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn lang(code: &str) -> Lang {
+        Lang {
+            label: code.into(),
+            code: code.into(),
+        }
+    }
+
+    #[test]
+    fn dedupe_lang_codes_removes_repeats_keeping_first_seen_order() {
+        let allowed_langs: SmallVec<[Lang; 3]> = smallvec![
+            lang("uk"),
+            lang("be"),
+            lang("uk"),
+            lang("be"),
+            lang("ru"),
+            lang("uk"),
+        ];
+
+        let result = dedupe_lang_codes(allowed_langs);
+
+        assert_eq!(result.into_vec(), vec!["uk", "be", "ru"]);
+    }
+
+    #[test]
+    fn dedupe_lang_codes_passes_through_already_unique_input() {
+        let allowed_langs: SmallVec<[Lang; 3]> = smallvec![lang("ru"), lang("be"), lang("uk")];
+
+        let result = dedupe_lang_codes(allowed_langs);
+
+        assert_eq!(result.into_vec(), vec!["ru", "be", "uk"]);
+    }
 
     #[tokio::test]
     async fn try_get_with_never_caches_an_error() {
