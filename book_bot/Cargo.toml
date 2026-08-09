@@ -30,7 +30,7 @@ sentry-tracing = "0.42.0"
 sentry = { version = "0.46.0", features = ["debug-images"] }
 
 # HTTP client
-reqwest = { version = "0.12.15", features = ["json", "stream"] }
+reqwest = { version = "0.13.4", features = ["json", "stream"] }
 
 # Serialization
 serde = { version = "1.0.219", features = ["derive"] }
