@@ -26,7 +26,7 @@ tower-http = { version = "0.7.0", features = ["trace"] }
 # Observability
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-sentry-tracing = "0.42.0"
+sentry-tracing = "0.46.2"
 sentry = { version = "0.46.0", features = ["debug-images"] }
 
 # HTTP client
