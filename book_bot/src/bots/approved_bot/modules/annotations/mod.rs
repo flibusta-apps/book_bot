@@ -37,7 +37,10 @@ use self::{
     errors::AnnotationFormatError, formatter::AnnotationFormat,
 };
 
-use super::utils::{filter_command::filter_command, split_text::split_text_to_chunks};
+use super::utils::{
+    constants::TELEGRAM_MESSAGE_MAX_LENGTH, filter_command::filter_command,
+    split_text::split_text_to_chunks,
+};
 
 async fn download_image(
     file: &String,
@@ -107,7 +110,7 @@ where
     }
 
     let annotation_text = annotation.get_text();
-    let chunked_text = split_text_to_chunks(annotation_text, 512);
+    let chunked_text = split_text_to_chunks(annotation_text, TELEGRAM_MESSAGE_MAX_LENGTH);
     let current_text = match chunked_text.first() {
         Some(t) => t,
         None => return Ok(()),
@@ -164,7 +167,7 @@ where
     let request_page: usize = page.try_into().unwrap_or(1);
 
     let annotation_text = annotation.get_text();
-    let chunked_text = split_text_to_chunks(annotation_text, 512);
+    let chunked_text = split_text_to_chunks(annotation_text, TELEGRAM_MESSAGE_MAX_LENGTH);
 
     let page_index = if request_page <= chunked_text.len() {
         request_page
