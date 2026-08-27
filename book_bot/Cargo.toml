@@ -49,7 +49,7 @@ url = "2.5.4"
 
 strum = { version = "0.27", features = ["derive"] }
 
-base64 = "0.22.1"
+base64 = "0.23.1"
 textwrap = "0.16.2"
 regex = "1.11.1"
 chrono = "0.4.40"
