@@ -29,29 +29,31 @@ pub enum Token {
 
 /// Escape text content for Telegram HTML body (only `&`, `<`, `>`).
 pub fn escape_text(s: &str) -> String {
-    s.chars().fold(String::with_capacity(s.len()), |mut acc, c| {
-        match c {
-            '&' => acc.push_str("&amp;"),
-            '<' => acc.push_str("&lt;"),
-            '>' => acc.push_str("&gt;"),
-            c => acc.push(c),
-        }
-        acc
-    })
+    s.chars()
+        .fold(String::with_capacity(s.len()), |mut acc, c| {
+            match c {
+                '&' => acc.push_str("&amp;"),
+                '<' => acc.push_str("&lt;"),
+                '>' => acc.push_str("&gt;"),
+                c => acc.push(c),
+            }
+            acc
+        })
 }
 
 /// Escape a value for use inside an HTML attribute (`&`, `<`, `>`, `"`).
 pub fn escape_attr(s: &str) -> String {
-    s.chars().fold(String::with_capacity(s.len()), |mut acc, c| {
-        match c {
-            '&' => acc.push_str("&amp;"),
-            '<' => acc.push_str("&lt;"),
-            '>' => acc.push_str("&gt;"),
-            '"' => acc.push_str("&quot;"),
-            c => acc.push(c),
-        }
-        acc
-    })
+    s.chars()
+        .fold(String::with_capacity(s.len()), |mut acc, c| {
+            match c {
+                '&' => acc.push_str("&amp;"),
+                '<' => acc.push_str("&lt;"),
+                '>' => acc.push_str("&gt;"),
+                '"' => acc.push_str("&quot;"),
+                c => acc.push(c),
+            }
+            acc
+        })
 }
 
 pub fn render_open(tag: &Tag) -> String {
@@ -133,7 +135,8 @@ fn try_decode_entity(rest: &str) -> Option<(char, usize)> {
             if let Some(hex) = body.strip_prefix('x').or_else(|| body.strip_prefix('X')) {
                 let code = u32::from_str_radix(hex, 16).ok()?;
                 char::from_u32(code)?
-            } else if let Some(num) = body.strip_prefix('#') {
+            } else {
+                let num = body.strip_prefix('#')?;
                 if let Some(hex) = num.strip_prefix('x').or_else(|| num.strip_prefix('X')) {
                     let code = u32::from_str_radix(hex, 16).ok()?;
                     char::from_u32(code)?
@@ -141,8 +144,6 @@ fn try_decode_entity(rest: &str) -> Option<(char, usize)> {
                     let code: u32 = num.parse().ok()?;
                     char::from_u32(code)?
                 }
-            } else {
-                return None;
             }
         }
     };
@@ -192,7 +193,12 @@ fn parse_bracket(s: &str) -> Option<ParsedBracket> {
 /// Try to parse `<a href="...">` or `</a>` starting at `s`.
 fn parse_html_a(s: &str) -> Option<(RawToken, usize)> {
     if s.starts_with("</a>") || s.starts_with("</A>") {
-        return Some((RawToken::Close(Tag::Link { href: String::new() }), 4));
+        return Some((
+            RawToken::Close(Tag::Link {
+                href: String::new(),
+            }),
+            4,
+        ));
     }
 
     let looks_like_a_open = s.len() >= 2
@@ -290,7 +296,9 @@ fn scan(raw: &str) -> Vec<RawToken> {
                 if lower_name == "url" {
                     if bracket.is_closing {
                         flush_text!();
-                        tokens.push(RawToken::Close(Tag::Link { href: String::new() }));
+                        tokens.push(RawToken::Close(Tag::Link {
+                            href: String::new(),
+                        }));
                         rest = &rest[bracket.len..];
                         continue;
                     }
@@ -499,7 +507,10 @@ mod tests {
     #[test]
     fn bbcode_url_bare() {
         let tokens = tokenize("[url]http://x.com[/url]");
-        assert_eq!(render_all(&tokens), "<a href=\"http://x.com\">http://x.com</a>");
+        assert_eq!(
+            render_all(&tokens),
+            "<a href=\"http://x.com\">http://x.com</a>"
+        );
     }
 
     #[test]
