@@ -100,22 +100,10 @@ pub fn get_approved_handler() -> (BotHandler, BotCommands) {
             .branch(get_manager_handler())
             .branch(get_search_handler()),
         Some(vec![
-            BotCommand {
-                command: String::from("random"),
-                description: String::from("🎲 Попытать удачу"),
-            },
-            BotCommand {
-                command: String::from("update_log"),
-                description: String::from("🔄 Обновления каталога"),
-            },
-            BotCommand {
-                command: String::from("settings"),
-                description: String::from("⚙️ Настройки"),
-            },
-            BotCommand {
-                command: String::from("donate"),
-                description: String::from("☕️ Поддержать разработчика"),
-            },
+            BotCommand::new("random", "🎲 Попытать удачу"),
+            BotCommand::new("update_log", "🔄 Обновления каталога"),
+            BotCommand::new("settings", "⚙️ Настройки"),
+            BotCommand::new("donate", "☕️ Поддержать разработчика"),
         ]),
     )
 }

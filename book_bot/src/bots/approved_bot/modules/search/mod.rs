@@ -185,34 +185,24 @@ pub async fn message_handler(message: Message, bot: CacheMe<Throttle<Bot>>) -> B
     }
 
     let message_text = "Что ищем?";
-    let keyboard = InlineKeyboardMarkup {
-        inline_keyboard: vec![
-            vec![InlineKeyboardButton {
-                text: "Книгу".to_string(),
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    (SearchCallbackData::Book { page: 1 }).to_string(),
-                ),
-            }],
-            vec![InlineKeyboardButton {
-                text: "Автора".to_string(),
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    (SearchCallbackData::Authors { page: 1 }).to_string(),
-                ),
-            }],
-            vec![InlineKeyboardButton {
-                text: "Серию".to_string(),
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    (SearchCallbackData::Sequences { page: 1 }).to_string(),
-                ),
-            }],
-            vec![InlineKeyboardButton {
-                text: "Переводчика".to_string(),
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    (SearchCallbackData::Translators { page: 1 }).to_string(),
-                ),
-            }],
-        ],
-    };
+    let keyboard = InlineKeyboardMarkup::new(vec![
+        vec![InlineKeyboardButton::callback(
+            "Книгу",
+            (SearchCallbackData::Book { page: 1 }).to_string(),
+        )],
+        vec![InlineKeyboardButton::callback(
+            "Автора",
+            (SearchCallbackData::Authors { page: 1 }).to_string(),
+        )],
+        vec![InlineKeyboardButton::callback(
+            "Серию",
+            (SearchCallbackData::Sequences { page: 1 }).to_string(),
+        )],
+        vec![InlineKeyboardButton::callback(
+            "Переводчика",
+            (SearchCallbackData::Translators { page: 1 }).to_string(),
+        )],
+    ]);
 
     safe_send_message_with_reply(
         &bot,

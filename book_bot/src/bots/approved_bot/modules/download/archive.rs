@@ -5,7 +5,7 @@ use chrono::Utc;
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
-    types::{InlineKeyboardMarkup, MaybeInaccessibleMessage, MessageId},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup, MaybeInaccessibleMessage, MessageId},
 };
 use tokio::time;
 use tracing::log;
@@ -46,9 +46,9 @@ async fn send_error_message(bot: &CacheMe<Throttle<Bot>>, chat_id: ChatId, messa
         chat_id,
         message_id,
         ERROR_TRY_LATER,
-        Some(InlineKeyboardMarkup {
-            inline_keyboard: vec![],
-        }),
+        Some(InlineKeyboardMarkup::new(
+            Vec::<Vec<InlineKeyboardButton>>::new(),
+        )),
     )
     .await;
 }
@@ -73,9 +73,9 @@ async fn send_archive_link(
             "Файл не может быть загружен в чат! \n \
                     Вы можете скачать его <a href=\"{link}\">по ссылке</a> (работает 3 часа)"
         ),
-        Some(InlineKeyboardMarkup {
-            inline_keyboard: vec![],
-        }),
+        Some(InlineKeyboardMarkup::new(
+            Vec::<Vec<InlineKeyboardButton>>::new(),
+        )),
     )
     .await?;
 
@@ -146,9 +146,9 @@ pub async fn wait_archive(
                 message.chat.id,
                 message.id,
                 RATE_LIMIT_ERROR,
-                Some(InlineKeyboardMarkup {
-                    inline_keyboard: vec![],
-                }),
+                Some(InlineKeyboardMarkup::new(
+                    Vec::<Vec<InlineKeyboardButton>>::new(),
+                )),
             )
             .await;
         } else {

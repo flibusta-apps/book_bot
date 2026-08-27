@@ -25,7 +25,9 @@ pub async fn safe_edit_message_text(
     keyboard: Option<InlineKeyboardMarkup>,
 ) -> BotHandlerInternal {
     let text = text.into();
-    let mut request = bot.edit_message_text(chat_id, message_id, &text);
+    let mut request = bot
+        .edit_message_text(chat_id, message_id)
+        .text(text.clone());
 
     if let Some(ref keyboard) = keyboard {
         request = request.reply_markup(keyboard.clone());
@@ -178,7 +180,8 @@ pub async fn safe_edit_message_text_html(
 ) -> BotHandlerInternal {
     let text = text.into();
     let mut request = bot
-        .edit_message_text(chat_id, message_id, &text)
+        .edit_message_text(chat_id, message_id)
+        .text(text.clone())
         .parse_mode(ParseMode::Html);
 
     if let Some(ref keyboard) = keyboard {

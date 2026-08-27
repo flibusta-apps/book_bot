@@ -45,10 +45,7 @@ where
 
     let callback_data = callback_data.get_pagination_callback_data(target_page);
 
-    InlineKeyboardButton {
-        text: text.to_string(),
-        kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(callback_data),
-    }
+    InlineKeyboardButton::callback(text, callback_data)
 }
 
 pub fn generic_get_pagination_keyboard<T>(
@@ -109,9 +106,7 @@ where
         result
     };
 
-    InlineKeyboardMarkup {
-        inline_keyboard: buttons,
-    }
+    InlineKeyboardMarkup::new(buttons)
 }
 
 pub struct PaginationTexts<'a> {

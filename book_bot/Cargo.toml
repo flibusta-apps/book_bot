@@ -30,14 +30,14 @@ sentry-tracing = "0.46.2"
 sentry = { version = "0.47.0", features = ["debug-images"] }
 
 # HTTP client
-reqwest = { version = "0.13.4", features = ["json", "stream"] }
+reqwest = { version = "0.13.4", features = ["json", "stream", "query"] }
 
 # Serialization
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 
 # Telegram bot framework
-teloxide = { version = "0.17.0", features = [
+teloxide = { git = "https://github.com/flibusta-apps/teloxide.git", branch = "master", features = [
     "macros",
     "webhooks-axum",
     "cache-me",

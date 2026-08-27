@@ -35,34 +35,24 @@ async fn random_handler(
 ) -> crate::bots::BotHandlerInternal {
     const MESSAGE_TEXT: &str = "Что хотим получить?";
 
-    let keyboard = InlineKeyboardMarkup {
-        inline_keyboard: vec![
-            vec![InlineKeyboardButton {
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    RandomCallbackData::RandomBook.to_string(),
-                ),
-                text: String::from("Книгу"),
-            }],
-            vec![InlineKeyboardButton {
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    RandomCallbackData::RandomBookByGenreRequest.to_string(),
-                ),
-                text: String::from("Книгу по жанру"),
-            }],
-            vec![InlineKeyboardButton {
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    RandomCallbackData::RandomAuthor.to_string(),
-                ),
-                text: String::from("Автора"),
-            }],
-            vec![InlineKeyboardButton {
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    RandomCallbackData::RandomSequence.to_string(),
-                ),
-                text: String::from("Серию"),
-            }],
-        ],
-    };
+    let keyboard = InlineKeyboardMarkup::new(vec![
+        vec![InlineKeyboardButton::callback(
+            "Книгу",
+            RandomCallbackData::RandomBook.to_string(),
+        )],
+        vec![InlineKeyboardButton::callback(
+            "Книгу по жанру",
+            RandomCallbackData::RandomBookByGenreRequest.to_string(),
+        )],
+        vec![InlineKeyboardButton::callback(
+            "Автора",
+            RandomCallbackData::RandomAuthor.to_string(),
+        )],
+        vec![InlineKeyboardButton::callback(
+            "Серию",
+            RandomCallbackData::RandomSequence.to_string(),
+        )],
+    ]);
 
     safe_send_message_with_reply(
         &bot,
@@ -102,14 +92,9 @@ where
         &bot,
         cq.from.id.into(),
         item_message,
-        Some(InlineKeyboardMarkup {
-            inline_keyboard: vec![vec![InlineKeyboardButton {
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    cq.data.clone().unwrap_or_default(),
-                ),
-                text: String::from("Повторить?"),
-            }]],
-        }),
+        Some(InlineKeyboardMarkup::new(vec![vec![
+            InlineKeyboardButton::callback("Повторить?", cq.data.clone().unwrap_or_default()),
+        ]])),
     )
     .await?;
 
@@ -119,9 +104,7 @@ where
                 &bot,
                 message.chat().id,
                 message.id(),
-                InlineKeyboardMarkup {
-                    inline_keyboard: vec![],
-                },
+                InlineKeyboardMarkup::new(Vec::<Vec<InlineKeyboardButton>>::new()),
             )
             .await?;
             Ok(())
@@ -169,23 +152,21 @@ async fn get_genre_metas_handler(
         }
     };
 
-    let keyboard = InlineKeyboardMarkup {
-        inline_keyboard: genre_metas
+    let keyboard = InlineKeyboardMarkup::new(
+        genre_metas
             .into_iter()
             .enumerate()
             .map(|(index, genre_meta)| {
-                vec![InlineKeyboardButton {
-                    kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                        RandomCallbackData::Genres {
-                            index: index as u32,
-                        }
-                        .to_string(),
-                    ),
-                    text: genre_meta,
-                }]
+                vec![InlineKeyboardButton::callback(
+                    genre_meta,
+                    RandomCallbackData::Genres {
+                        index: index as u32,
+                    }
+                    .to_string(),
+                )]
             })
-            .collect(),
-    };
+            .collect::<Vec<_>>(),
+    );
 
     safe_edit_message_reply_markup(&bot, message.chat().id, message.id(), keyboard).await?;
 
@@ -229,25 +210,19 @@ async fn get_genres_by_meta_handler(
         .items
         .into_iter()
         .map(|genre| {
-            vec![InlineKeyboardButton {
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    RandomCallbackData::RandomBookByGenre { id: genre.id }.to_string(),
-                ),
-                text: genre.description,
-            }]
+            vec![InlineKeyboardButton::callback(
+                genre.description,
+                RandomCallbackData::RandomBookByGenre { id: genre.id }.to_string(),
+            )]
         })
         .collect();
 
-    buttons.push(vec![InlineKeyboardButton {
-        kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-            RandomCallbackData::RandomBookByGenreRequest.to_string(),
-        ),
-        text: "< Назад >".to_string(),
-    }]);
+    buttons.push(vec![InlineKeyboardButton::callback(
+        "< Назад >",
+        RandomCallbackData::RandomBookByGenreRequest.to_string(),
+    )]);
 
-    let keyboard = InlineKeyboardMarkup {
-        inline_keyboard: buttons,
-    };
+    let keyboard = InlineKeyboardMarkup::new(buttons);
 
     let message = match cq.message {
         Some(message) => message,

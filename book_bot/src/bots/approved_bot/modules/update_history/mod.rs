@@ -30,43 +30,35 @@ async fn update_log_command(message: Message, bot: CacheMe<Throttle<Bot>>) -> Bo
     let d7 = now - Duration::days(7);
     let d30 = now - Duration::days(30);
 
-    let keyboard = InlineKeyboardMarkup {
-        inline_keyboard: vec![
-            vec![InlineKeyboardButton {
-                text: "За 3 дня".to_string(),
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    UpdateLogCallbackData {
-                        from: d3,
-                        to: now,
-                        page: 1,
-                    }
-                    .to_string(),
-                ),
-            }],
-            vec![InlineKeyboardButton {
-                text: "За 7 дней".to_string(),
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    UpdateLogCallbackData {
-                        from: d7,
-                        to: now,
-                        page: 1,
-                    }
-                    .to_string(),
-                ),
-            }],
-            vec![InlineKeyboardButton {
-                text: "За 30 дней".to_string(),
-                kind: teloxide::types::InlineKeyboardButtonKind::CallbackData(
-                    UpdateLogCallbackData {
-                        from: d30,
-                        to: now,
-                        page: 1,
-                    }
-                    .to_string(),
-                ),
-            }],
-        ],
-    };
+    let keyboard = InlineKeyboardMarkup::new(vec![
+        vec![InlineKeyboardButton::callback(
+            "За 3 дня",
+            UpdateLogCallbackData {
+                from: d3,
+                to: now,
+                page: 1,
+            }
+            .to_string(),
+        )],
+        vec![InlineKeyboardButton::callback(
+            "За 7 дней",
+            UpdateLogCallbackData {
+                from: d7,
+                to: now,
+                page: 1,
+            }
+            .to_string(),
+        )],
+        vec![InlineKeyboardButton::callback(
+            "За 30 дней",
+            UpdateLogCallbackData {
+                from: d30,
+                to: now,
+                page: 1,
+            }
+            .to_string(),
+        )],
+    ]);
 
     safe_send_message(
         &bot,
