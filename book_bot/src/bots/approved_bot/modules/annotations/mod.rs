@@ -2,6 +2,8 @@ pub mod callback_data;
 pub mod commands;
 pub mod errors;
 pub mod formatter;
+pub mod markup;
+pub mod pages;
 
 use book_bot_macros::log_handler;
 
@@ -23,7 +25,8 @@ use crate::bots::{
             message_text::is_message_text_equals,
             pagination::generic_get_pagination_keyboard,
             telegram_utils::{
-                safe_edit_message_text, safe_send_message_with_reply, safe_send_photo,
+                safe_edit_message_text_html_with_fallback, safe_send_message_with_reply,
+                safe_send_message_with_reply_html, safe_send_photo,
             },
         },
         services::book_library::{get_author_annotation, get_book_annotation},
@@ -34,13 +37,10 @@ use crate::bots::{
 
 use self::{
     callback_data::AnnotationCallbackData, commands::AnnotationCommand,
-    errors::AnnotationFormatError, formatter::AnnotationFormat,
+    errors::AnnotationFormatError, formatter::AnnotationFormat, pages::build_pages,
 };
 
-use super::utils::{
-    constants::TELEGRAM_MESSAGE_MAX_LENGTH, filter_command::filter_command,
-    split_text::split_text_to_chunks,
-};
+use super::utils::{constants::TELEGRAM_MESSAGE_MAX_LENGTH, filter_command::filter_command};
 
 async fn download_image(
     file: &String,
@@ -110,10 +110,19 @@ where
     }
 
     let annotation_text = annotation.get_text();
-    let chunked_text = split_text_to_chunks(annotation_text, TELEGRAM_MESSAGE_MAX_LENGTH);
-    let current_text = match chunked_text.first() {
-        Some(t) => t,
-        None => return Ok(()),
+    let pages = build_pages(annotation_text, TELEGRAM_MESSAGE_MAX_LENGTH);
+    let current_page = match pages.first() {
+        Some(p) => p,
+        None => {
+            return safe_send_message_with_reply(
+                &bot,
+                message.chat.id,
+                "Аннотация недоступна :(",
+                ReplyParameters::new(message.id),
+                None,
+            )
+            .await;
+        }
     };
 
     let callback_data = match command {
@@ -121,12 +130,13 @@ where
         AnnotationCommand::Author { id } => AnnotationCallbackData::Author { id, page: 1 },
     };
     let keyboard =
-        generic_get_pagination_keyboard(1, chunked_text.len().try_into()?, callback_data, false);
+        generic_get_pagination_keyboard(1, pages.len().try_into()?, callback_data, false);
 
-    safe_send_message_with_reply(
+    safe_send_message_with_reply_html(
         &bot,
         message.chat.id,
-        current_text,
+        current_page.html.clone(),
+        current_page.plain.clone(),
         ReplyParameters::new(message.id),
         Some(keyboard),
     )
@@ -167,31 +177,32 @@ where
     let request_page: usize = page.try_into().unwrap_or(1);
 
     let annotation_text = annotation.get_text();
-    let chunked_text = split_text_to_chunks(annotation_text, TELEGRAM_MESSAGE_MAX_LENGTH);
+    let pages = build_pages(annotation_text, TELEGRAM_MESSAGE_MAX_LENGTH);
 
-    let page_index = if request_page <= chunked_text.len() {
+    let page_index = if request_page <= pages.len() {
         request_page
     } else {
-        chunked_text.len()
+        pages.len()
     };
 
-    let new_text = match chunked_text.get(page_index.saturating_sub(1)) {
-        Some(t) => t,
+    let new_page = match pages.get(page_index.saturating_sub(1)) {
+        Some(p) => p,
         None => return Ok(()),
     };
 
     let keyboard =
-        generic_get_pagination_keyboard(page, chunked_text.len().try_into()?, callback_data, false);
+        generic_get_pagination_keyboard(page, pages.len().try_into()?, callback_data, false);
 
-    if is_message_text_equals(Some(message.clone()), new_text) {
+    if is_message_text_equals(Some(message.clone()), &new_page.plain) {
         return Ok(());
     }
 
-    safe_edit_message_text(
+    safe_edit_message_text_html_with_fallback(
         &bot,
         message.chat().id,
         message.id(),
-        new_text,
+        new_page.html.clone(),
+        new_page.plain.clone(),
         Some(keyboard),
     )
     .await
