@@ -490,6 +490,84 @@ pub fn tokenize(raw: &str) -> Vec<Token> {
     normalize(scan(raw))
 }
 
+fn rich_text_kind_for(tag: &Tag, text: teloxide::types::RichText) -> teloxide::types::RichTextKind {
+    use teloxide::types::{
+        RichTextBold, RichTextItalic, RichTextKind, RichTextStrikethrough, RichTextUnderline,
+        RichTextUrl,
+    };
+
+    match tag {
+        Tag::Bold => RichTextKind::Bold(RichTextBold { text }),
+        Tag::Italic => RichTextKind::Italic(RichTextItalic { text }),
+        Tag::Underline => RichTextKind::Underline(RichTextUnderline { text }),
+        Tag::Strike => RichTextKind::Strikethrough(RichTextStrikethrough { text }),
+        Tag::Link { href } => RichTextKind::Url(RichTextUrl {
+            text,
+            url: href.clone(),
+        }),
+    }
+}
+
+fn children_to_rich_text(children: Vec<teloxide::types::RichText>) -> teloxide::types::RichText {
+    if children.len() == 1 {
+        children.into_iter().next().unwrap()
+    } else {
+        teloxide::types::RichText::List(children)
+    }
+}
+
+/// Convert a slice of already-tag-stack-normalized [`Token`]s (as produced
+/// by [`tokenize`]) into a [`teloxide::types::RichText`] tree, for use with
+/// Telegram's structured Rich Message `blocks` field.
+///
+/// This is the `RichText`-tree equivalent of [`render_open`]/[`render_close`]
+/// (which produce flat Telegram HTML): since `RichText` is inherently a
+/// tree, this walks the flat token stream while maintaining an explicit
+/// stack of "currently accumulating children" vectors, rather than a flat
+/// string builder.
+pub fn to_rich_text(tokens: &[Token]) -> teloxide::types::RichText {
+    use teloxide::types::RichText;
+
+    let mut stack: Vec<(Tag, Vec<RichText>)> = Vec::new();
+    let mut current: Vec<RichText> = Vec::new();
+
+    for token in tokens {
+        match token {
+            Token::Text(s) => {
+                let node = RichText::Plain(s.clone());
+                match stack.last_mut() {
+                    Some((_, children)) => children.push(node),
+                    None => current.push(node),
+                }
+            }
+            Token::Open(tag) => {
+                stack.push((tag.clone(), Vec::new()));
+            }
+            Token::Close(tag) => {
+                // `tokenize()` already guarantees a balanced/normalized
+                // stream, so the top of the stack must match `tag`.
+                let (open_tag, children) = stack.pop().expect("unbalanced token stream");
+                debug_assert_eq!(&open_tag, tag, "mismatched tag in normalized token stream");
+
+                let text = children_to_rich_text(children);
+                let kind = rich_text_kind_for(&open_tag, text);
+                let node = RichText::Formatted(Box::new(kind));
+
+                match stack.last_mut() {
+                    Some((_, parent_children)) => parent_children.push(node),
+                    None => current.push(node),
+                }
+            }
+        }
+    }
+
+    if current.is_empty() {
+        RichText::Plain(String::new())
+    } else {
+        children_to_rich_text(current)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -625,5 +703,105 @@ mod tests {
     fn nested_links_dropped() {
         let tokens = tokenize("[url=http://a.com][url=http://b.com]x[/url]y[/url]");
         assert_eq!(render_all(&tokens), "<a href=\"http://a.com\">xy</a>");
+    }
+
+    mod rich_text_tests {
+        use super::*;
+
+        #[test]
+        fn simple_bold() {
+            let tokens = tokenize("[b]x[/b]");
+            let value = serde_json::to_value(to_rich_text(&tokens)).unwrap();
+            assert_eq!(value["type"], "bold");
+            assert_eq!(value["text"], "x");
+        }
+
+        #[test]
+        fn link() {
+            let tokens = tokenize("[url=http://x.com]label[/url]");
+            let value = serde_json::to_value(to_rich_text(&tokens)).unwrap();
+            assert_eq!(value["type"], "url");
+            assert_eq!(value["url"], "http://x.com");
+            assert_eq!(value["text"], "label");
+        }
+
+        #[test]
+        fn plain_text() {
+            let tokens = tokenize("hello world");
+            let value = serde_json::to_value(to_rich_text(&tokens)).unwrap();
+            assert_eq!(value, "hello world");
+        }
+
+        #[test]
+        fn empty_bold_produces_no_text_leak() {
+            let tokens = tokenize("[b][/b]");
+            let value = serde_json::to_value(to_rich_text(&tokens)).unwrap();
+            assert_eq!(value["type"], "bold");
+            // No text children: an empty `RichText::List`, not a leaked
+            // placeholder string.
+            assert_eq!(value["text"], serde_json::json!([]));
+        }
+
+        #[test]
+        fn crossed_nesting_round_trips_to_a_valid_tree() {
+            let tokens = tokenize("[b][i]x[/b]y[/i]");
+            let rich = to_rich_text(&tokens);
+            // `render_all` gives "<b><i>x</i></b><i>y</i>" -- two root-level
+            // formatted siblings -- so the tree root is a `List`. Just
+            // confirm this serializes without panicking and round-trips
+            // through serde_json (i.e. it's a valid, well-formed tree).
+            let value = serde_json::to_value(&rich).unwrap();
+            assert!(value.is_array());
+            assert_eq!(value[0]["type"], "bold");
+            assert_eq!(value[1]["type"], "italic");
+        }
+
+        #[test]
+        fn nested_formatting_produces_nested_tree() {
+            let tokens = tokenize("[b][i]x[/i][/b]");
+            let value = serde_json::to_value(to_rich_text(&tokens)).unwrap();
+            assert_eq!(value["type"], "bold");
+            assert_eq!(value["text"]["type"], "italic");
+            assert_eq!(value["text"]["text"], "x");
+        }
+
+        #[test]
+        fn multiple_root_siblings_produce_a_list() {
+            let tokens = tokenize("[b]x[/b]y");
+            let value = serde_json::to_value(to_rich_text(&tokens)).unwrap();
+            assert!(value.is_array());
+            assert_eq!(value[0]["type"], "bold");
+            assert_eq!(value[0]["text"], "x");
+            assert_eq!(value[1], "y");
+        }
+
+        #[test]
+        fn empty_input_produces_empty_plain() {
+            let tokens = tokenize("");
+            let value = serde_json::to_value(to_rich_text(&tokens)).unwrap();
+            assert_eq!(value, "");
+        }
+
+        #[test]
+        fn nested_links_dropped_in_rich_text() {
+            let tokens = tokenize("[url=http://a.com][url=http://b.com]x[/url]y[/url]");
+            let value = serde_json::to_value(to_rich_text(&tokens)).unwrap();
+            assert_eq!(value["type"], "url");
+            assert_eq!(value["url"], "http://a.com");
+            // "x" and "y" arrive as two separate `Text` tokens (the
+            // suppressed nested link's open/close don't merge them into
+            // one), so the inner text is a `List`, not a merged string.
+            assert_eq!(value["text"], serde_json::json!(["x", "y"]));
+        }
+
+        #[test]
+        fn html_a_without_href_dropped_not_leaked() {
+            let tokens = tokenize("before<a rel=\"noopener noreferrer\"></a>after");
+            let value = serde_json::to_value(to_rich_text(&tokens)).unwrap();
+            // "before" and "after" are two separate `Text` tokens (the
+            // dropped anchor sits between them without merging), so the
+            // root is a `List`, not a merged string.
+            assert_eq!(value, serde_json::json!(["before", "after"]));
+        }
     }
 }

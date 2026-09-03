@@ -3,10 +3,21 @@
 //! length budgeting and for comparing against `Message::text()`, which is
 //! entity-stripped).
 
+use teloxide::types::InputRichBlock;
+
 use super::markup::{self, Tag, Token};
 
 pub struct Page {
     pub html: String,
+    pub plain: String,
+}
+
+/// One "screen" of rich-message content: a group of [`InputRichBlock`]s
+/// (each individually budgeted to `block_budget`) whose combined plain-text
+/// length stays within `total_budget`, meant to be sent/edited together as
+/// a single `InputRichMessage.blocks` payload.
+pub struct RichPage {
+    pub blocks: Vec<InputRichBlock>,
     pub plain: String,
 }
 
@@ -36,8 +47,15 @@ pub fn plain_text_len(raw: &str) -> usize {
 /// so e.g. `[b][/b]` with nothing in between renders as nothing at all,
 /// matching per-page behavior) -- just without ever flushing to a new page.
 ///
-/// Intended for the Telegram "Rich Message" path, where there is no
-/// per-message size limit to budget against.
+/// Not currently called from production code: the Rich Message path now
+/// uses [`build_rich_pages`] (structured `blocks`, still paginated) rather
+/// than rendering the whole annotation into one unpaginated HTML string via
+/// the `InputRichMessage.html` field (which was found to silently truncate
+/// oversized content -- see the incident notes in `annotations/mod.rs`).
+/// Kept (and still covered by tests below) as a small, self-contained
+/// reference implementation of "render with no page-splitting at all",
+/// useful if a genuinely unpaginated rendering is ever needed again.
+#[allow(dead_code)]
 pub fn render_full(raw: &str) -> (String, String) {
     let tokens = markup::tokenize(raw);
 
@@ -229,6 +247,179 @@ pub fn build_pages(raw: &str, budget: usize) -> Vec<Page> {
 
     // Whitespace-only (or otherwise fully invisible) input should produce
     // zero pages, matching `is_normal_text()` semantics upstream.
+    if pages.iter().all(|p| p.plain.trim().is_empty()) {
+        return Vec::new();
+    }
+
+    pages
+}
+
+/// Split a normalized token stream into balanced, budget-respecting
+/// sub-chunks, without rendering to any particular output format.
+///
+/// This factors out the tag-stack/lazy-open/word-boundary-cut/flush
+/// machinery shared by [`build_pages`] (which renders each chunk as HTML)
+/// and [`build_rich_pages`] (which converts each chunk into a
+/// [`teloxide::types::RichText`] tree via [`markup::to_rich_text`]).
+///
+/// Returns pairs of `(balanced tag-stack token stream, plain text)` for
+/// each chunk, each chunk's plain-text UTF-16 length `<= budget`.
+fn build_balanced_chunks(raw: &str, budget: usize) -> Vec<(Vec<Token>, String)> {
+    // Guard against a zero budget, which would otherwise make no forward
+    // progress possible (every chunk of text would need an empty page).
+    let budget = budget.max(1);
+
+    let tokens = markup::tokenize(raw);
+
+    let mut chunks: Vec<(Vec<Token>, String)> = Vec::new();
+    let mut stack: Vec<Tag> = Vec::new();
+    let mut pending_opens: Vec<Tag> = Vec::new();
+    let mut cur_tokens: Vec<Token> = Vec::new();
+    let mut cur_plain = String::new();
+
+    macro_rules! flush_chunk {
+        () => {{
+            for tag in stack.iter().rev() {
+                if !pending_opens.iter().any(|t| t == tag) {
+                    cur_tokens.push(Token::Close(tag.clone()));
+                }
+            }
+            chunks.push((
+                std::mem::take(&mut cur_tokens),
+                std::mem::take(&mut cur_plain),
+            ));
+            // Reseed pending_opens from the current stack so the next chunk
+            // reopens exactly what was open at the cut point.
+            pending_opens = stack.clone();
+        }};
+    }
+
+    for token in tokens {
+        match token {
+            Token::Open(tag) => {
+                stack.push(tag.clone());
+                pending_opens.push(tag);
+            }
+            Token::Close(tag) => {
+                stack.pop();
+                if let Some(pos) = pending_opens.iter().rposition(|t| t == &tag) {
+                    // Never actually opened on this chunk: drop silently
+                    // (handles [b][/b] -> renders nothing).
+                    pending_opens.remove(pos);
+                } else {
+                    cur_tokens.push(Token::Close(tag));
+                }
+            }
+            Token::Text(mut s) => {
+                loop {
+                    let room = budget.saturating_sub(utf16_len(&cur_plain));
+                    let s_units = utf16_len(&s);
+
+                    if s_units <= room {
+                        if !s.is_empty() {
+                            for tag in pending_opens.drain(..) {
+                                cur_tokens.push(Token::Open(tag));
+                            }
+                            cur_tokens.push(Token::Text(s.clone()));
+                            cur_plain.push_str(&s);
+                        }
+                        break;
+                    }
+
+                    if room == 0 {
+                        // No room at all: force a chunk flush and retry with
+                        // the full remaining budget on a fresh chunk.
+                        flush_chunk!();
+                        continue;
+                    }
+
+                    let cut_idx = find_cut_point(&s, room);
+                    let (head, tail) = s.split_at(cut_idx);
+
+                    if !head.is_empty() {
+                        for tag in pending_opens.drain(..) {
+                            cur_tokens.push(Token::Open(tag));
+                        }
+                        cur_tokens.push(Token::Text(head.to_string()));
+                        cur_plain.push_str(head);
+                    }
+
+                    flush_chunk!();
+
+                    s = tail.trim_start().to_string();
+                    if s.is_empty() {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if !cur_tokens.is_empty() || !cur_plain.is_empty() {
+        for tag in stack.iter().rev() {
+            if !pending_opens.iter().any(|t| t == tag) {
+                cur_tokens.push(Token::Close(tag.clone()));
+            }
+        }
+        chunks.push((cur_tokens, cur_plain));
+    }
+
+    chunks
+}
+
+/// Split tokenized annotation markup into Telegram Rich Message "pages",
+/// where each [`RichPage`] carries one or more [`InputRichBlock`]s meant to
+/// be sent/edited together as a single `InputRichMessage.blocks` payload.
+///
+/// Each individual block is sized to `block_budget` (pass
+/// `TELEGRAM_MESSAGE_MAX_LENGTH` at the call site, matching what was
+/// empirically tested against a live Bot API server). Consecutive blocks
+/// are grouped into one [`RichPage`] until the *cumulative* plain-text
+/// length across the whole page would exceed `total_budget` (pass `25_000`
+/// at the call site -- the empirically-verified safe budget for a single
+/// `InputRichMessage`, well under the measured ~30_000/33_000 boundary).
+///
+/// Whitespace-only (or otherwise fully invisible) input produces zero
+/// pages, matching [`build_pages`]/`is_normal_text()` semantics.
+pub fn build_rich_pages(raw: &str, block_budget: usize, total_budget: usize) -> Vec<RichPage> {
+    let total_budget = total_budget.max(1);
+
+    let chunks = build_balanced_chunks(raw, block_budget);
+
+    let mut pages: Vec<RichPage> = Vec::new();
+    let mut cur_blocks: Vec<InputRichBlock> = Vec::new();
+    let mut cur_plain_len = 0usize;
+    let mut cur_plain = String::new();
+
+    for (tokens, plain) in chunks {
+        let plain_len = utf16_len(&plain);
+
+        if !cur_blocks.is_empty() && cur_plain_len + plain_len > total_budget {
+            pages.push(RichPage {
+                blocks: std::mem::take(&mut cur_blocks),
+                plain: std::mem::take(&mut cur_plain),
+            });
+            cur_plain_len = 0;
+        }
+
+        let rich_text = markup::to_rich_text(&tokens);
+        cur_blocks.push(InputRichBlock::Paragraph(
+            teloxide::types::InputRichBlockParagraph::new(rich_text),
+        ));
+        cur_plain.push_str(&plain);
+        cur_plain_len += plain_len;
+    }
+
+    if !cur_blocks.is_empty() {
+        pages.push(RichPage {
+            blocks: cur_blocks,
+            plain: cur_plain,
+        });
+    }
+
+    // Whitespace-only (or otherwise fully invisible) input should produce
+    // zero pages, matching `build_pages`/`is_normal_text()` semantics
+    // upstream.
     if pages.iter().all(|p| p.plain.trim().is_empty()) {
         return Vec::new();
     }
@@ -462,6 +653,150 @@ mod tests {
         assert!(!pages.is_empty());
         for page in &pages {
             assert!(utf16_len_of(&page.plain) <= 1);
+        }
+    }
+
+    mod rich_pages_tests {
+        use teloxide::types::{InputRichBlock, RichText, RichTextKind};
+
+        use super::*;
+
+        /// Recursively extract the concatenated plain text out of a
+        /// `RichText` tree (mirroring what `to_rich_text`'s inverse would
+        /// produce), for asserting per-block content in tests.
+        fn extract_plain(rich: &RichText) -> String {
+            match rich {
+                RichText::Plain(s) => s.clone(),
+                RichText::List(items) => items.iter().map(extract_plain).collect(),
+                RichText::Formatted(kind) => match kind.as_ref() {
+                    RichTextKind::Bold(b) => extract_plain(&b.text),
+                    RichTextKind::Italic(i) => extract_plain(&i.text),
+                    RichTextKind::Underline(u) => extract_plain(&u.text),
+                    RichTextKind::Strikethrough(s) => extract_plain(&s.text),
+                    RichTextKind::Url(u) => extract_plain(&u.text),
+                    other => panic!("unexpected RichTextKind in test: {other:?}"),
+                },
+            }
+        }
+
+        fn block_plain(block: &InputRichBlock) -> String {
+            match block {
+                InputRichBlock::Paragraph(p) => extract_plain(&p.text),
+                other => panic!("unexpected InputRichBlock in test: {other:?}"),
+            }
+        }
+
+        #[test]
+        fn empty_input_produces_no_rich_pages() {
+            assert!(build_rich_pages("", 100, 1000).is_empty());
+            assert!(build_rich_pages("   \n  ", 100, 1000).is_empty());
+            assert!(build_rich_pages("[b][/b]", 100, 1000).is_empty());
+        }
+
+        #[test]
+        fn simple_text_single_rich_page() {
+            let pages = build_rich_pages("hello world", 100, 1000);
+            assert_eq!(pages.len(), 1);
+            assert_eq!(pages[0].plain, "hello world");
+            assert_eq!(pages[0].blocks.len(), 1);
+            assert_eq!(block_plain(&pages[0].blocks[0]), "hello world");
+        }
+
+        #[test]
+        fn bold_renders_as_rich_text() {
+            let pages = build_rich_pages("[b]hello[/b] world", 100, 1000);
+            assert_eq!(pages.len(), 1);
+            assert_eq!(pages[0].plain, "hello world");
+            let value = serde_json::to_value(&pages[0].blocks[0]).unwrap();
+            assert_eq!(value["type"], "paragraph");
+        }
+
+        #[test]
+        fn every_rich_page_respects_total_and_block_budgets() {
+            let word = "a".repeat(20);
+            let input = std::iter::repeat_n(word, 2000)
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            let block_budget = 4096;
+            let total_budget = 25_000;
+            let pages = build_rich_pages(&input, block_budget, total_budget);
+            assert!(pages.len() > 1, "expected input to span multiple pages");
+
+            for (i, page) in pages.iter().enumerate() {
+                assert!(
+                    utf16_len_of(&page.plain) <= total_budget,
+                    "page {i} exceeds total budget: {}",
+                    utf16_len_of(&page.plain)
+                );
+                for (j, block) in page.blocks.iter().enumerate() {
+                    let plain = block_plain(block);
+                    assert!(
+                        utf16_len_of(&plain) <= block_budget,
+                        "page {i} block {j} exceeds block budget: {}",
+                        utf16_len_of(&plain)
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn bold_span_crossing_old_page_boundary_stays_balanced_within_block() {
+            // Under the old (much smaller) `build_pages` budget this would
+            // have been split across multiple pages; under the much larger
+            // rich-message per-block budget it should stay intact within a
+            // single block and still render as a well-formed bold node.
+            let long_text = "word ".repeat(50);
+            let input = format!("[b]{long_text}[/b]");
+            let pages = build_rich_pages(&input, 4096, 25_000);
+            assert_eq!(pages.len(), 1);
+            assert_eq!(pages[0].blocks.len(), 1);
+
+            let value = serde_json::to_value(&pages[0].blocks[0]).unwrap();
+            assert_eq!(value["type"], "paragraph");
+            assert_eq!(value["text"]["type"], "bold");
+        }
+
+        /// Regression test mirroring `build_pages`'s equivalent: an
+        /// annotation with hundreds of `ammonia`-sanitized bookmark anchors
+        /// (`<a rel="noopener noreferrer"></a>`, no href) must not leak as
+        /// visible text or garbage nodes in the resulting `RichText` trees.
+        #[test]
+        fn large_input_with_many_empty_anchors_stays_clean() {
+            let paragraph = "Строка текста для проверки. <a rel=\"noopener noreferrer\"></a>\n";
+            let raw = paragraph.repeat(500);
+
+            let pages = build_rich_pages(&raw, 4096, 25_000);
+            assert!(!pages.is_empty());
+
+            for (i, page) in pages.iter().enumerate() {
+                assert!(
+                    utf16_len_of(&page.plain) <= 25_000,
+                    "page {i} exceeds total budget: {}",
+                    utf16_len_of(&page.plain)
+                );
+                for block in &page.blocks {
+                    let value = serde_json::to_value(block).unwrap();
+                    let serialized = value.to_string();
+                    assert!(
+                        !serialized.contains("noreferrer"),
+                        "page {i} leaked stripped rel attribute: {serialized}"
+                    );
+                    assert!(
+                        !serialized.contains("<a rel="),
+                        "page {i} leaked raw anchor garbage: {serialized}"
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn small_budget_zero_edge_case_does_not_infinite_loop() {
+            let pages = build_rich_pages("hello world", 1, 1);
+            assert!(!pages.is_empty());
+            for page in &pages {
+                assert!(utf16_len_of(&page.plain) <= 1);
+            }
         }
     }
 }

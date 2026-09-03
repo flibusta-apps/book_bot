@@ -2,8 +2,8 @@ use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
     types::{
-        CallbackQueryId, InlineKeyboardMarkup, InputFile, InputRichMessage, MessageId, ParseMode,
-        ReplyParameters,
+        CallbackQueryId, InlineKeyboardMarkup, InputFile, InputRichBlock, InputRichMessage,
+        MessageId, ParseMode, ReplyParameters,
     },
     ApiError, RequestError,
 };
@@ -529,8 +529,15 @@ pub async fn safe_send_message_with_reply(
 }
 
 /// Attempt to send a whole annotation (or other long content) as a single
-/// Telegram "Rich Message" (`sendRichMessage`, Bot API 10.1+), bypassing the
-/// usual 4096-character single-message limit entirely.
+/// Telegram "Rich Message" (`sendRichMessage`, Bot API 10.1+), using the
+/// structured `blocks` field (never the `html`/`markdown` fields -- those
+/// were found via live testing to *silently truncate* oversized content
+/// while still returning HTTP 200; `blocks` either preserves content
+/// byte-for-byte or rejects the whole request with an explicit error).
+///
+/// `skip_entity_detection` is always set so Telegram's own automatic
+/// entity detection doesn't second-guess the explicit formatting decisions
+/// already baked into `blocks` by the tokenizer/renderer.
 ///
 /// This is intentionally *not* folded into the `BotHandlerInternal`-returning
 /// `safe_*` family: the caller needs to distinguish "nothing more to do"
@@ -542,37 +549,53 @@ pub async fn safe_send_message_with_reply(
 ///   rights, empty text). Nothing more can be done; caller should stop, not
 ///   fall back to pagination.
 /// - `Err(_)` → any other error, including ones indicating the Bot API
-///   server in use doesn't support `sendRichMessage` at all (e.g. an
-///   unrecognized/`Bad Request` response). Caller should fall back to the
-///   existing paginated `send_message` approach.
+///   server in use doesn't support `sendRichMessage` at all, or the content
+///   exceeded the (empirically-verified) safe size budget (e.g.
+///   `RICH_MESSAGE_TEXT_TOO_LONG` / `RICH_MESSAGE_TOO_LARGE`). Caller should
+///   fall back to the existing paginated `send_message` approach.
 ///
 /// `MessageToReplyNotFound` is retried once without `reply_parameters`,
 /// mirroring `safe_send_message_with_reply`.
+/// Note: takes an additional `keyboard` parameter beyond what the original
+/// `html`-based version of this function had -- necessary because unlike
+/// the old design (which rendered a whole annotation into a single
+/// unpaginated Rich Message), the new `blocks`-based design still paginates
+/// (via [`super::super::annotations::pages::build_rich_pages`]), so the
+/// prev/next inline keyboard needs to be attachable to the initial send,
+/// exactly like the existing plain-text `safe_send_message_with_reply_html`
+/// path already supports.
 pub async fn safe_send_rich_message_with_reply(
     bot: &CacheMe<Throttle<Bot>>,
     chat_id: ChatId,
-    html: impl Into<String>,
+    blocks: Vec<InputRichBlock>,
     reply_parameters: ReplyParameters,
+    keyboard: Option<InlineKeyboardMarkup>,
 ) -> anyhow::Result<bool> {
     let rich_message = InputRichMessage {
-        html: Some(html.into()),
+        html: None,
         markdown: None,
-        blocks: None,
+        blocks: Some(blocks),
         media: None,
         is_rtl: None,
-        skip_entity_detection: None,
+        skip_entity_detection: Some(true),
     };
 
-    match bot
+    let mut request = bot
         .send_rich_message(chat_id, rich_message.clone())
-        .reply_parameters(reply_parameters)
-        .send()
-        .await
-    {
+        .reply_parameters(reply_parameters);
+    if let Some(ref keyboard) = keyboard {
+        request = request.reply_markup(keyboard.clone());
+    }
+
+    match request.send().await {
         Ok(_) => Ok(true),
         Err(RequestError::Api(ApiError::MessageToReplyNotFound)) => {
             // Original message was deleted, send without reply.
-            match bot.send_rich_message(chat_id, rich_message).send().await {
+            let mut fallback = bot.send_rich_message(chat_id, rich_message);
+            if let Some(keyboard) = keyboard {
+                fallback = fallback.reply_markup(keyboard);
+            }
+            match fallback.send().await {
                 Ok(_) => Ok(true),
                 Err(RequestError::Api(
                     ApiError::NotEnoughRightsToPostMessages
@@ -587,6 +610,72 @@ pub async fn safe_send_rich_message_with_reply(
         }
         Err(RequestError::Api(
             ApiError::NotEnoughRightsToPostMessages
+            | ApiError::NotEnoughRightsToRestrict
+            | ApiError::NotEnoughRightsToChangeChatPermissions
+            | ApiError::NotEnoughRightsToManagePins
+            | ApiError::NotEnoughRightsToPinMessage
+            | ApiError::MessageTextIsEmpty,
+        )) => Ok(false),
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Edit-in-place counterpart to [`safe_send_rich_message_with_reply`], for
+/// the prev/next pagination flow on messages that were originally sent as a
+/// Rich Message.
+///
+/// Same `Ok`/`Err` contract as [`safe_send_rich_message_with_reply`]:
+/// `Ok(true)`/`Ok(false)` mean "done, nothing more for the caller to do";
+/// `Err(_)` means the caller should fall back to the plain-text pagination
+/// path instead.
+pub async fn safe_edit_rich_message_text(
+    bot: &CacheMe<Throttle<Bot>>,
+    chat_id: ChatId,
+    message_id: MessageId,
+    blocks: Vec<InputRichBlock>,
+    keyboard: Option<InlineKeyboardMarkup>,
+) -> anyhow::Result<bool> {
+    let rich_message = InputRichMessage {
+        html: None,
+        markdown: None,
+        blocks: Some(blocks),
+        media: None,
+        is_rtl: None,
+        skip_entity_detection: Some(true),
+    };
+
+    let mut request = bot
+        .edit_message_text(chat_id, message_id)
+        .rich_message(rich_message.clone());
+
+    if let Some(ref keyboard) = keyboard {
+        request = request.reply_markup(keyboard.clone());
+    }
+
+    match request.send().await {
+        Ok(_) => Ok(true),
+        Err(RequestError::Api(ApiError::MessageToEditNotFound | ApiError::MessageIdInvalid)) => {
+            // Original message was deleted, send as new message.
+            let mut send_request = bot.send_rich_message(chat_id, rich_message);
+            if let Some(keyboard) = keyboard {
+                send_request = send_request.reply_markup(keyboard);
+            }
+            match send_request.send().await {
+                Ok(_) => Ok(true),
+                Err(RequestError::Api(
+                    ApiError::NotEnoughRightsToPostMessages
+                    | ApiError::NotEnoughRightsToRestrict
+                    | ApiError::NotEnoughRightsToChangeChatPermissions
+                    | ApiError::NotEnoughRightsToManagePins
+                    | ApiError::NotEnoughRightsToPinMessage
+                    | ApiError::MessageTextIsEmpty,
+                )) => Ok(false),
+                Err(e) => Err(e.into()),
+            }
+        }
+        Err(RequestError::Api(
+            ApiError::MessageNotModified
+            | ApiError::NotEnoughRightsToPostMessages
             | ApiError::NotEnoughRightsToRestrict
             | ApiError::NotEnoughRightsToChangeChatPermissions
             | ApiError::NotEnoughRightsToManagePins
