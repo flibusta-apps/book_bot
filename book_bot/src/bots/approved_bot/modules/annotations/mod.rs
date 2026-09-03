@@ -115,12 +115,21 @@ where
 
     let annotation_text = annotation.get_text();
 
-    // Large annotations (production data has seen up to ~655k chars) would
-    // otherwise require 100+ paginated messages. Try sending the whole
-    // thing as a single Telegram "Rich Message" first; if that fails for
-    // any reason (e.g. the running Bot API server doesn't support it yet),
-    // fall through to the existing pagination flow unchanged.
-    if plain_text_len(annotation_text) > TELEGRAM_MESSAGE_MAX_LENGTH {
+    // EMERGENCY DISABLE (see incident notes): `sendRichMessage`'s `html`
+    // field was found to *silently truncate* oversized content and still
+    // return 200 OK (confirmed against the real Bot API: an 800KB payload
+    // was accepted but only ~19.4k chars were actually stored/delivered,
+    // with no error our fallback-on-Err logic could ever catch). That is
+    // active data loss for real users, not a "graceful degradation" case,
+    // so the whole Rich Message attempt is disabled here pending a
+    // redesign that uses the structured `blocks` field instead (which
+    // *does* return a proper `RICH_MESSAGE_TEXT_TOO_LONG` /
+    // `RICH_MESSAGE_TOO_LARGE` error our existing fallback already
+    // handles correctly) with empirically-verified, conservative
+    // per-block/overall size budgets. Do not re-enable by flipping this
+    // constant without re-verifying against a live Bot API server.
+    const RICH_MESSAGE_SEND_ENABLED: bool = false;
+    if RICH_MESSAGE_SEND_ENABLED && plain_text_len(annotation_text) > TELEGRAM_MESSAGE_MAX_LENGTH {
         let (full_html, _full_plain) = render_full(annotation_text);
         match safe_send_rich_message_with_reply(
             &bot,
