@@ -2,7 +2,8 @@ use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
     types::{
-        CallbackQueryId, InlineKeyboardMarkup, InputFile, MessageId, ParseMode, ReplyParameters,
+        CallbackQueryId, InlineKeyboardMarkup, InputFile, InputRichMessage, MessageId, ParseMode,
+        ReplyParameters,
     },
     ApiError, RequestError,
 };
@@ -523,6 +524,75 @@ pub async fn safe_send_message_with_reply(
             | ApiError::MessageTextIsEmpty => Ok(()),
             other => Err(RequestError::Api(other).into()),
         },
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Attempt to send a whole annotation (or other long content) as a single
+/// Telegram "Rich Message" (`sendRichMessage`, Bot API 10.1+), bypassing the
+/// usual 4096-character single-message limit entirely.
+///
+/// This is intentionally *not* folded into the `BotHandlerInternal`-returning
+/// `safe_*` family: the caller needs to distinguish "nothing more to do"
+/// from "this didn't work, fall back to the paginated `send_message` flow",
+/// which a plain `Ok(())`/`Err` can't express on its own.
+///
+/// - `Ok(true)` → sent successfully, caller is done.
+/// - `Ok(false)` → a known, safe-to-ignore Telegram error occurred (missing
+///   rights, empty text). Nothing more can be done; caller should stop, not
+///   fall back to pagination.
+/// - `Err(_)` → any other error, including ones indicating the Bot API
+///   server in use doesn't support `sendRichMessage` at all (e.g. an
+///   unrecognized/`Bad Request` response). Caller should fall back to the
+///   existing paginated `send_message` approach.
+///
+/// `MessageToReplyNotFound` is retried once without `reply_parameters`,
+/// mirroring `safe_send_message_with_reply`.
+pub async fn safe_send_rich_message_with_reply(
+    bot: &CacheMe<Throttle<Bot>>,
+    chat_id: ChatId,
+    html: impl Into<String>,
+    reply_parameters: ReplyParameters,
+) -> anyhow::Result<bool> {
+    let rich_message = InputRichMessage {
+        html: Some(html.into()),
+        markdown: None,
+        blocks: None,
+        media: None,
+        is_rtl: None,
+        skip_entity_detection: None,
+    };
+
+    match bot
+        .send_rich_message(chat_id, rich_message.clone())
+        .reply_parameters(reply_parameters)
+        .send()
+        .await
+    {
+        Ok(_) => Ok(true),
+        Err(RequestError::Api(ApiError::MessageToReplyNotFound)) => {
+            // Original message was deleted, send without reply.
+            match bot.send_rich_message(chat_id, rich_message).send().await {
+                Ok(_) => Ok(true),
+                Err(RequestError::Api(
+                    ApiError::NotEnoughRightsToPostMessages
+                    | ApiError::NotEnoughRightsToRestrict
+                    | ApiError::NotEnoughRightsToChangeChatPermissions
+                    | ApiError::NotEnoughRightsToManagePins
+                    | ApiError::NotEnoughRightsToPinMessage
+                    | ApiError::MessageTextIsEmpty,
+                )) => Ok(false),
+                Err(e) => Err(e.into()),
+            }
+        }
+        Err(RequestError::Api(
+            ApiError::NotEnoughRightsToPostMessages
+            | ApiError::NotEnoughRightsToRestrict
+            | ApiError::NotEnoughRightsToChangeChatPermissions
+            | ApiError::NotEnoughRightsToManagePins
+            | ApiError::NotEnoughRightsToPinMessage
+            | ApiError::MessageTextIsEmpty,
+        )) => Ok(false),
         Err(e) => Err(e.into()),
     }
 }

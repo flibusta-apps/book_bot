@@ -14,6 +14,73 @@ fn utf16_len(s: &str) -> usize {
     s.chars().map(char::len_utf16).sum()
 }
 
+/// Compute the UTF-16 length of the plain-text rendering of `raw`, without
+/// building any HTML or paginating. Used to decide whether an annotation
+/// fits in a single normal Telegram message before doing any heavier work.
+pub fn plain_text_len(raw: &str) -> usize {
+    let tokens = markup::tokenize(raw);
+    tokens
+        .iter()
+        .map(|t| match t {
+            Token::Text(s) => utf16_len(s),
+            _ => 0,
+        })
+        .sum()
+}
+
+/// Render the *entire* tokenized input as a single, unpaginated HTML string
+/// (plus its plain-text counterpart), with no budget/page-splitting.
+///
+/// This mirrors the exact same tag-stack/lazy-open rendering logic used by
+/// [`build_pages`] (open tags are only emitted once real text follows them,
+/// so e.g. `[b][/b]` with nothing in between renders as nothing at all,
+/// matching per-page behavior) -- just without ever flushing to a new page.
+///
+/// Intended for the Telegram "Rich Message" path, where there is no
+/// per-message size limit to budget against.
+pub fn render_full(raw: &str) -> (String, String) {
+    let tokens = markup::tokenize(raw);
+
+    let mut stack: Vec<Tag> = Vec::new();
+    let mut pending_opens: Vec<Tag> = Vec::new();
+    let mut html = String::new();
+    let mut plain = String::new();
+
+    for token in tokens {
+        match token {
+            Token::Open(tag) => {
+                stack.push(tag.clone());
+                pending_opens.push(tag);
+            }
+            Token::Close(tag) => {
+                stack.pop();
+                if let Some(pos) = pending_opens.iter().rposition(|t| t == &tag) {
+                    pending_opens.remove(pos);
+                } else {
+                    html.push_str(&markup::render_close(&tag));
+                }
+            }
+            Token::Text(s) => {
+                if !s.is_empty() {
+                    for tag in pending_opens.drain(..) {
+                        html.push_str(&markup::render_open(&tag));
+                    }
+                    html.push_str(&markup::escape_text(&s));
+                    plain.push_str(&s);
+                }
+            }
+        }
+    }
+
+    for tag in stack.iter().rev() {
+        if !pending_opens.iter().any(|t| t == tag) {
+            html.push_str(&markup::render_close(tag));
+        }
+    }
+
+    (html, plain)
+}
+
 /// Find the byte index within `s` up to (and including) at most `room`
 /// UTF-16 code units, preferring to cut at the last whitespace boundary
 /// (word-wrap style). If no whitespace boundary exists, hard-cuts at
@@ -331,6 +398,59 @@ mod tests {
                 page.html
             );
         }
+    }
+
+    #[test]
+    fn render_full_matches_single_page_for_short_inputs() {
+        let inputs = [
+            "hello world",
+            "[b]hello[/b] world",
+            "[b][i]x[/b]y[/i]",
+            "[b][/b]",
+            "before<a rel=\"noopener noreferrer\"></a>after",
+            "<a href=\"http://x.com\" rel=\"noopener noreferrer\">l</a>",
+        ];
+
+        for input in inputs {
+            let pages = build_pages(input, 4096);
+            let (full_html, full_plain) = render_full(input);
+
+            match pages.first() {
+                Some(page) => {
+                    assert_eq!(full_html, page.html, "html mismatch for {input:?}");
+                    assert_eq!(full_plain, page.plain, "plain mismatch for {input:?}");
+                }
+                None => {
+                    assert!(full_html.is_empty(), "expected empty html for {input:?}");
+                    assert!(full_plain.is_empty(), "expected empty plain for {input:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn render_full_large_input_with_many_empty_anchors_stays_clean_and_balanced() {
+        let paragraph = "Строка текста для проверки. <a rel=\"noopener noreferrer\"></a>\n";
+        let raw = paragraph.repeat(500);
+
+        let (html, plain) = render_full(&raw);
+
+        assert!(!plain.is_empty());
+        assert!(
+            !html.contains("<a rel="),
+            "leaked raw '<a rel=' garbage: {:?}",
+            &html[..html.len().min(200)]
+        );
+        assert!(
+            !html.contains("noreferrer"),
+            "leaked stripped rel attribute as text"
+        );
+        let opens = html.matches("<a href=").count();
+        let closes = html.matches("</a>").count();
+        assert_eq!(
+            opens, closes,
+            "unbalanced <a>: {opens} opens vs {closes} closes"
+        );
     }
 
     #[test]

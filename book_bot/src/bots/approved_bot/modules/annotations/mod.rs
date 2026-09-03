@@ -27,6 +27,7 @@ use crate::bots::{
             telegram_utils::{
                 safe_edit_message_text_html_with_fallback, safe_send_message_with_reply,
                 safe_send_message_with_reply_html, safe_send_photo,
+                safe_send_rich_message_with_reply,
             },
         },
         services::book_library::{get_author_annotation, get_book_annotation},
@@ -36,8 +37,11 @@ use crate::bots::{
 };
 
 use self::{
-    callback_data::AnnotationCallbackData, commands::AnnotationCommand,
-    errors::AnnotationFormatError, formatter::AnnotationFormat, pages::build_pages,
+    callback_data::AnnotationCallbackData,
+    commands::AnnotationCommand,
+    errors::AnnotationFormatError,
+    formatter::AnnotationFormat,
+    pages::{build_pages, plain_text_len, render_full},
 };
 
 use super::utils::{constants::TELEGRAM_MESSAGE_MAX_LENGTH, filter_command::filter_command};
@@ -110,6 +114,29 @@ where
     }
 
     let annotation_text = annotation.get_text();
+
+    // Large annotations (production data has seen up to ~655k chars) would
+    // otherwise require 100+ paginated messages. Try sending the whole
+    // thing as a single Telegram "Rich Message" first; if that fails for
+    // any reason (e.g. the running Bot API server doesn't support it yet),
+    // fall through to the existing pagination flow unchanged.
+    if plain_text_len(annotation_text) > TELEGRAM_MESSAGE_MAX_LENGTH {
+        let (full_html, _full_plain) = render_full(annotation_text);
+        match safe_send_rich_message_with_reply(
+            &bot,
+            message.chat.id,
+            full_html,
+            ReplyParameters::new(message.id),
+        )
+        .await
+        {
+            Ok(true) | Ok(false) => return Ok(()),
+            Err(_) => {
+                // Fall back to the paginated approach below.
+            }
+        }
+    }
+
     let pages = build_pages(annotation_text, TELEGRAM_MESSAGE_MAX_LENGTH);
     let current_page = match pages.first() {
         Some(p) => p,
