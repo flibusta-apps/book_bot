@@ -191,12 +191,26 @@ fn parse_bracket(s: &str) -> Option<ParsedBracket> {
 }
 
 /// Try to parse `<a href="...">` or `</a>` starting at `s`.
-fn parse_html_a(s: &str) -> Option<(RawToken, usize)> {
+/// Parses `<a ...>` or `</a>` starting at `s`.
+///
+/// Returns `Some((token, consumed_len))` where `token` is `None` when the
+/// input structurally looks like an `<a ...>` open tag but has no usable
+/// link (missing `href`, malformed attribute syntax, or a `href` whose URL
+/// scheme fails [`is_valid_url`] - e.g. a bare `ammonia`-sanitized bookmark
+/// anchor `<a rel="noopener noreferrer"></a>`, or a `javascript:` URL that
+/// bypassed the upstream sanitizer). In that case the whole tag is still
+/// *consumed* (so it never leaks as literal escaped garbage text) but no
+/// `Open`/`Close(Link)` token is produced for it - mirroring how `[url=...]`
+/// with an invalid URL is handled: drop the wrapper, keep the inner content.
+/// Returns `None` (not `Some((None, _))`) only when `s` doesn't look like an
+/// `<a...>` construct at all, so the caller's literal-`<`-text fallback
+/// applies.
+fn parse_html_a(s: &str) -> Option<(Option<RawToken>, usize)> {
     if s.starts_with("</a>") || s.starts_with("</A>") {
         return Some((
-            RawToken::Close(Tag::Link {
+            Some(RawToken::Close(Tag::Link {
                 href: String::new(),
-            }),
+            })),
             4,
         ));
     }
@@ -215,6 +229,18 @@ fn parse_html_a(s: &str) -> Option<(RawToken, usize)> {
     let tag_body = &s[..close_idx];
     let total_len = close_idx + 1;
 
+    let href = extract_href(tag_body).filter(|h| is_valid_url(h));
+
+    Some((
+        href.map(|href| RawToken::Open(Tag::Link { href })),
+        total_len,
+    ))
+}
+
+/// Extracts and entity-decodes the `href="..."`/`href='...'` attribute
+/// value from an `<a ...` tag body (everything between `<` and `>`,
+/// exclusive). Returns `None` if there is no well-formed `href` attribute.
+fn extract_href(tag_body: &str) -> Option<String> {
     let lower_body = tag_body.to_ascii_lowercase();
     let href_pos = lower_body.find("href")?;
     let after = &tag_body[href_pos + 4..];
@@ -228,9 +254,7 @@ fn parse_html_a(s: &str) -> Option<(RawToken, usize)> {
     let value_part = &after_trimmed[1..];
     let end_quote = value_part.find(quote)?;
     let raw_href = &value_part[..end_quote];
-    let href = decode_entities_fully(raw_href);
-
-    Some((RawToken::Open(Tag::Link { href }), total_len))
+    Some(decode_entities_fully(raw_href))
 }
 
 /// Decode HTML entities in a whole string. Used only for attribute values
@@ -347,9 +371,11 @@ fn scan(raw: &str) -> Vec<RawToken> {
         }
 
         if c == '<' {
-            if let Some((tok, len)) = parse_html_a(rest) {
+            if let Some((tok_opt, len)) = parse_html_a(rest) {
                 flush_text!();
-                tokens.push(tok);
+                if let Some(tok) = tok_opt {
+                    tokens.push(tok);
+                }
                 rest = &rest[len..];
                 continue;
             }
@@ -532,6 +558,29 @@ mod tests {
     fn html_a_strips_extra_attrs() {
         let tokens = tokenize("<a href=\"http://x.com\" rel=\"noopener noreferrer\">l</a>");
         assert_eq!(render_all(&tokens), "<a href=\"http://x.com\">l</a>");
+    }
+
+    #[test]
+    fn html_a_without_href_dropped_not_leaked_as_text() {
+        // Real-world ammonia output for a bookmark anchor with no href
+        // (e.g. source had <a name="...">): must vanish entirely, not
+        // render as literal "<a rel=...>" garbage text.
+        let tokens = tokenize("before<a rel=\"noopener noreferrer\"></a>after");
+        assert_eq!(render_all(&tokens), "beforeafter");
+    }
+
+    #[test]
+    fn html_a_invalid_scheme_dropped_content_kept() {
+        let tokens = tokenize("<a href=\"javascript:alert(1)\">label</a>");
+        assert_eq!(render_all(&tokens), "label");
+    }
+
+    #[test]
+    fn html_a_malformed_attr_dropped_not_leaked_as_text() {
+        // href present but unquoted / malformed: still consumed as a tag,
+        // not spilled into visible text.
+        let tokens = tokenize("<a href=unquoted>x</a>");
+        assert_eq!(render_all(&tokens), "x");
     }
 
     #[test]

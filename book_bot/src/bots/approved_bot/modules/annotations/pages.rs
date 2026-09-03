@@ -184,6 +184,43 @@ mod tests {
         assert!(build_pages("[b][/b]", 100).is_empty());
     }
 
+    /// Regression test for a real-world pattern found in production data:
+    /// an annotation with hundreds of `ammonia`-sanitized bookmark anchors
+    /// (`<a rel="noopener noreferrer"></a>`, no href) interleaved with
+    /// prose, spanning many pages. None of the empty anchors should leak
+    /// as visible text, and every page's tags must stay balanced.
+    #[test]
+    fn large_input_with_many_empty_anchors_stays_clean_and_balanced() {
+        let paragraph = "Строка текста для проверки. <a rel=\"noopener noreferrer\"></a>\n";
+        let raw = paragraph.repeat(500);
+
+        let pages = build_pages(&raw, 4096);
+        assert!(pages.len() > 1, "expected input to span multiple pages");
+
+        for (i, p) in pages.iter().enumerate() {
+            assert!(
+                utf16_len_of(&p.plain) <= 4096,
+                "page {i} exceeds budget: {}",
+                utf16_len_of(&p.plain)
+            );
+            assert!(
+                !p.html.contains("<a rel="),
+                "page {i} leaked raw '<a rel=' garbage: {:?}",
+                &p.html[..p.html.len().min(200)]
+            );
+            assert!(
+                !p.html.contains("noreferrer"),
+                "page {i} leaked stripped rel attribute as text"
+            );
+            let opens = p.html.matches("<a href=").count();
+            let closes = p.html.matches("</a>").count();
+            assert_eq!(
+                opens, closes,
+                "page {i} unbalanced <a>: {opens} opens vs {closes} closes"
+            );
+        }
+    }
+
     #[test]
     fn simple_text_single_page() {
         let pages = build_pages("hello world", 100);
