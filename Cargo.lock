@@ -1223,7 +1223,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.5",
+ "socket2 0.5.10",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -2052,7 +2052,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls",
- "socket2 0.6.5",
+ "socket2 0.5.10",
  "thiserror",
  "tokio",
  "tracing",
@@ -2091,7 +2091,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.6.5",
+ "socket2 0.5.10",
  "tracing",
  "windows-sys 0.61.2",
 ]
@@ -3095,7 +3095,7 @@ checksum = "20f34339676cdcab560c9a82300c4c2581f68b9369aedf0fae86f2ff9565ff3e"
 [[package]]
 name = "teloxide"
 version = "0.17.0"
-source = "git+https://github.com/flibusta-apps/teloxide.git?branch=master#56d48aee4675cf8d273a480f5bea47c5a0d48e9b"
+source = "git+https://github.com/flibusta-apps/teloxide.git?branch=master#6793f8dc2be2446dcbbf901e628c4d044a188621"
 dependencies = [
  "aquamarine",
  "axum",
@@ -3124,7 +3124,7 @@ dependencies = [
 [[package]]
 name = "teloxide-core"
 version = "0.13.0"
-source = "git+https://github.com/flibusta-apps/teloxide.git?branch=master#56d48aee4675cf8d273a480f5bea47c5a0d48e9b"
+source = "git+https://github.com/flibusta-apps/teloxide.git?branch=master#6793f8dc2be2446dcbbf901e628c4d044a188621"
 dependencies = [
  "bitflags",
  "bytes",
@@ -3157,7 +3157,7 @@ dependencies = [
 [[package]]
 name = "teloxide-macros"
 version = "0.10.0"
-source = "git+https://github.com/flibusta-apps/teloxide.git?branch=master#56d48aee4675cf8d273a480f5bea47c5a0d48e9b"
+source = "git+https://github.com/flibusta-apps/teloxide.git?branch=master#6793f8dc2be2446dcbbf901e628c4d044a188621"
 dependencies = [
  "heck",
  "proc-macro2",
