@@ -28,12 +28,10 @@ fn build_env_filter(rust_log: Option<String>) -> filter::EnvFilter {
 async fn main() {
     let _guard = if let Some(dsn_str) = &config::CONFIG.sentry_dsn {
         let dsn = Dsn::from_str(dsn_str).unwrap_or_else(|_| panic!("Cannot parse SENTRY_DSN"));
-        let options = ClientOptions {
-            dsn: Some(dsn),
-            default_integrations: false,
-            ..Default::default()
-        }
-        .add_integration(DebugImagesIntegration::new());
+        let mut options = ClientOptions::default();
+        options.dsn = Some(dsn);
+        options.default_integrations = false;
+        let options = options.add_integration(DebugImagesIntegration::new());
         sentry::init(options)
     } else {
         sentry::init(())
