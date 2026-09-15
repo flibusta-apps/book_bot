@@ -7,7 +7,7 @@ use super::utils::constants::*;
 
 use core::fmt::Debug;
 
-use smartstring::alias::String as SmartString;
+use compact_str::CompactString as SmartString;
 
 use smallvec::SmallVec;
 use teloxide::{

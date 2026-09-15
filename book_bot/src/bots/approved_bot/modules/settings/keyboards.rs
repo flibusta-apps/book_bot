@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use smartstring::alias::String as SmartString;
+use compact_str::CompactString as SmartString;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
 use crate::bots::approved_bot::services::user_settings::{DefaultSearchType, FileNameLang, Lang};

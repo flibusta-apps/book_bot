@@ -6,7 +6,7 @@ use book_bot_macros::log_handler;
 use super::utils::constants::*;
 
 use core::fmt::Debug;
-use smartstring::alias::String as SmartString;
+use compact_str::CompactString as SmartString;
 
 use smallvec::SmallVec;
 use teloxide::{
@@ -281,7 +281,7 @@ mod tests {
     async fn fake_found(
         _query: String,
         _page: u32,
-        _allowed_langs: smallvec::SmallVec<[smartstring::alias::String; 3]>,
+        _allowed_langs: smallvec::SmallVec<[compact_str::CompactString; 3]>,
     ) -> anyhow::Result<Option<Page<SearchBook, Empty>>> {
         Ok(Some(Page {
             items: vec![],
@@ -293,7 +293,7 @@ mod tests {
     async fn fake_zero_pages(
         _query: String,
         _page: u32,
-        _allowed_langs: smallvec::SmallVec<[smartstring::alias::String; 3]>,
+        _allowed_langs: smallvec::SmallVec<[compact_str::CompactString; 3]>,
     ) -> anyhow::Result<Option<Page<SearchBook, Empty>>> {
         Ok(Some(Page {
             items: vec![],
@@ -305,7 +305,7 @@ mod tests {
     async fn fake_not_found(
         _query: String,
         _page: u32,
-        _allowed_langs: smallvec::SmallVec<[smartstring::alias::String; 3]>,
+        _allowed_langs: smallvec::SmallVec<[compact_str::CompactString; 3]>,
     ) -> anyhow::Result<Option<Page<SearchBook, Empty>>> {
         Ok(None)
     }

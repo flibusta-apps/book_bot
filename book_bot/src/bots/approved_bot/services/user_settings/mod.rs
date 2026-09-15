@@ -3,7 +3,7 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use smallvec::{smallvec, SmallVec};
-use smartstring::alias::String as SmartString;
+use compact_str::CompactString as SmartString;
 use std::sync::LazyLock;
 use std::time::Duration;
 use teloxide::types::{ChatId, UserId};
