@@ -3183,7 +3183,7 @@ checksum = "07dd1d452d2c3dc94a4e1c5c3c9a3cc88c2ef5926674b75881e454c4dc3a14c4"
 [[package]]
 name = "teloxide"
 version = "0.17.0"
-source = "git+https://github.com/flibusta-apps/teloxide.git?branch=master#b208e2e1540879173beadf2daa297798e547f19b"
+source = "git+https://github.com/teloxide-fork/teloxide.git?branch=master#f5125b777fe8eceda77a2e895df75942eaac8017"
 dependencies = [
  "axum",
  "bytes",
@@ -3211,7 +3211,7 @@ dependencies = [
 [[package]]
 name = "teloxide-core"
 version = "0.13.0"
-source = "git+https://github.com/flibusta-apps/teloxide.git?branch=master#b208e2e1540879173beadf2daa297798e547f19b"
+source = "git+https://github.com/teloxide-fork/teloxide.git?branch=master#f5125b777fe8eceda77a2e895df75942eaac8017"
 dependencies = [
  "bitflags",
  "bytes",
@@ -3244,7 +3244,7 @@ dependencies = [
 [[package]]
 name = "teloxide-macros"
 version = "0.10.0"
-source = "git+https://github.com/flibusta-apps/teloxide.git?branch=master#b208e2e1540879173beadf2daa297798e547f19b"
+source = "git+https://github.com/teloxide-fork/teloxide.git?branch=master#f5125b777fe8eceda77a2e895df75942eaac8017"
 dependencies = [
  "heck",
  "proc-macro2",
