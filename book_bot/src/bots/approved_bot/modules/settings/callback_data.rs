@@ -1,7 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
-use regex::Regex;
 use compact_str::CompactString as SmartString;
+use regex::Regex;
 use std::sync::LazyLock;
 
 static RE: LazyLock<Regex> =

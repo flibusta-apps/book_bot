@@ -1,9 +1,9 @@
+use compact_str::CompactString as SmartString;
 use moka::future::Cache;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use smallvec::{smallvec, SmallVec};
-use compact_str::CompactString as SmartString;
 use std::sync::LazyLock;
 use std::time::Duration;
 use teloxide::types::{ChatId, UserId};

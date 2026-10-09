@@ -5,8 +5,8 @@ use book_bot_macros::log_handler;
 
 use super::utils::constants::*;
 
-use core::fmt::Debug;
 use compact_str::CompactString as SmartString;
+use core::fmt::Debug;
 
 use smallvec::SmallVec;
 use teloxide::{

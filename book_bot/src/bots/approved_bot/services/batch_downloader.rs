@@ -1,5 +1,5 @@
-use smallvec::SmallVec;
 use compact_str::CompactString as SmartString;
+use smallvec::SmallVec;
 
 use serde::{Deserialize, Serialize};
 

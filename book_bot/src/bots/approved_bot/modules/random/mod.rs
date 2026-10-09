@@ -3,8 +3,8 @@ pub mod commands;
 
 use book_bot_macros::log_handler;
 
-use smallvec::SmallVec;
 use compact_str::CompactString as SmartString;
+use smallvec::SmallVec;
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
