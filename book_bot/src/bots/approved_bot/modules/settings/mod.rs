@@ -6,8 +6,8 @@ use book_bot_macros::log_handler;
 
 use std::collections::HashSet;
 
-use smallvec::SmallVec;
 use compact_str::CompactString as SmartString;
+use smallvec::SmallVec;
 
 use crate::bots::{
     approved_bot::{
