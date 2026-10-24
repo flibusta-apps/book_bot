@@ -1,6 +1,7 @@
 use super::custom_error_handler::CustomErrorHandler;
 use super::error_classification::is_expected_telegram_error;
-use teloxide::adaptors::throttle::Limits;
+use teloxide::adaptors::throttle::{Limits, Settings};
+use teloxide::adaptors::Throttle;
 use teloxide::dispatching::Dispatcher;
 
 use teloxide::payloads::SetWebhookSetters;
@@ -138,10 +139,17 @@ async fn set_webhook_with_retry(bot_data: &BotData, max_retries: u32) -> bool {
 }
 
 pub async fn start_bot(bot_data: &BotData) {
-    let bot = Bot::new(bot_data.token.clone())
-        .set_api_url(config::CONFIG.telegram_bot_api.clone())
-        .throttle(Limits::default())
-        .cache_me();
+    // `check_slow_mode` makes Throttle look up the chat's slow mode delay on a
+    // `RetryAfter` error. When slow mode is the cause (e.g. SLOWMODE_WAIT_899 in a
+    // group), only that chat is delayed instead of freezing the whole bot for
+    // every user.
+    let bot = Throttle::spawn_with_settings(
+        Bot::new(bot_data.token.clone()).set_api_url(config::CONFIG.telegram_bot_api.clone()),
+        Settings::default()
+            .limits(Limits::default())
+            .check_slow_mode(),
+    )
+    .cache_me();
 
     let token = bot.inner().inner().token();
 

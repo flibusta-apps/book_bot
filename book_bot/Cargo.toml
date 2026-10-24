@@ -37,7 +37,7 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 
 # Telegram bot framework
-teloxide = { git = "https://github.com/teloxide-fork/teloxide.git", branch = "master", features = [
+teloxide = { package = "teloxide-fork", git = "https://github.com/teloxide-fork/teloxide.git", rev = "632ed8ef2fb68860fb14ecc15ec0159ac4f0eb4b", features = [
     "macros",
     "webhooks-axum",
     "cache-me",

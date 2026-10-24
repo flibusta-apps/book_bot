@@ -10,7 +10,7 @@ use crate::{
     bots::{
         approved_bot::{
             modules::utils::telegram_utils::{
-                safe_copy_message, safe_delete_message, safe_send_document,
+                safe_copy_message, safe_delete_message, safe_send_document, safe_send_message,
             },
             services::{
                 book_cache::{
@@ -102,6 +102,18 @@ pub async fn _send_downloaded_file(
     Ok(())
 }
 
+const BOOK_UNAVAILABLE_IN_FORMAT: &str =
+    "Книга в этом формате сейчас недоступна. Попробуй другой формат.";
+const BOOK_DOWNLOAD_FAILED: &str =
+    "Не удалось скачать книгу, попробуй позже или выбери другой формат.";
+
+/// Best-effort notice to the user; a failure here must not mask the original error.
+async fn notify_user(bot: &CacheMe<Throttle<Bot>>, message: &MaybeInaccessibleMessage, text: &str) {
+    if let Err(err) = safe_send_message(bot, message.chat().id, text, None).await {
+        log::warn!("Failed to send download failure notice: {err:?}");
+    }
+}
+
 pub async fn send_with_download_from_channel(
     message: MaybeInaccessibleMessage,
     bot: CacheMe<Throttle<Bot>>,
@@ -109,10 +121,15 @@ pub async fn send_with_download_from_channel(
     need_delete_message: bool,
     user_id: Option<u64>,
 ) -> BotHandlerInternal {
-    let downloaded_file = match download_file(&download_data, user_id).await? {
-        Some(v) => v,
-        None => {
+    let downloaded_file = match download_file(&download_data, user_id).await {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            notify_user(&bot, &message, BOOK_UNAVAILABLE_IN_FORMAT).await;
             return Ok(());
+        }
+        Err(err) => {
+            notify_user(&bot, &message, BOOK_DOWNLOAD_FAILED).await;
+            return Err(err);
         }
     };
 

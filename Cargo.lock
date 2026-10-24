@@ -385,7 +385,7 @@ dependencies = [
  "serde_json",
  "smallvec",
  "strum",
- "teloxide",
+ "teloxide-fork",
  "textwrap",
  "thiserror",
  "tokio",
@@ -3176,14 +3176,14 @@ checksum = "f764005d11ee5f36500a149ace24e00e3da98b0158b3e2d53a7495660d3f4d60"
 
 [[package]]
 name = "takecell"
-version = "0.1.2"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07dd1d452d2c3dc94a4e1c5c3c9a3cc88c2ef5926674b75881e454c4dc3a14c4"
+checksum = "20f34339676cdcab560c9a82300c4c2581f68b9369aedf0fae86f2ff9565ff3e"
 
 [[package]]
-name = "teloxide"
-version = "0.17.0"
-source = "git+https://github.com/teloxide-fork/teloxide.git?branch=master#f5125b777fe8eceda77a2e895df75942eaac8017"
+name = "teloxide-fork"
+version = "0.18.0"
+source = "git+https://github.com/teloxide-fork/teloxide.git?rev=632ed8ef2fb68860fb14ecc15ec0159ac4f0eb4b#632ed8ef2fb68860fb14ecc15ec0159ac4f0eb4b"
 dependencies = [
  "axum",
  "bytes",
@@ -3197,8 +3197,8 @@ dependencies = [
  "rand 0.9.5",
  "serde",
  "serde_json",
- "teloxide-core",
- "teloxide-macros",
+ "teloxide-fork-core",
+ "teloxide-fork-macros",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -3209,9 +3209,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "teloxide-core"
-version = "0.13.0"
-source = "git+https://github.com/teloxide-fork/teloxide.git?branch=master#f5125b777fe8eceda77a2e895df75942eaac8017"
+name = "teloxide-fork-core"
+version = "0.14.0"
+source = "git+https://github.com/teloxide-fork/teloxide.git?rev=632ed8ef2fb68860fb14ecc15ec0159ac4f0eb4b#632ed8ef2fb68860fb14ecc15ec0159ac4f0eb4b"
 dependencies = [
  "bitflags",
  "bytes",
@@ -3242,9 +3242,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "teloxide-macros"
-version = "0.10.0"
-source = "git+https://github.com/teloxide-fork/teloxide.git?branch=master#f5125b777fe8eceda77a2e895df75942eaac8017"
+name = "teloxide-fork-macros"
+version = "0.11.0"
+source = "git+https://github.com/teloxide-fork/teloxide.git?rev=632ed8ef2fb68860fb14ecc15ec0159ac4f0eb4b#632ed8ef2fb68860fb14ecc15ec0159ac4f0eb4b"
 dependencies = [
  "heck",
  "proc-macro2",
