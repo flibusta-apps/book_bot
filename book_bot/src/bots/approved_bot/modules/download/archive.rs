@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 
 use book_bot_macros::log_handler;
@@ -82,13 +84,79 @@ async fn send_archive_link(
     Ok(())
 }
 
+/// Task ids that currently have a background waiter / finisher running.
+static ACTIVE_TASKS: LazyLock<Mutex<HashSet<String>>> =
+    LazyLock::new(|| Mutex::new(HashSet::new()));
+
+struct ActiveTaskGuard(String);
+
+impl ActiveTaskGuard {
+    /// Returns `None` if the task is already being handled.
+    fn acquire(task_id: &str) -> Option<Self> {
+        let mut set = ACTIVE_TASKS.lock().unwrap_or_else(|e| e.into_inner());
+        if set.insert(task_id.to_string()) {
+            Some(Self(task_id.to_string()))
+        } else {
+            None
+        }
+    }
+}
+
+impl Drop for ActiveTaskGuard {
+    fn drop(&mut self) {
+        ACTIVE_TASKS
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&self.0);
+    }
+}
+
+fn archive_wait_max() -> Duration {
+    static MAX: LazyLock<Duration> = LazyLock::new(|| {
+        let secs = std::env::var("ARCHIVE_WAIT_MAX_SECS")
+            .ok()
+            .and_then(|v| v.trim().parse::<u64>().ok())
+            .filter(|v| *v > 0)
+            .unwrap_or(1800);
+        Duration::from_secs(secs)
+    });
+    *MAX
+}
+
+fn is_in_progress(task: &Task) -> bool {
+    matches!(task.status, TaskStatus::InProgress | TaskStatus::Archiving)
+}
+
+async fn show_progress(
+    bot: &CacheMe<Throttle<Bot>>,
+    message: &Message,
+    task: &Task,
+) -> BotHandlerInternal {
+    let now = Utc::now().format("%H:%M:%S UTC").to_string();
+
+    safe_edit_message_text(
+        bot,
+        message.chat.id,
+        message.id,
+        format!(
+            "Статус: \n ⏳ {} \n\nОбновлено в {now}",
+            task.status_description
+        ),
+        Some(get_check_keyboard(task.id.clone())),
+    )
+    .await?;
+
+    Ok(())
+}
+
+/// Polls the task until it leaves the in-progress states or the total
+/// deadline (`ARCHIVE_WAIT_MAX_SECS`, default 1800) expires, then delivers
+/// the result. Runs in a background task, one per task id.
 pub async fn wait_archive(
     bot: CacheMe<Throttle<Bot>>,
     task_id: String,
     input_message: MaybeInaccessibleMessage,
 ) -> BotHandlerInternal {
-    let mut interval = time::interval(Duration::from_secs(15));
-
     let message = match input_message {
         MaybeInaccessibleMessage::Regular(message) => message,
         _ => {
@@ -96,6 +164,13 @@ pub async fn wait_archive(
             return Ok(());
         }
     };
+
+    let Some(_guard) = ActiveTaskGuard::acquire(&task_id) else {
+        return Ok(());
+    };
+
+    let deadline = time::Instant::now() + archive_wait_max();
+    let mut interval = time::interval(Duration::from_secs(15));
 
     let task = loop {
         interval.tick().await;
@@ -109,25 +184,63 @@ pub async fn wait_archive(
             }
         };
 
-        if !matches!(task.status, TaskStatus::InProgress | TaskStatus::Archiving) {
+        if !is_in_progress(&task) {
             break task;
         }
 
-        let now = Utc::now().format("%H:%M:%S UTC").to_string();
+        if time::Instant::now() >= deadline {
+            log::warn!("Archive task {task_id} wait deadline exceeded");
+            send_error_message(&bot, message.chat.id, message.id).await;
+            return Ok(());
+        }
 
-        safe_edit_message_text(
-            &bot,
-            message.chat.id,
-            message.id,
-            format!(
-                "Статус: \n ⏳ {} \n\nОбновлено в {now}",
-                task.status_description
-            ),
-            Some(get_check_keyboard(task.id)),
-        )
-        .await?;
+        show_progress(&bot, &message, &task).await?;
     };
 
+    finish_task(&bot, &message, task).await
+}
+
+/// Handles the "check status" button: a single `get_task`, no new loop.
+pub async fn check_archive_status(
+    bot: CacheMe<Throttle<Bot>>,
+    task_id: String,
+    input_message: MaybeInaccessibleMessage,
+) -> BotHandlerInternal {
+    let message = match input_message {
+        MaybeInaccessibleMessage::Regular(message) => message,
+        _ => {
+            send_error_message(&bot, input_message.chat().id, input_message.id()).await;
+            return Ok(());
+        }
+    };
+
+    let task = match get_task(&task_id).await {
+        Ok(v) => v,
+        Err(err) => {
+            send_error_message(&bot, message.chat.id, message.id).await;
+            log::error!("{err:?}");
+            return Err(err);
+        }
+    };
+
+    if is_in_progress(&task) {
+        return show_progress(&bot, &message, &task).await;
+    }
+
+    // Finished. If a background waiter is active it will deliver the result.
+    let Some(_guard) = ActiveTaskGuard::acquire(&task_id) else {
+        return Ok(());
+    };
+
+    finish_task(&bot, &message, task).await
+}
+
+async fn finish_task(
+    bot: &CacheMe<Throttle<Bot>>,
+    message: &Message,
+    task: Task,
+) -> BotHandlerInternal {
+    let bot = bot.clone();
     if task.status == TaskStatus::Failed {
         let is_rate_limit = task
             .error_message
@@ -200,7 +313,7 @@ pub async fn wait_archive(
     };
 
     match _send_downloaded_file(
-        &MaybeInaccessibleMessage::Regular(message.clone()),
+        &MaybeInaccessibleMessage::Regular(Box::new(message.clone())),
         &bot,
         downloaded_data,
     )
@@ -208,8 +321,9 @@ pub async fn wait_archive(
     {
         Ok(_) => (),
         Err(err) => {
-            send_archive_link(&bot, message.chat.id, message.id, &task).await?;
             log::warn!("{err:?}");
+            send_archive_link(&bot, message.chat.id, message.id, &task).await?;
+            return Ok(());
         }
     }
 
@@ -282,9 +396,12 @@ pub async fn download_archive(
     )
     .await?;
 
-    if let Err(err) = wait_archive(bot, task.id, message).await {
-        log::error!("{err:?}");
-    }
+    let task_id = task.id;
+    tokio::spawn(async move {
+        if let Err(err) = wait_archive(bot, task_id, message).await {
+            log::error!("{err:?}");
+        }
+    });
 
     Ok(())
 }

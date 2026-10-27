@@ -30,7 +30,7 @@ async fn main() {
         let dsn = Dsn::from_str(dsn_str).unwrap_or_else(|_| panic!("Cannot parse SENTRY_DSN"));
         let mut options = ClientOptions::default();
         options.dsn = Some(dsn);
-        options.default_integrations = false;
+        // Keep default integrations enabled so panics are reported.
         let options = options.add_integration(DebugImagesIntegration::new());
         sentry::init(options)
     } else {

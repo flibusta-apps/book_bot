@@ -31,11 +31,21 @@ impl std::fmt::Display for CacheRateLimitOperation {
 
 /// Body returned by the cache-server on `429 Too Many Requests`.
 #[derive(Deserialize, Debug, Clone)]
+///
+/// All fields are optional so that both the legacy shape
+/// (`{"error","operation","retry_after_secs"}`) and the contract shape
+/// (`{"detail","retry_after_secs"}`) parse.
 pub struct RateLimitError {
+    #[serde(default)]
     #[allow(dead_code)]
-    pub error: String,
-    pub operation: CacheRateLimitOperation,
-    pub retry_after_secs: u64,
+    pub error: Option<String>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub detail: Option<String>,
+    #[serde(default)]
+    pub operation: Option<CacheRateLimitOperation>,
+    #[serde(default)]
+    pub retry_after_secs: Option<u64>,
 }
 
 /// Parsed result of a 429 response — extracts wait duration and optional details.
@@ -107,7 +117,7 @@ impl RateLimitInfo {
         // Read body once (bounded), try to parse as RateLimitError for operation details.
         let (body_secs, operation) = match read_bounded_body(response).await {
             Some(text) => match serde_json::from_str::<RateLimitError>(&text) {
-                Ok(rl) => (Some(rl.retry_after_secs), Some(rl.operation)),
+                Ok(rl) => (rl.retry_after_secs, rl.operation),
                 Err(err) => {
                     warn!("Failed to parse 429 body: {err}, body: {text}");
                     (None, None)
@@ -229,9 +239,17 @@ mod tests {
     fn rate_limit_error_deserialization() {
         let json = r#"{"error":"rate_limit_exceeded","operation":"cache_hit_download","retry_after_secs":7}"#;
         let rl: RateLimitError = serde_json::from_str(json).unwrap();
-        assert_eq!(rl.error, "rate_limit_exceeded");
-        assert_eq!(rl.operation, CacheRateLimitOperation::HitDownload);
-        assert_eq!(rl.retry_after_secs, 7);
+        assert_eq!(rl.error.as_deref(), Some("rate_limit_exceeded"));
+        assert_eq!(rl.operation, Some(CacheRateLimitOperation::HitDownload));
+        assert_eq!(rl.retry_after_secs, Some(7));
+    }
+
+    #[test]
+    fn rate_limit_error_detail_shape() {
+        let json = r#"{"detail":"slow down","retry_after_secs":9}"#;
+        let rl: RateLimitError = serde_json::from_str(json).unwrap();
+        assert_eq!(rl.retry_after_secs, Some(9));
+        assert_eq!(rl.operation, None);
     }
 
     #[test]
@@ -255,7 +273,7 @@ mod tests {
             ),
         ] {
             let rl: RateLimitError = serde_json::from_str(json).unwrap();
-            assert_eq!(rl.operation, expected);
+            assert_eq!(rl.operation, Some(expected));
         }
     }
 
