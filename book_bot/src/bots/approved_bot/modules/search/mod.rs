@@ -220,6 +220,7 @@ pub fn get_search_handler() -> crate::bots::BotHandler {
     dptree::entry()
         .branch(
             Update::filter_message()
+                .filter(|message: Message| message.chat.is_private() && message.text().is_some())
                 .endpoint(|message, bot| async move { message_handler(message, bot).await }),
         )
         .branch(

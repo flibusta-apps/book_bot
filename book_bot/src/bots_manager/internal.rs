@@ -178,13 +178,27 @@ pub async fn start_bot(bot_data: &BotData) {
 
     let (stop_token, stop_flag, tx, listener) = get_listener();
 
+    let failure_stop_token = stop_token.clone();
+    let bot_id = bot_data.id;
     let dispatcher_handle = Arc::new(tokio::spawn(async move {
-        dispatcher
-            .dispatch_with_listener(
+        let result = dispatcher
+            .try_dispatch_with_listener(
                 listener,
                 CustomErrorHandler::with_custom_text("An error from the update listener"),
             )
             .await;
+
+        if let Err(err) = result {
+            log::error!("Failed to start dispatcher for Bot(id={bot_id}): {err}");
+            if err.to_string().contains("Invalid bot token") {
+                if let Err(d_err) = delete_bot(bot_id).await {
+                    log::error!("Error deleting bot {bot_id}: {d_err:?}");
+                }
+            }
+            // Mark the route as stopped; the webhook handler drops stopped
+            // routes and will try to start the bot again on the next update.
+            failure_stop_token.stop();
+        }
     }));
 
     BOTS_ROUTES

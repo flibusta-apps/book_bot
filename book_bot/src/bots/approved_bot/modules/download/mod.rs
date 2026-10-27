@@ -42,7 +42,7 @@ use self::{
 
 use super::utils::filter_command::filter_command;
 
-use archive::wait_archive;
+use archive::check_archive_status;
 
 #[log_handler("download")]
 async fn get_download_keyboard_handler(
@@ -187,7 +187,7 @@ pub fn get_download_handler() -> crate::bots::BotHandler {
                 let Some(message) = cq.message else {
                     return Ok(());
                 };
-                wait_archive(bot, status.task_id, message).await
+                check_archive_status(bot, status.task_id, message).await
             })
         )
 }

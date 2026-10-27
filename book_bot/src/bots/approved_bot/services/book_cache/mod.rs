@@ -7,7 +7,7 @@ use crate::{
         build_url, check_response, check_status,
         rate_limit::retry_on_429,
         user_settings::{get_user_file_name_lang_for, FileNameLang},
-        HTTP_CLIENT,
+        FILE_HTTP_CLIENT, HTTP_CLIENT,
     },
     bots_manager::BotCache,
     config,
@@ -124,7 +124,7 @@ pub async fn download_file(
     }
 
     let response = retry_on_429(user_id.is_some(), || {
-        let mut req = HTTP_CLIENT
+        let mut req = FILE_HTTP_CLIENT
             .get(url.clone())
             .header("Authorization", &config::CONFIG.cache_server_api_key);
 
@@ -156,7 +156,7 @@ pub async fn download_file_by_link(
     filename: &str,
     link: String,
 ) -> anyhow::Result<Option<DownloadFile>> {
-    let response = HTTP_CLIENT.get(link).send().await?;
+    let response = FILE_HTTP_CLIENT.get(link).send().await?;
 
     // Intentionally: any non-200 (success or error) collapses to `None`
     // here, unlike the other functions in this module — this doesn't fit

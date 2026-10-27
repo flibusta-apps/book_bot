@@ -47,6 +47,35 @@ pub struct Task {
     pub content_size: Option<u64>,
 }
 
+const DEFAULT_QUEUE_FULL_RETRY_SECS: u64 = 30;
+
+/// batch-downloader's task queue is full (`503` + `Retry-After`).
+#[derive(Debug)]
+pub struct QueueFull {
+    pub retry_after_secs: u64,
+}
+
+impl std::fmt::Display for QueueFull {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "batch-downloader queue is full, retry after {} s",
+            self.retry_after_secs
+        )
+    }
+}
+
+impl std::error::Error for QueueFull {}
+
+fn parse_retry_after(headers: &reqwest::header::HeaderMap) -> u64 {
+    headers
+        .get(reqwest::header::RETRY_AFTER)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(DEFAULT_QUEUE_FULL_RETRY_SECS)
+}
+
 pub async fn create_task(data: CreateTaskData, user_id: Option<u64>) -> anyhow::Result<Task> {
     let url = build_url(&config::CONFIG.batch_downloader_url, ["api", ""])?;
 
@@ -60,6 +89,11 @@ pub async fn create_task(data: CreateTaskData, user_id: Option<u64>) -> anyhow::
     }
 
     let response = request.send().await?;
+
+    if response.status() == reqwest::StatusCode::SERVICE_UNAVAILABLE {
+        let retry_after_secs = parse_retry_after(response.headers());
+        return Err(QueueFull { retry_after_secs }.into());
+    }
 
     check_response(response, &[])
         .await?

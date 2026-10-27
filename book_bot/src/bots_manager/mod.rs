@@ -12,6 +12,7 @@ use teloxide::stop::{StopFlag, StopToken};
 use tokio::task::JoinSet;
 use tracing::log;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::watch;
 
@@ -128,6 +129,9 @@ fn record_manager_fetch_failure() {
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
+static CHECK_RUNNING: AtomicBool = AtomicBool::new(false);
+static PENDING_CHECK_RUNNING: AtomicBool = AtomicBool::new(false);
+
 async fn wait_for_handles(
     handles: Vec<Arc<tokio::task::JoinHandle<()>>>,
     timeout: Duration,
@@ -153,6 +157,15 @@ impl BotsManager {
             .collect();
 
         for bot_data in bots.iter() {
+            // Token is the cache key, so a token change shows up as stale
+            // below; a cache-mode change needs the route (dispatcher deps)
+            // to be recreated.
+            if let Some(existing) = BOTS_DATA.get(&bot_data.token).await {
+                if existing.cache != bot_data.cache || existing.id != bot_data.id {
+                    BOTS_ROUTES.remove(&bot_data.token).await;
+                }
+            }
+
             BOTS_DATA
                 .insert(bot_data.token.clone(), bot_data.clone())
                 .await;
@@ -224,13 +237,18 @@ impl BotsManager {
     pub async fn stop_all() {
         let handles: Vec<Arc<tokio::task::JoinHandle<()>>> = BOTS_ROUTES
             .iter()
-            .map(|(_, (stop_token, _, _, handle))| {
+            .map(|(_, (stop_token, _, sender, handle))| {
                 stop_token.stop();
+                // Dropping the last sender ends the update stream so the
+                // dispatcher can finish without waiting for the timeout.
+                let mut sender = sender.clone();
+                sender.close();
                 handle
             })
             .collect();
 
         BOTS_ROUTES.invalidate_all();
+        BOTS_ROUTES.run_pending_tasks().await;
 
         let total = handles.len();
         let remaining = wait_for_handles(handles, SHUTDOWN_TIMEOUT).await;
@@ -300,7 +318,7 @@ impl BotsManager {
         }
     }
 
-    async fn wait_for_telegram_api() {
+    async fn wait_for_telegram_api(shutdown_rx: &mut watch::Receiver<()>) -> bool {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(5))
             .build()
@@ -313,15 +331,20 @@ impl BotsManager {
         let mut attempt: u32 = 0;
 
         loop {
-            match client.get(url.clone()).send().await {
+            let result = tokio::select! {
+                _ = shutdown_rx.changed() => return false,
+                r = client.get(url.clone()).send() => r,
+            };
+            match result {
                 Ok(_) => {
                     log::info!("Telegram Bot API is ready");
-                    return;
+                    return true;
                 }
                 Err(err) => {
-                    attempt += 1;
+                    attempt = attempt.saturating_add(1);
+                    let exp = (attempt - 1).min(10) as i32;
                     let delay = Duration::from_secs(2)
-                        .mul_f64(1.5_f64.powi(attempt as i32 - 1))
+                        .mul_f64(1.5_f64.powi(exp))
                         .min(Duration::from_secs(30));
 
                     log::warn!(
@@ -330,14 +353,20 @@ impl BotsManager {
                         delay.as_secs(),
                     );
 
-                    tokio::time::sleep(delay).await;
+                    tokio::select! {
+                        _ = shutdown_rx.changed() => return false,
+                        _ = tokio::time::sleep(delay) => {}
+                    }
                 }
             }
         }
     }
 
     pub async fn start(mut shutdown_rx: watch::Receiver<()>) {
-        BotsManager::wait_for_telegram_api().await;
+        if !BotsManager::wait_for_telegram_api(&mut shutdown_rx).await {
+            log::info!("Shutdown requested while waiting for Telegram Bot API");
+            return;
+        }
 
         BotsManager::check(true).await;
 
@@ -366,12 +395,22 @@ impl BotsManager {
                 std::process::exit(1);
             }
 
-            if BotsManager::should_run_bots_data_check(tick_number) {
-                BotsManager::check(false).await;
+            if BotsManager::should_run_bots_data_check(tick_number)
+                && !CHECK_RUNNING.swap(true, Ordering::AcqRel)
+            {
+                tokio::spawn(async {
+                    BotsManager::check(false).await;
+                    CHECK_RUNNING.store(false, Ordering::Release);
+                });
             }
 
-            if BotsManager::should_run_pending_updates_check(tick_number) {
-                BotsManager::check_pending_updates().await;
+            if BotsManager::should_run_pending_updates_check(tick_number)
+                && !PENDING_CHECK_RUNNING.swap(true, Ordering::AcqRel)
+            {
+                tokio::spawn(async {
+                    BotsManager::check_pending_updates().await;
+                    PENDING_CHECK_RUNNING.store(false, Ordering::Release);
+                });
             }
 
             tick_number = (tick_number + 1) % 1800;

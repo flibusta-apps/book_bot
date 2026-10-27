@@ -14,11 +14,6 @@ debug = false
 strip = true
 lto = true
 codegen-units = 1
-# panic = "abort": deliberate trade-off — reduces binary size and avoids
-# stack-unwinding overhead. Acceptable only because the container orchestrator
-# (e.g. Kubernetes) is configured to restart the process on exit.
-# If restart guarantees are ever removed, revert to panic = "unwind".
-panic = "abort"
 
 [profile.profiling]
 inherits = "release"

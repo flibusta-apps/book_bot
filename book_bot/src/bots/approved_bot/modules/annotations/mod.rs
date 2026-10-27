@@ -9,7 +9,7 @@ use book_bot_macros::log_handler;
 
 use std::convert::TryInto;
 
-use futures::TryStreamExt;
+use tracing::log;
 
 use teloxide::{
     adaptors::{CacheMe, Throttle},
@@ -55,10 +55,106 @@ const RICH_MESSAGE_TOTAL_BUDGET: usize = 25_000;
 
 use super::utils::{constants::TELEGRAM_MESSAGE_MAX_LENGTH, filter_command::filter_command};
 
-async fn download_image(
-    file: &String,
-) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
-    Ok(reqwest::get(file).await?.error_for_status()?)
+const MAX_IMAGE_BYTES: usize = 10 * 1024 * 1024;
+const MAX_IMAGE_REDIRECTS: usize = 3;
+
+fn is_forbidden_ip(ip: std::net::IpAddr) -> bool {
+    use std::net::IpAddr;
+    match ip {
+        IpAddr::V4(v4) => {
+            v4.is_loopback()
+                || v4.is_private()
+                || v4.is_link_local()
+                || v4.is_unspecified()
+                || v4.is_broadcast()
+                || v4.is_multicast()
+                || v4.octets()[0] == 0
+                // 100.64.0.0/10 (CGNAT)
+                || (v4.octets()[0] == 100 && (v4.octets()[1] & 0xC0) == 64)
+        }
+        IpAddr::V6(v6) => {
+            if let Some(v4) = v6.to_ipv4_mapped() {
+                return is_forbidden_ip(IpAddr::V4(v4));
+            }
+            let first = v6.segments()[0];
+            v6.is_loopback()
+                || v6.is_unspecified()
+                || v6.is_multicast()
+                // fc00::/7 unique local, fe80::/10 link-local
+                || (first & 0xfe00) == 0xfc00
+                || (first & 0xffc0) == 0xfe80
+        }
+    }
+}
+
+/// Downloads an annotation image with SSRF protections: http/https only,
+/// public IPs only (checked after DNS resolution and pinned for the
+/// connection), bounded redirects, timeout and size cap.
+async fn download_image(file: &str) -> anyhow::Result<bytes::Bytes> {
+    use anyhow::{anyhow, bail};
+    use futures::StreamExt;
+
+    let mut url = reqwest::Url::parse(file)?;
+
+    for _ in 0..=MAX_IMAGE_REDIRECTS {
+        if !matches!(url.scheme(), "http" | "https") {
+            bail!("unsupported image URL scheme");
+        }
+        let host = url
+            .host_str()
+            .ok_or_else(|| anyhow!("image URL has no host"))?
+            .to_string();
+        let port = url
+            .port_or_known_default()
+            .ok_or_else(|| anyhow!("image URL has no port"))?;
+
+        let addrs: Vec<std::net::SocketAddr> = tokio::net::lookup_host((host.as_str(), port))
+            .await?
+            .collect();
+        if addrs.is_empty() || addrs.iter().any(|a| is_forbidden_ip(a.ip())) {
+            bail!("image host resolves to a forbidden address");
+        }
+
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(20))
+            .connect_timeout(std::time::Duration::from_secs(5))
+            .redirect(reqwest::redirect::Policy::none())
+            .resolve_to_addrs(&host, &addrs)
+            .build()?;
+
+        let response = client.get(url.clone()).send().await?;
+
+        if response.status().is_redirection() {
+            let location = response
+                .headers()
+                .get(reqwest::header::LOCATION)
+                .and_then(|v| v.to_str().ok())
+                .ok_or_else(|| anyhow!("redirect without Location"))?;
+            url = url.join(location)?;
+            continue;
+        }
+
+        let response = response.error_for_status()?;
+
+        if response
+            .content_length()
+            .is_some_and(|len| len > MAX_IMAGE_BYTES as u64)
+        {
+            bail!("image too large");
+        }
+
+        let mut buf = Vec::new();
+        let mut stream = response.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            buf.extend_from_slice(&chunk?);
+            if buf.len() > MAX_IMAGE_BYTES {
+                bail!("image too large");
+            }
+        }
+        return Ok(bytes::Bytes::from(buf));
+    }
+
+    bail!("too many redirects")
 }
 
 /// Which page representation a given annotation's text was (or would be)
@@ -140,11 +236,11 @@ where
     if let Some(file) = annotation.get_file() {
         let image_response = download_image(file).await;
 
-        if let Ok(v) = image_response {
-            let stream = v.bytes_stream().map_err(std::io::Error::other);
-            let data = tokio_util::io::StreamReader::new(stream);
-
-            safe_send_photo(&bot, message.chat.id, InputFile::read(data)).await?;
+        match image_response {
+            Ok(data) => {
+                safe_send_photo(&bot, message.chat.id, InputFile::memory(data)).await?;
+            }
+            Err(err) => log::warn!("Annotation image download failed: {err}"),
         }
     };
 
@@ -166,8 +262,16 @@ where
             .expect("resolve_pages guarantees non-empty");
 
         let callback_data = match command {
-            AnnotationCommand::Book { id } => AnnotationCallbackData::Book { id, page: 1 },
-            AnnotationCommand::Author { id } => AnnotationCallbackData::Author { id, page: 1 },
+            AnnotationCommand::Book { id } => AnnotationCallbackData::Book {
+                id,
+                page: 1,
+                plain: false,
+            },
+            AnnotationCommand::Author { id } => AnnotationCallbackData::Author {
+                id,
+                page: 1,
+                plain: false,
+            },
         };
         let keyboard =
             generic_get_pagination_keyboard(1, rich_pages.len().try_into()?, callback_data, false);
@@ -204,8 +308,16 @@ where
     };
 
     let callback_data = match command {
-        AnnotationCommand::Book { id } => AnnotationCallbackData::Book { id, page: 1 },
-        AnnotationCommand::Author { id } => AnnotationCallbackData::Author { id, page: 1 },
+        AnnotationCommand::Book { id } => AnnotationCallbackData::Book {
+            id,
+            page: 1,
+            plain: true,
+        },
+        AnnotationCommand::Author { id } => AnnotationCallbackData::Author {
+            id,
+            page: 1,
+            plain: true,
+        },
     };
     let keyboard =
         generic_get_pagination_keyboard(1, pages.len().try_into()?, callback_data, false);
@@ -234,9 +346,9 @@ where
     T: AnnotationFormat,
     Fut: std::future::Future<Output = anyhow::Result<Option<T>>>,
 {
-    let (id, page) = match callback_data {
-        AnnotationCallbackData::Book { id, page } => (id, page),
-        AnnotationCallbackData::Author { id, page } => (id, page),
+    let (id, page, plain) = match callback_data {
+        AnnotationCallbackData::Book { id, page, plain } => (id, page, plain),
+        AnnotationCallbackData::Author { id, page, plain } => (id, page, plain),
     };
 
     let annotation = match annotation_getter(id).await {
@@ -256,7 +368,15 @@ where
 
     let annotation_text = annotation.get_text();
 
-    match resolve_pages(annotation_text) {
+    // The mode chosen when the message was first sent is persisted in the
+    // callback data, so a rich-send fallback keeps paginating as plain text.
+    let pages = if plain {
+        AnnotationPages::Plain(build_pages(annotation_text, TELEGRAM_MESSAGE_MAX_LENGTH))
+    } else {
+        resolve_pages(annotation_text)
+    };
+
+    match pages {
         AnnotationPages::Rich(rich_pages) => {
             let page_index = if request_page <= rich_pages.len() {
                 request_page

@@ -1,4 +1,6 @@
 use std::error::Error;
+use std::sync::LazyLock;
+use std::time::Duration;
 
 use serde_json::json;
 use teloxide::prelude::*;
@@ -23,8 +25,18 @@ pub enum RegisterRequestStatus {
     UnknownError,
 }
 
+static REGISTER_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .connect_timeout(Duration::from_secs(5))
+        .build()
+        .expect("Failed to create registration HTTP client")
+});
+
 async fn get_bot_username(token: &str) -> Option<String> {
-    match Bot::new(token).get_me().send().await {
+    let bot = Bot::with_client(token, REGISTER_CLIENT.clone())
+        .set_api_url(config::CONFIG.telegram_bot_api.clone());
+    match bot.get_me().send().await {
         Ok(v) => v.username.clone(),
         Err(_) => None,
     }
@@ -43,11 +55,10 @@ async fn make_register_request(
         "username": username,
     });
 
-    let result = reqwest::Client::new()
+    let result = REGISTER_CLIENT
         .post(&config::CONFIG.manager_url)
-        .body(body.to_string())
-        .header("Authorization", &config::CONFIG.manager_api_key)
-        .header("Content-Type", "application/json")
+        .bearer_auth(&config::CONFIG.manager_api_key)
+        .json(&body)
         .send()
         .await?;
 

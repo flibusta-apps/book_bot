@@ -19,9 +19,9 @@ All variables below are read once at startup by `Config::load()` in `book_bot/sr
 | `TELEGRAM_BOT_API_ROOT` | yes | Base URL of the Telegram Bot API server (local `telegram-bot-api` instance or `https://api.telegram.org`) |
 | `WEBHOOK_BASE_URL` | yes | Public base URL Telegram/webhook clients use to reach this service |
 | `WEBHOOK_PORT` | yes | Port the webhook/health/metrics server binds to |
-| `WEBHOOK_SECRET_TOKEN` | yes | Secret token used to validate incoming webhook requests |
+| `WEBHOOK_SECRET_TOKEN` | yes | Non-empty secret (1-256 chars of `A-Za-z0-9_-`) used to validate incoming webhook requests |
 | `MANAGER_URL` | yes | Base URL of the bots-manager service (source of approved bot tokens) |
-| `MANAGER_API_KEY` | yes | API key for `MANAGER_URL` |
+| `MANAGER_API_KEY` | yes | API key for `MANAGER_URL` (optional leading `Bearer ` is stripped; sent as `Authorization: Bearer`) |
 | `USER_SETTINGS_URL` | yes | Base URL of the user-settings service (scheme+host+port only, no path — see the comment in `config.rs`) |
 | `USER_SETTINGS_API_KEY` | yes | API key for `USER_SETTINGS_URL` |
 | `BOOK_SERVER_URL` | yes | Base URL of the book-library/annotations service |
@@ -31,6 +31,9 @@ All variables below are read once at startup by `Config::load()` in `book_bot/sr
 | `BATCH_DOWNLOADER_URL` | yes | Internal base URL of the batch-downloader service |
 | `PUBLIC_BATCH_DOWNLOADER_URL` | yes | Publicly reachable base URL of the batch-downloader service |
 | `BATCH_DOWNLOADER_API_KEY` | yes | API key for the batch-downloader service |
+| `DONATE_CARD_NUMBER` | no | Card number shown by `/donate`; line hidden if unset |
+| `DONATE_PHONE` | no | Phone number shown by `/donate`; line hidden if unset |
+| `ARCHIVE_WAIT_MAX_SECS` | no | Total deadline for waiting on an archive task (default 1800) |
 | `SENTRY_DSN` | no | Sentry DSN; error reporting is skipped entirely if unset |
 | `RUST_LOG` | no | `tracing`/`EnvFilter` directive (e.g. `debug,tower_http=warn`); defaults to `info` |
 

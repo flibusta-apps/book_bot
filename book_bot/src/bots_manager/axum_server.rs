@@ -53,9 +53,8 @@ pub async fn start_axum_server(
         let expected_secret = config::CONFIG.webhook_secret_token.as_str();
         let provided_secret = headers
             .get("x-telegram-bot-api-secret-token")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("");
-        if provided_secret != expected_secret {
+            .and_then(|v| v.to_str().ok());
+        if expected_secret.is_empty() || provided_secret != Some(expected_secret) {
             metrics::counter!("webhook_secret_rejected_total").increment(1u64);
             return StatusCode::FORBIDDEN;
         }
@@ -104,14 +103,29 @@ pub async fn start_axum_server(
         }
 
         match serde_json::from_str::<Update>(&input) {
-            Ok(mut update) => {
+            Ok(update) => {
                 // teloxide-core parses updates it doesn't recognize into
                 // `UpdateKind::Error(Value::default())`, discarding the raw
                 // payload in the process. Re-parse the same input as a bare
                 // `Value` here so downstream handlers still see the original
                 // update body instead of an empty default.
-                if let UpdateKind::Error(value) = &mut update.kind {
-                    *value = serde_json::from_str(&input).unwrap_or_default();
+                if matches!(update.kind, UpdateKind::Error(_)) {
+                    // Unknown update types are dropped at the boundary; log
+                    // only the id and top-level key names (no payload).
+                    let kind = serde_json::from_str::<serde_json::Value>(&input)
+                        .ok()
+                        .and_then(|v| {
+                            v.as_object().map(|o| {
+                                o.keys()
+                                    .filter(|k| k.as_str() != "update_id")
+                                    .cloned()
+                                    .collect::<Vec<_>>()
+                                    .join(",")
+                            })
+                        })
+                        .unwrap_or_default();
+                    log::debug!("Dropping unsupported update id={} type={kind}", update.id.0);
+                    return StatusCode::OK;
                 }
 
                 match tx.try_send(Ok(update)) {

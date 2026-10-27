@@ -30,7 +30,7 @@ pub struct BotData {
 pub async fn get_bots() -> Result<Vec<BotData>, reqwest::Error> {
     let response = CLIENT
         .get(&config::CONFIG.manager_url)
-        .header("Authorization", &config::CONFIG.manager_api_key)
+        .bearer_auth(&config::CONFIG.manager_api_key)
         .send()
         .await?;
 
@@ -44,7 +44,7 @@ async fn parse_bots_response(response: reqwest::Response) -> Result<Vec<BotData>
 pub async fn delete_bot(id: u32) -> Result<(), reqwest::Error> {
     let response = CLIENT
         .delete(format!("{}/{}/", config::CONFIG.manager_url, id))
-        .header("Authorization", &config::CONFIG.manager_api_key)
+        .bearer_auth(&config::CONFIG.manager_api_key)
         .send()
         .await?;
 

@@ -2,6 +2,13 @@ pub mod modules;
 pub mod services;
 mod tools;
 
+use std::collections::HashSet;
+use std::sync::{Arc, LazyLock, Mutex};
+use std::time::Duration;
+
+use moka::future::Cache;
+use tokio::sync::Semaphore;
+
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
@@ -9,7 +16,9 @@ use teloxide::{
 };
 
 use crate::{
-    bots::approved_bot::services::user_settings::{get_user_settings, save_user_settings},
+    bots::approved_bot::services::user_settings::{
+        default_lang_codes, get_user_settings, save_user_settings,
+    },
     bots_manager::USER_ACTIVITY_CACHE,
 };
 
@@ -20,7 +29,7 @@ use self::{
         search::get_search_handler, settings::get_settings_handler, support::get_support_handler,
         update_history::get_update_log_handler,
     },
-    services::user_settings::{get_user_or_default_lang_codes, update_user_activity},
+    services::user_settings::update_user_activity,
 };
 
 use super::{
@@ -28,33 +37,80 @@ use super::{
     ignore_user_edited_message, registration::get_manager_handler, BotCommands, BotHandler,
 };
 
+/// Max concurrent background activity updates.
+static ACTIVITY_SEMAPHORE: LazyLock<Arc<Semaphore>> =
+    LazyLock::new(|| Arc::new(Semaphore::new(16)));
+
+/// Users with an update in flight, so one user never spawns several tasks.
+static ACTIVITY_IN_FLIGHT: LazyLock<Mutex<HashSet<UserId>>> =
+    LazyLock::new(|| Mutex::new(HashSet::new()));
+
+/// Short negative cache so a failing service isn't hammered per message.
+static ACTIVITY_FAILURE_CACHE: LazyLock<Cache<UserId, ()>> = LazyLock::new(|| {
+    Cache::builder()
+        .time_to_live(Duration::from_secs(60))
+        .max_capacity(4096)
+        .build()
+});
+
+struct InFlightGuard(UserId);
+
+impl Drop for InFlightGuard {
+    fn drop(&mut self) {
+        ACTIVITY_IN_FLIGHT
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&self.0);
+    }
+}
+
+async fn run_activity_update(me: &teloxide::types::Me, user: &teloxide::types::User) -> bool {
+    if update_user_activity(user.id).await.is_ok() {
+        return true;
+    }
+
+    // Only create a default profile after a confirmed 404; on any service
+    // error do nothing so existing settings are never overwritten.
+    match get_user_settings(user.id).await {
+        Ok(None) => {
+            if save_user_settings(user, me, default_lang_codes(), None, Default::default())
+                .await
+                .is_err()
+            {
+                return false;
+            }
+            update_user_activity(user.id).await.is_ok()
+        }
+        Ok(Some(_)) | Err(_) => false,
+    }
+}
+
 async fn _update_activity(me: teloxide::types::Me, user: teloxide::types::User) -> Option<()> {
-    if USER_ACTIVITY_CACHE.contains_key(&user.id) {
+    if USER_ACTIVITY_CACHE.contains_key(&user.id) || ACTIVITY_FAILURE_CACHE.contains_key(&user.id) {
         return None;
     }
 
-    tokio::spawn(async move {
-        let mut update_result = update_user_activity(user.id).await;
-
-        if update_result.is_err() {
-            let allowed_langs = get_user_or_default_lang_codes(user.id).await;
-            let current = get_user_settings(user.id).await.ok().flatten();
-            let default_search = current.as_ref().and_then(|s| s.default_search);
-            let file_name_lang = current
-                .as_ref()
-                .map(|s| s.file_name_lang)
-                .unwrap_or_default();
-
-            if save_user_settings(&user, &me, allowed_langs, default_search, file_name_lang)
-                .await
-                .is_ok()
-            {
-                update_result = update_user_activity(user.id).await;
-            }
+    {
+        let mut in_flight = ACTIVITY_IN_FLIGHT.lock().unwrap_or_else(|e| e.into_inner());
+        if !in_flight.insert(user.id) {
+            return None;
         }
+    }
+    let guard = InFlightGuard(user.id);
 
-        if update_result.is_ok() {
+    let Ok(permit) = ACTIVITY_SEMAPHORE.clone().try_acquire_owned() else {
+        // Too many updates in flight; skip, a later message will retry.
+        return None;
+    };
+
+    tokio::spawn(async move {
+        let _guard = guard;
+        let _permit = permit;
+
+        if run_activity_update(&me, &user).await {
             USER_ACTIVITY_CACHE.insert(user.id, ()).await;
+        } else {
+            ACTIVITY_FAILURE_CACHE.insert(user.id, ()).await;
         }
     });
 

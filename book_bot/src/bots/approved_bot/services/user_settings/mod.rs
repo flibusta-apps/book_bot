@@ -156,12 +156,14 @@ fn dedupe_lang_codes(allowed_langs: SmallVec<[Lang; 3]>) -> SmallVec<[SmartStrin
         .collect()
 }
 
-pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartString; 3]> {
-    let default_lang_codes = smallvec!["ru".into(), "be".into(), "uk".into()];
+pub fn default_lang_codes() -> SmallVec<[SmartString; 3]> {
+    smallvec!["ru".into(), "be".into(), "uk".into()]
+}
 
+pub async fn get_user_or_default_lang_codes(user_id: UserId) -> SmallVec<[SmartString; 3]> {
     match get_cached_user_settings(user_id).await {
         Some(settings) => dedupe_lang_codes(settings.allowed_langs),
-        None => default_lang_codes,
+        None => default_lang_codes(),
     }
 }
 
@@ -176,8 +178,6 @@ pub async fn create_or_update_user_settings(
     default_search: Option<DefaultSearchType>,
     file_name_lang: FileNameLang,
 ) -> anyhow::Result<UserSettings> {
-    USER_SETTINGS_CACHE.invalidate(&user_id).await;
-
     let default_search_json = match &default_search {
         Some(t) => serde_json::Value::String(t.as_api_str().to_string()),
         None => serde_json::Value::Null,
@@ -203,9 +203,16 @@ pub async fn create_or_update_user_settings(
         .send()
         .await?;
 
-    check_response(response, &[])
+    let settings: UserSettings = check_response(response, &[])
         .await?
-        .ok_or_else(|| anyhow::anyhow!("user-settings service returned an empty response"))
+        .ok_or_else(|| anyhow::anyhow!("user-settings service returned an empty response"))?;
+
+    // Update the cache only after a successful write, with the returned state.
+    USER_SETTINGS_CACHE
+        .insert(user_id, Some(settings.clone()))
+        .await;
+
+    Ok(settings)
 }
 
 /// Thin wrapper around `create_or_update_user_settings` that does the
