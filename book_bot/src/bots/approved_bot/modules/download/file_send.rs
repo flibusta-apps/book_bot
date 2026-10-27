@@ -1,4 +1,6 @@
 use futures::TryStreamExt;
+use std::sync::atomic::{AtomicU64, Ordering};
+use tokio::io::AsyncWriteExt;
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
@@ -90,15 +92,57 @@ pub async fn _send_downloaded_file(
         caption,
     } = downloaded_data;
 
-    let stream = response.bytes_stream().map_err(std::io::Error::other);
-    let data = tokio_util::io::StreamReader::new(stream);
+    // Stream into a temp file (bounded by an overall deadline) and send it
+    // via `InputFile::file`, so Throttle retries re-open the file instead of
+    // depending on a one-shot stream or buffering the whole body in memory.
+    let path = std::env::temp_dir().join(format!(
+        "book_bot_{}_{}.tmp",
+        std::process::id(),
+        TEMP_COUNTER.fetch_add(1, Ordering::Relaxed)
+    ));
 
-    let document = InputFile::read(data).file_name(filename);
+    let result = async {
+        tokio::time::timeout(
+            FILE_DOWNLOAD_DEADLINE,
+            save_response_to_file(response, &path),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("file download deadline exceeded"))??;
 
-    safe_send_document(bot, message.chat().id, document, caption).await?;
+        let document = InputFile::file(path.clone()).file_name(filename);
+        safe_send_document(bot, message.chat().id, document, caption).await
+    }
+    .await;
+
+    let _ = tokio::fs::remove_file(&path).await;
+
+    if let Err(err) = result {
+        notify_user(bot, message, BOOK_SEND_FAILED).await;
+        return Err(err);
+    }
 
     send_donation_notification(bot, message).await?;
 
+    Ok(())
+}
+
+const BOOK_SEND_FAILED: &str =
+    "Не удалось отправить файл, попробуй позже или выбери другой формат.";
+
+const FILE_DOWNLOAD_DEADLINE: std::time::Duration = std::time::Duration::from_secs(600);
+
+static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+async fn save_response_to_file(
+    response: reqwest::Response,
+    path: &std::path::Path,
+) -> anyhow::Result<()> {
+    let mut file = tokio::fs::File::create(path).await?;
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.try_next().await? {
+        file.write_all(&chunk).await?;
+    }
+    file.flush().await?;
     Ok(())
 }
 

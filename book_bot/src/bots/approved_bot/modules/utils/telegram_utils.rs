@@ -421,7 +421,7 @@ pub async fn safe_answer_callback_query_with_text(
 
 /// Safely copy a message, handling common Telegram API errors.
 ///
-/// - `MessageToCopyNotFound` → Ok(()) (original message deleted)
+/// - `MessageToCopyNotFound` → Err (NOT success: callers fall back to re-downloading)
 /// - `NotEnoughRights*` → Ok(()) (can't act, suppress)
 /// - Other errors → Err
 pub async fn safe_copy_message(
@@ -437,8 +437,7 @@ pub async fn safe_copy_message(
     {
         Ok(_) => Ok(()),
         Err(RequestError::Api(api_error)) => match api_error {
-            ApiError::MessageToCopyNotFound
-            | ApiError::NotEnoughRightsToPostMessages
+            ApiError::NotEnoughRightsToPostMessages
             | ApiError::NotEnoughRightsToRestrict
             | ApiError::NotEnoughRightsToChangeChatPermissions
             | ApiError::NotEnoughRightsToManagePins

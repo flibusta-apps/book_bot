@@ -22,6 +22,18 @@ pub static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .expect("Failed to create HTTP client")
 });
 
+/// Client for streaming large file downloads: no total request timeout
+/// (callers enforce an overall deadline), only connect and per-read timeouts.
+pub static FILE_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(5))
+        .read_timeout(Duration::from_secs(60))
+        .pool_idle_timeout(Duration::from_secs(90))
+        .user_agent(concat!("book_bot/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .expect("Failed to create file HTTP client")
+});
+
 /// Appends path segments to a base URL, letting the `url` crate handle
 /// percent-encoding (e.g. a space becomes `%20`, never `+`).
 pub fn build_url<'a>(

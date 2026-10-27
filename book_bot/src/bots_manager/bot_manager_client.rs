@@ -30,7 +30,7 @@ pub struct BotData {
 pub async fn get_bots() -> Result<Vec<BotData>, reqwest::Error> {
     let response = CLIENT
         .get(&config::CONFIG.manager_url)
-        .header("Authorization", &config::CONFIG.manager_api_key)
+        .bearer_auth(&config::CONFIG.manager_api_key)
         .send()
         .await?;
 
@@ -39,21 +39,6 @@ pub async fn get_bots() -> Result<Vec<BotData>, reqwest::Error> {
 
 async fn parse_bots_response(response: reqwest::Response) -> Result<Vec<BotData>, reqwest::Error> {
     response.error_for_status()?.json::<Vec<BotData>>().await
-}
-
-pub async fn delete_bot(id: u32) -> Result<(), reqwest::Error> {
-    let response = CLIENT
-        .delete(format!("{}/{}/", config::CONFIG.manager_url, id))
-        .header("Authorization", &config::CONFIG.manager_api_key)
-        .send()
-        .await?;
-
-    check_delete_response(response)
-}
-
-fn check_delete_response(response: reqwest::Response) -> Result<(), reqwest::Error> {
-    response.error_for_status()?;
-    Ok(())
 }
 
 #[cfg(test)]
@@ -86,15 +71,5 @@ mod tests {
         assert_eq!(bots.len(), 1);
         assert_eq!(bots[0].id, 1);
         assert_eq!(bots[0].cache, BotCache::Cache);
-    }
-
-    #[test]
-    fn check_delete_response_errors_on_500() {
-        assert!(check_delete_response(response_with_status(500)).is_err());
-    }
-
-    #[test]
-    fn check_delete_response_ok_on_200() {
-        assert!(check_delete_response(response_with_status(200)).is_ok());
     }
 }
