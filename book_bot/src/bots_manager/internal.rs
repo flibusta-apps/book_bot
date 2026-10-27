@@ -21,6 +21,7 @@ use url::Url;
 use std::convert::Infallible;
 use std::sync::Arc;
 
+use crate::bots_manager::bot_manager_client::delete_bot;
 use crate::bots_manager::BOTS_ROUTES;
 use crate::bots_manager::COMMANDS_SET_BOT_IDS;
 use crate::config;
@@ -85,12 +86,7 @@ async fn set_webhook_with_retry(bot_data: &BotData, max_retries: u32) -> bool {
             Err(err) => {
                 if let teloxide::RequestError::Api(ref api_err) = err {
                     if api_err == &teloxide::ApiError::InvalidToken {
-                        // Do not delete the bot from the manager automatically:
-                        // a transient/proxy error must not cause data loss.
-                        log::error!(
-                            "Invalid token reported for Bot(id={}); skipping webhook setup",
-                            bot_data.id
-                        );
+                        let _ = delete_bot(bot_data.id).await;
                         return false;
                     }
                     // Non-retryable API error
@@ -194,6 +190,11 @@ pub async fn start_bot(bot_data: &BotData) {
 
         if let Err(err) = result {
             log::error!("Failed to start dispatcher for Bot(id={bot_id}): {err}");
+            if err.to_string().contains("Invalid bot token") {
+                if let Err(d_err) = delete_bot(bot_id).await {
+                    log::error!("Error deleting bot {bot_id}: {d_err:?}");
+                }
+            }
             // Mark the route as stopped; the webhook handler drops stopped
             // routes and will try to start the bot again on the next update.
             failure_stop_token.stop();

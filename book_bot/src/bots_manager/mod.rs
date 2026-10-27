@@ -23,6 +23,7 @@ use teloxide::prelude::*;
 
 use moka::future::Cache;
 
+use crate::bots_manager::bot_manager_client::delete_bot;
 use crate::bots_manager::error_classification::is_expected_telegram_error;
 use crate::config;
 
@@ -298,12 +299,10 @@ impl BotsManager {
                     let error_message = err.to_string();
 
                     if error_message.contains("Invalid bot token") {
-                        // Never delete the bot automatically; just log and skip.
-                        log::error!(
-                            "Invalid bot token reported for Bot(id={}); skipping",
-                            bot_data.id
-                        );
-                        record_webhook_check_failure(bot_data.id).await;
+                        BOTS_DATA.invalidate(token.as_str()).await;
+                        if let Err(d_err) = delete_bot(bot_data.id).await {
+                            log::error!("Error deleting bot {}: {:?}", bot_data.id, d_err);
+                        };
                         continue;
                     }
 
