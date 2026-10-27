@@ -280,7 +280,9 @@ pub async fn get_langs() -> anyhow::Result<Vec<Lang>> {
         .ok_or_else(|| anyhow::anyhow!("user-settings service returned an empty response"))
 }
 
-pub async fn update_user_activity(user_id: UserId) -> anyhow::Result<()> {
+/// Returns `Ok(false)` when the user has no profile yet (404) — an expected
+/// case that must not be logged as an error.
+pub async fn update_user_activity(user_id: UserId) -> anyhow::Result<bool> {
     let url = build_url(
         &config::CONFIG.user_settings_url,
         ["users", &user_id.to_string(), "update_activity"],
@@ -292,9 +294,9 @@ pub async fn update_user_activity(user_id: UserId) -> anyhow::Result<()> {
         .send()
         .await?;
 
-    check_status(response, &[]).await?;
-
-    Ok(())
+    Ok(check_status(response, &[StatusCode::NOT_FOUND])
+        .await?
+        .is_some())
 }
 
 pub async fn is_need_donate_notifications(

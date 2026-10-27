@@ -65,8 +65,11 @@ impl Drop for InFlightGuard {
 }
 
 async fn run_activity_update(me: &teloxide::types::Me, user: &teloxide::types::User) -> bool {
-    if update_user_activity(user.id).await.is_ok() {
-        return true;
+    match update_user_activity(user.id).await {
+        Ok(true) => return true,
+        Ok(false) => {}
+        // Service error: don't touch settings.
+        Err(_) => return false,
     }
 
     // Only create a default profile after a confirmed 404; on any service
@@ -79,7 +82,7 @@ async fn run_activity_update(me: &teloxide::types::Me, user: &teloxide::types::U
             {
                 return false;
             }
-            update_user_activity(user.id).await.is_ok()
+            matches!(update_user_activity(user.id).await, Ok(true))
         }
         Ok(Some(_)) | Err(_) => false,
     }

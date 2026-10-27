@@ -173,6 +173,11 @@ pub async fn start_bot(bot_data: &BotData) {
 
     let mut dispatcher = Dispatcher::builder(bot.clone(), handler)
         .dependencies(dptree::deps![bot_data.cache])
+        // Updates no handler wants (e.g. group chatter) are expected; drop them
+        // quietly without logging their payload.
+        .default_handler(|upd| async move {
+            log::debug!("Ignored update id={}", upd.id.0);
+        })
         .error_handler(CustomErrorHandler::with_custom_text("Handler error"))
         .build();
 
