@@ -7,13 +7,24 @@ use crate::bots::approved_bot::modules::utils::{
     errors::CallbackQueryParseError, pagination::GetPaginationCallbackData,
 };
 
-static RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(?P<an_type>[ab])_an_(?P<id>\d+)_(?P<page>\d+)$").unwrap());
+static RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?P<an_type>[ab])_an_(?P<id>\d+)_(?P<page>\d+)(?P<plain>p)?$").unwrap()
+});
 
 #[derive(Debug, Clone)]
 pub enum AnnotationCallbackData {
-    Book { id: u32, page: u32 },
-    Author { id: u32, page: u32 },
+    /// `plain == true` pins plain-text pagination (rich-message send fell
+    /// back); `false` means "decide from the text" (rich when applicable).
+    Book {
+        id: u32,
+        page: u32,
+        plain: bool,
+    },
+    Author {
+        id: u32,
+        page: u32,
+        plain: bool,
+    },
 }
 
 impl FromStr for AnnotationCallbackData {
@@ -31,9 +42,11 @@ impl FromStr for AnnotationCallbackData {
                 .map_err(|_| CallbackQueryParseError)?,
         );
 
+        let plain = caps.name("plain").is_some();
+
         match an_type {
-            "a" => Ok(AnnotationCallbackData::Author { id, page }),
-            "b" => Ok(AnnotationCallbackData::Book { id, page }),
+            "a" => Ok(AnnotationCallbackData::Author { id, page, plain }),
+            "b" => Ok(AnnotationCallbackData::Book { id, page, plain }),
             _ => Err(CallbackQueryParseError),
         }
     }
@@ -42,8 +55,12 @@ impl FromStr for AnnotationCallbackData {
 impl Display for AnnotationCallbackData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AnnotationCallbackData::Book { id, page } => write!(f, "b_an_{id}_{page}"),
-            AnnotationCallbackData::Author { id, page } => write!(f, "a_an_{id}_{page}"),
+            AnnotationCallbackData::Book { id, page, plain } => {
+                write!(f, "b_an_{id}_{page}{}", if *plain { "p" } else { "" })
+            }
+            AnnotationCallbackData::Author { id, page, plain } => {
+                write!(f, "a_an_{id}_{page}{}", if *plain { "p" } else { "" })
+            }
         }
     }
 }
@@ -51,13 +68,15 @@ impl Display for AnnotationCallbackData {
 impl GetPaginationCallbackData for AnnotationCallbackData {
     fn get_pagination_callback_data(&self, target_page: u32) -> String {
         match self {
-            AnnotationCallbackData::Book { id, .. } => AnnotationCallbackData::Book {
+            AnnotationCallbackData::Book { id, plain, .. } => AnnotationCallbackData::Book {
                 id: *id,
                 page: target_page,
+                plain: *plain,
             },
-            AnnotationCallbackData::Author { id, .. } => AnnotationCallbackData::Author {
+            AnnotationCallbackData::Author { id, plain, .. } => AnnotationCallbackData::Author {
                 id: *id,
                 page: target_page,
+                plain: *plain,
             },
         }
         .to_string()
@@ -91,7 +110,7 @@ mod tests {
     fn normal_page_preserved() {
         let cd = AnnotationCallbackData::from_str("b_an_42_3").unwrap();
         match cd {
-            AnnotationCallbackData::Book { id, page } => {
+            AnnotationCallbackData::Book { id, page, .. } => {
                 assert_eq!(id, 42);
                 assert_eq!(page, 3);
             }
@@ -101,9 +120,13 @@ mod tests {
 
     #[test]
     fn round_trip_book() {
-        let cd = AnnotationCallbackData::Book { id: 10, page: 2 };
+        let cd = AnnotationCallbackData::Book {
+            id: 10,
+            page: 2,
+            plain: false,
+        };
         match AnnotationCallbackData::from_str(&cd.to_string()).unwrap() {
-            AnnotationCallbackData::Book { id, page } => {
+            AnnotationCallbackData::Book { id, page, .. } => {
                 assert_eq!(id, 10);
                 assert_eq!(page, 2);
             }
@@ -113,12 +136,30 @@ mod tests {
 
     #[test]
     fn round_trip_author() {
-        let cd = AnnotationCallbackData::Author { id: 11, page: 5 };
+        let cd = AnnotationCallbackData::Author {
+            id: 11,
+            page: 5,
+            plain: false,
+        };
         match AnnotationCallbackData::from_str(&cd.to_string()).unwrap() {
-            AnnotationCallbackData::Author { id, page } => {
+            AnnotationCallbackData::Author { id, page, .. } => {
                 assert_eq!(id, 11);
                 assert_eq!(page, 5);
             }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn plain_flag_round_trips() {
+        let cd = AnnotationCallbackData::Book {
+            id: 3,
+            page: 2,
+            plain: true,
+        };
+        assert_eq!(cd.to_string(), "b_an_3_2p");
+        match AnnotationCallbackData::from_str("b_an_3_2p").unwrap() {
+            AnnotationCallbackData::Book { plain, .. } => assert!(plain),
             _ => panic!("wrong variant"),
         }
     }

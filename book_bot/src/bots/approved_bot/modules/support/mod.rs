@@ -17,6 +17,13 @@ enum SupportCommand {
     Donate,
 }
 
+fn env_non_empty(name: &str) -> Option<String> {
+    std::env::var(name)
+        .ok()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+}
+
 #[log_handler("support")]
 pub async fn support_command_handler(
     message: Message,
@@ -34,7 +41,7 @@ pub async fn support_command_handler(
         _ => "пользователь".to_string(),
     };
 
-    let message_text = format!(
+    let mut message_text = format!(
         "
 Привет, {username}!
 
@@ -43,14 +50,22 @@ pub async fn support_command_handler(
 Буду очень благодарен за любую сумму пожертвования!
 
 Спасибо!
-
-Тинькофф:
-<pre>5536913820619688</pre>
-
-Сбербанк:
-<pre>+79534966556</pre>
 "
     );
+
+    // Payment details come from the environment; a missing/empty value hides the line.
+    if let Some(card) = env_non_empty("DONATE_CARD_NUMBER") {
+        message_text.push_str(&format!(
+            "\nТинькофф:\n<pre>{}</pre>\n",
+            teloxide::utils::html::escape(&card)
+        ));
+    }
+    if let Some(phone) = env_non_empty("DONATE_PHONE") {
+        message_text.push_str(&format!(
+            "\nСбербанк:\n<pre>{}</pre>\n",
+            teloxide::utils::html::escape(&phone)
+        ));
+    }
 
     safe_send_message_html(bot, message.chat.id, message_text, None).await?;
 

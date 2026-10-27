@@ -9,8 +9,7 @@ description = "Binary crate for the book_bot application."
 book_bot_macros = { path = "../book_bot_macros" }
 
 # Core runtime / async
-tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros", "signal", "fs", "io-util"] }
-tokio-util = { version = "0.7.14", features = ["compat", "io"] }
+tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros", "signal", "fs", "io-util", "net"] }
 tokio-stream = "0.1.17"
 futures = "0.3.31"
 
@@ -30,6 +29,7 @@ sentry = { version = "0.49.2", features = ["debug-images"] }
 
 # HTTP client
 reqwest = { version = "0.13.4", features = ["json", "stream", "query"] }
+bytes = "1"
 
 # Serialization
 serde = { version = "1.0.219", features = ["derive"] }
