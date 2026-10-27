@@ -23,7 +23,8 @@ use crate::{
             },
             services::{
                 batch_downloader::{
-                    create_task, get_task, CreateTaskData, Task, TaskObjectType, TaskStatus,
+                    create_task, get_task, CreateTaskData, QueueFull, Task, TaskObjectType,
+                    TaskStatus,
                 },
                 book_cache::download_file_by_link,
                 build_url,
@@ -381,6 +382,23 @@ pub async fn download_archive(
     let task = match task {
         Ok(v) => v,
         Err(err) => {
+            if let Some(full) = err.downcast_ref::<QueueFull>() {
+                log::warn!("{err}");
+                let _ = safe_edit_message_text(
+                    &bot,
+                    message.chat().id,
+                    message.id(),
+                    format!(
+                        "Сервис архивов перегружен, попробуйте через {} сек",
+                        full.retry_after_secs
+                    ),
+                    Some(InlineKeyboardMarkup::new(
+                        Vec::<Vec<InlineKeyboardButton>>::new(),
+                    )),
+                )
+                .await;
+                return Ok(());
+            }
             send_error_message(&bot, message.chat().id, message.id()).await;
             log::error!("{err:?}");
             return Err(err);
