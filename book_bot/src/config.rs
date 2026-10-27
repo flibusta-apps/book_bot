@@ -80,9 +80,7 @@ impl Config {
             webhook_secret_token: {
                 let secret = get_env("WEBHOOK_SECRET_TOKEN");
                 if !validate_webhook_secret(&secret) {
-                    panic!(
-                        "WEBHOOK_SECRET_TOKEN must be 1-256 chars of A-Z, a-z, 0-9, '_' or '-'"
-                    );
+                    panic!("WEBHOOK_SECRET_TOKEN must be 1-256 chars of A-Z, a-z, 0-9, '_' or '-'");
                 }
                 secret
             },

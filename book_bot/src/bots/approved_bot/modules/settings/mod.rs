@@ -16,7 +16,7 @@ use crate::bots::{
             safe_edit_message_reply_markup, safe_edit_message_text, safe_send_message,
         },
         services::user_settings::{
-            get_langs, get_user_or_default_lang_codes, get_user_settings, save_user_settings,
+            default_lang_codes, get_langs, get_user_settings, save_user_settings,
             DefaultSearchType, FileNameLang,
         },
         tools::filter_callback_query,
@@ -119,10 +119,18 @@ async fn handle_default_search(
     me: &Me,
     value: &str,
 ) -> BotHandlerInternal {
-    let current = get_user_settings(user.id).await.ok().flatten();
+    let current = match get_user_settings(user.id).await {
+        Ok(v) => v,
+        Err(err) => {
+            safe_answer_callback_query_with_text(bot, cq_id, "Ошибка! Попробуйте заново(", true)
+                .await?;
+            return Err(err);
+        }
+    };
+    // `None` here means a confirmed 404 (no settings yet): defaults are fine.
     let allowed_langs: SmallVec<[SmartString; 3]> = match current.as_ref() {
         Some(s) => s.allowed_langs.iter().map(|l| l.code.clone()).collect(),
-        None => get_user_or_default_lang_codes(user.id).await,
+        None => default_lang_codes(),
     };
     let default_search = if value == "none" {
         None
@@ -174,10 +182,17 @@ async fn handle_file_name_lang(
             return Ok(());
         }
     };
-    let current = get_user_settings(user.id).await.ok().flatten();
+    let current = match get_user_settings(user.id).await {
+        Ok(v) => v,
+        Err(err) => {
+            safe_answer_callback_query_with_text(bot, cq_id, "Ошибка! Попробуйте заново(", true)
+                .await?;
+            return Err(err);
+        }
+    };
     let allowed_langs: SmallVec<[SmartString; 3]> = match current.as_ref() {
         Some(s) => s.allowed_langs.iter().map(|l| l.code.clone()).collect(),
-        None => get_user_or_default_lang_codes(user.id).await,
+        None => default_lang_codes(),
     };
     let default_search = current.as_ref().and_then(|s| s.default_search);
 
@@ -211,7 +226,18 @@ async fn handle_lang_toggle(
     me: &Me,
     callback_data: &SettingsCallbackData,
 ) -> BotHandlerInternal {
-    let allowed_langs = get_user_or_default_lang_codes(user.id).await;
+    let current = match get_user_settings(user.id).await {
+        Ok(v) => v,
+        Err(err) => {
+            safe_answer_callback_query_with_text(bot, cq_id, "Ошибка! Попробуйте заново(", true)
+                .await?;
+            return Err(err);
+        }
+    };
+    let allowed_langs: SmallVec<[SmartString; 3]> = match current.as_ref() {
+        Some(s) => s.allowed_langs.iter().map(|l| l.code.clone()).collect(),
+        None => default_lang_codes(),
+    };
 
     let mut allowed_langs_set: HashSet<SmartString> = HashSet::new();
     allowed_langs.into_iter().for_each(|v| {
@@ -241,9 +267,8 @@ async fn handle_lang_toggle(
         return Ok(());
     }
 
-    let current_settings = get_user_settings(user.id).await.ok().flatten();
-    let default_search = current_settings.as_ref().and_then(|s| s.default_search);
-    let file_name_lang = current_settings
+    let default_search = current.as_ref().and_then(|s| s.default_search);
+    let file_name_lang = current
         .as_ref()
         .map(|s| s.file_name_lang)
         .unwrap_or_default();

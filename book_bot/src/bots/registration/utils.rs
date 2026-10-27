@@ -1,12 +1,13 @@
 use regex::Regex;
 use std::sync::LazyLock;
 
-static RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^\d{8,10}:[A-Za-z0-9_-]{35}$").unwrap());
+static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{8,10}:[A-Za-z0-9_-]{35}$").unwrap());
 
 /// Finds the first whitespace-separated word that is a well-formed bot token.
 pub fn get_token(message_text: &str) -> Option<&str> {
-    message_text.split_whitespace().find(|word| RE.is_match(word))
+    message_text
+        .split_whitespace()
+        .find(|word| RE.is_match(word))
 }
 
 #[cfg(test)]

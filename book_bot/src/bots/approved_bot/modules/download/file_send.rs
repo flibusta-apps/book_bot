@@ -1,11 +1,11 @@
 use futures::TryStreamExt;
 use std::sync::atomic::{AtomicU64, Ordering};
-use tokio::io::AsyncWriteExt;
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
     types::{InputFile, MaybeInaccessibleMessage, MessageId},
 };
+use tokio::io::AsyncWriteExt;
 use tracing::log;
 
 use crate::{
