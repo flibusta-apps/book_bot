@@ -2,6 +2,7 @@ use std::sync::LazyLock;
 
 pub struct Config {
     pub telegram_bot_api: reqwest::Url,
+    pub telegram_request_timeout_secs: u64,
 
     pub webhook_base_url: String,
     pub webhook_port: u16,
@@ -73,7 +74,19 @@ impl Config {
                     panic!("Cannot parse url from TELEGRAM_BOT_API_ROOT env variable")
                 }),
 
-            webhook_base_url: get_env("WEBHOOK_BASE_URL"),
+            telegram_request_timeout_secs: std::env::var("TELEGRAM_REQUEST_TIMEOUT_SECS")
+                .map(|value| {
+                    value
+                        .parse::<u64>()
+                        .ok()
+                        .filter(|secs| *secs > 0)
+                        .expect("TELEGRAM_REQUEST_TIMEOUT_SECS must be a positive integer")
+                })
+                .unwrap_or(300),
+
+            webhook_base_url: get_env("WEBHOOK_BASE_URL")
+                .trim_end_matches('/')
+                .to_string(),
             webhook_port: get_env("WEBHOOK_PORT")
                 .parse()
                 .unwrap_or_else(|_| panic!("Cannot parse WEBHOOK_PORT")),
@@ -85,7 +98,7 @@ impl Config {
                 secret
             },
 
-            manager_url: get_env("MANAGER_URL"),
+            manager_url: get_env("MANAGER_URL").trim_end_matches('/').to_string(),
             manager_api_key: {
                 let key = normalize_api_key(&get_non_empty_env("MANAGER_API_KEY"));
                 if key.is_empty() {

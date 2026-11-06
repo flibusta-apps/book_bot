@@ -16,8 +16,8 @@ use crate::bots::{
             safe_edit_message_reply_markup, safe_edit_message_text, safe_send_message,
         },
         services::user_settings::{
-            default_lang_codes, get_langs, get_user_settings, save_user_settings,
-            DefaultSearchType, FileNameLang,
+            default_lang_codes, get_langs, get_user_settings, patch_user_settings,
+            DefaultSearchType, FileNameLang, UserSettingsPatch,
         },
         tools::filter_callback_query,
     },
@@ -27,7 +27,7 @@ use crate::bots::{
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
-    types::{CallbackQueryId, Me, MessageId},
+    types::{CallbackQueryId, MessageId},
 };
 
 use self::{
@@ -116,22 +116,8 @@ async fn handle_default_search(
     message_id: MessageId,
     cq_id: CallbackQueryId,
     user: &teloxide::types::User,
-    me: &Me,
     value: &str,
 ) -> BotHandlerInternal {
-    let current = match get_user_settings(user.id).await {
-        Ok(v) => v,
-        Err(err) => {
-            safe_answer_callback_query_with_text(bot, cq_id, "Ошибка! Попробуйте заново(", true)
-                .await?;
-            return Err(err);
-        }
-    };
-    // `None` here means a confirmed 404 (no settings yet): defaults are fine.
-    let allowed_langs: SmallVec<[SmartString; 3]> = match current.as_ref() {
-        Some(s) => s.allowed_langs.iter().map(|l| l.code.clone()).collect(),
-        None => default_lang_codes(),
-    };
     let default_search = if value == "none" {
         None
     } else if let Some(t) = DefaultSearchType::from_api_str(value) {
@@ -140,12 +126,7 @@ async fn handle_default_search(
         safe_answer_callback_query(bot, cq_id).await?;
         return Ok(());
     };
-    let file_name_lang = current
-        .as_ref()
-        .map(|s| s.file_name_lang)
-        .unwrap_or_default();
-
-    if save_user_settings(user, me, allowed_langs, default_search, file_name_lang)
+    if patch_user_settings(user.id, UserSettingsPatch::DefaultSearch { default_search })
         .await
         .is_err()
     {
@@ -172,7 +153,6 @@ async fn handle_file_name_lang(
     message_id: MessageId,
     cq_id: CallbackQueryId,
     user: &teloxide::types::User,
-    me: &Me,
     value: &str,
 ) -> BotHandlerInternal {
     let file_name_lang = match FileNameLang::from_api_str(value) {
@@ -182,21 +162,7 @@ async fn handle_file_name_lang(
             return Ok(());
         }
     };
-    let current = match get_user_settings(user.id).await {
-        Ok(v) => v,
-        Err(err) => {
-            safe_answer_callback_query_with_text(bot, cq_id, "Ошибка! Попробуйте заново(", true)
-                .await?;
-            return Err(err);
-        }
-    };
-    let allowed_langs: SmallVec<[SmartString; 3]> = match current.as_ref() {
-        Some(s) => s.allowed_langs.iter().map(|l| l.code.clone()).collect(),
-        None => default_lang_codes(),
-    };
-    let default_search = current.as_ref().and_then(|s| s.default_search);
-
-    if save_user_settings(user, me, allowed_langs, default_search, file_name_lang)
+    if patch_user_settings(user.id, UserSettingsPatch::FileNameLang { file_name_lang })
         .await
         .is_err()
     {
@@ -223,7 +189,6 @@ async fn handle_lang_toggle(
     message_id: MessageId,
     cq_id: CallbackQueryId,
     user: &teloxide::types::User,
-    me: &Me,
     callback_data: &SettingsCallbackData,
 ) -> BotHandlerInternal {
     let current = match get_user_settings(user.id).await {
@@ -267,23 +232,19 @@ async fn handle_lang_toggle(
         return Ok(());
     }
 
-    let default_search = current.as_ref().and_then(|s| s.default_search);
-    let file_name_lang = current
-        .as_ref()
-        .map(|s| s.file_name_lang)
-        .unwrap_or_default();
-
-    if let Err(err) = save_user_settings(
-        user,
-        me,
-        allowed_langs_set.clone().into_iter().collect(),
-        default_search,
-        file_name_lang,
-    )
-    .await
-    {
-        safe_send_message(bot, chat_id, "Ошибка! Попробуйте заново(", None).await?;
-        return Err(err);
+    // Opening the menu is read-only; only toggles write the language field.
+    if !matches!(callback_data, SettingsCallbackData::Settings) {
+        if let Err(err) = patch_user_settings(
+            user.id,
+            UserSettingsPatch::Languages {
+                allowed_langs: allowed_langs_set.clone().into_iter().collect(),
+            },
+        )
+        .await
+        {
+            safe_send_message(bot, chat_id, "Ошибка! Попробуйте заново(", None).await?;
+            return Err(err);
+        }
     }
 
     let all_langs = match get_langs().await {
@@ -306,7 +267,6 @@ async fn settings_callback_handler(
     cq: CallbackQuery,
     bot: CacheMe<Throttle<Bot>>,
     callback_data: SettingsCallbackData,
-    me: Me,
 ) -> BotHandlerInternal {
     let message = match cq.message {
         Some(v) => v,
@@ -333,15 +293,15 @@ async fn settings_callback_handler(
             show_file_name_lang_menu(&bot, chat_id, message_id, cq.id, user.id).await
         }
         SettingsCallbackData::DefaultSearch { value } => {
-            handle_default_search(&bot, chat_id, message_id, cq.id, &user, &me, value).await
+            handle_default_search(&bot, chat_id, message_id, cq.id, &user, value).await
         }
         SettingsCallbackData::FileNameLang { value } => {
-            handle_file_name_lang(&bot, chat_id, message_id, cq.id, &user, &me, value).await
+            handle_file_name_lang(&bot, chat_id, message_id, cq.id, &user, value).await
         }
         SettingsCallbackData::Settings
         | SettingsCallbackData::On { .. }
         | SettingsCallbackData::Off { .. } => {
-            handle_lang_toggle(&bot, chat_id, message_id, cq.id, &user, &me, &callback_data).await
+            handle_lang_toggle(&bot, chat_id, message_id, cq.id, &user, &callback_data).await
         }
     }
 }

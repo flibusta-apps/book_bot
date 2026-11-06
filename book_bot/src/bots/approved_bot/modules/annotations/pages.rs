@@ -72,8 +72,8 @@ pub fn render_full(raw: &str) -> (String, String) {
             }
             Token::Close(tag) => {
                 stack.pop();
-                if let Some(pos) = pending_opens.iter().rposition(|t| t == &tag) {
-                    pending_opens.remove(pos);
+                if !pending_opens.is_empty() {
+                    pending_opens.pop();
                 } else {
                     html.push_str(&markup::render_close(&tag));
                 }
@@ -157,8 +157,8 @@ pub fn build_pages(raw: &str, budget: usize) -> Vec<Page> {
             // Close every tag currently on the stack (LIFO), only the ones
             // actually emitted matter -- but since pending_opens tags were
             // never emitted, we must not close them.
-            for tag in stack.iter().rev() {
-                if !pending_opens.iter().any(|t| t == tag) {
+            for tag in stack[..stack.len() - pending_opens.len()].iter().rev() {
+                {
                     cur_html.push_str(&markup::render_close(tag));
                 }
             }
@@ -180,10 +180,10 @@ pub fn build_pages(raw: &str, budget: usize) -> Vec<Page> {
             }
             Token::Close(tag) => {
                 stack.pop();
-                if let Some(pos) = pending_opens.iter().rposition(|t| t == &tag) {
+                if !pending_opens.is_empty() {
                     // Never actually opened on the page: drop silently
                     // (handles [b][/b] -> renders nothing).
-                    pending_opens.remove(pos);
+                    pending_opens.pop();
                 } else {
                     cur_html.push_str(&markup::render_close(&tag));
                 }
@@ -234,8 +234,8 @@ pub fn build_pages(raw: &str, budget: usize) -> Vec<Page> {
     }
 
     if !cur_html.is_empty() || !cur_plain.is_empty() {
-        for tag in stack.iter().rev() {
-            if !pending_opens.iter().any(|t| t == tag) {
+        for tag in stack[..stack.len() - pending_opens.len()].iter().rev() {
+            {
                 cur_html.push_str(&markup::render_close(tag));
             }
         }
@@ -279,8 +279,8 @@ fn build_balanced_chunks(raw: &str, budget: usize) -> Vec<(Vec<Token>, String)> 
 
     macro_rules! flush_chunk {
         () => {{
-            for tag in stack.iter().rev() {
-                if !pending_opens.iter().any(|t| t == tag) {
+            for tag in stack[..stack.len() - pending_opens.len()].iter().rev() {
+                {
                     cur_tokens.push(Token::Close(tag.clone()));
                 }
             }
@@ -302,10 +302,10 @@ fn build_balanced_chunks(raw: &str, budget: usize) -> Vec<(Vec<Token>, String)> 
             }
             Token::Close(tag) => {
                 stack.pop();
-                if let Some(pos) = pending_opens.iter().rposition(|t| t == &tag) {
+                if !pending_opens.is_empty() {
                     // Never actually opened on this chunk: drop silently
                     // (handles [b][/b] -> renders nothing).
-                    pending_opens.remove(pos);
+                    pending_opens.pop();
                 } else {
                     cur_tokens.push(Token::Close(tag));
                 }
@@ -356,8 +356,8 @@ fn build_balanced_chunks(raw: &str, budget: usize) -> Vec<(Vec<Token>, String)> 
     }
 
     if !cur_tokens.is_empty() || !cur_plain.is_empty() {
-        for tag in stack.iter().rev() {
-            if !pending_opens.iter().any(|t| t == tag) {
+        for tag in stack[..stack.len() - pending_opens.len()].iter().rev() {
+            {
                 cur_tokens.push(Token::Close(tag.clone()));
             }
         }
@@ -433,6 +433,20 @@ mod tests {
 
     fn utf16_len_of(s: &str) -> usize {
         s.chars().map(char::len_utf16).sum()
+    }
+
+    #[test]
+    fn nested_identical_tags_at_exact_boundary_keep_text() {
+        let raw = format!("[b]{}[b]x[/b][/b]", "a".repeat(4096));
+        let chunks = build_balanced_chunks(&raw, 4096);
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(chunks[0].1.len(), 4096);
+        for (tokens, plain) in chunks {
+            let rich = serde_json::to_value(markup::to_rich_text(&tokens)).unwrap();
+            assert!(rich.to_string().contains(&plain));
+        }
+        let pages = build_pages(&raw, 4096);
+        assert_eq!(pages[0].html, format!("<b>{}</b>", "a".repeat(4096)));
     }
 
     #[test]

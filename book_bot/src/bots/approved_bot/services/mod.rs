@@ -34,6 +34,26 @@ pub static FILE_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .expect("Failed to create file HTTP client")
 });
 
+/// TFCS may download and upload a book before returning even its headers.
+pub static CACHE_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(positive_env(
+            "CACHE_REQUEST_TIMEOUT_SECS",
+            900,
+        )))
+        .connect_timeout(Duration::from_secs(5))
+        .build()
+        .expect("Failed to create cache HTTP client")
+});
+
+pub fn positive_env(name: &str, default: u64) -> u64 {
+    std::env::var(name)
+        .ok()
+        .and_then(|v| v.trim().parse().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(default)
+}
+
 /// Appends path segments to a base URL, letting the `url` crate handle
 /// percent-encoding (e.g. a space becomes `%20`, never `+`).
 pub fn build_url<'a>(
@@ -41,8 +61,10 @@ pub fn build_url<'a>(
     segments: impl IntoIterator<Item = &'a str>,
 ) -> anyhow::Result<Url> {
     let mut url = base.clone();
+    url.set_path(base.path().trim_end_matches('/'));
     url.path_segments_mut()
         .map_err(|_| anyhow::anyhow!("URL has cannot-be-a-base scheme"))?
+        .pop_if_empty()
         .extend(segments);
     Ok(url)
 }
@@ -96,6 +118,17 @@ pub async fn check_response<T: DeserializeOwned>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn base_slashes_and_search_punctuation_are_safe() {
+        let url = build_url(
+            &Url::parse("https://example.com/root/").unwrap(),
+            ["search", "a/b&c?d"],
+        )
+        .unwrap();
+        assert_eq!(url.as_str(), "https://example.com/root/search/a%2Fb&c%3Fd");
+        assert!(url.query().is_none());
+    }
 
     fn response_with_status_and_body(status: u16, body: &str) -> reqwest::Response {
         let http_response = http::Response::builder()

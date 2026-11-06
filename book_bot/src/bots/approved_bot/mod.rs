@@ -124,6 +124,8 @@ fn update_user_activity_handler() -> BotHandler {
     dptree::entry()
         .branch(Update::filter_callback_query().inspect_async(
             |cq: CallbackQuery, bot: CacheMe<Throttle<Bot>>| async move {
+                // Acknowledge every callback before activity/settings or handler HTTP calls.
+                let _ = bot.answer_callback_query(cq.id.clone()).await;
                 if let Ok(me) = bot.get_me().await {
                     _update_activity(me, cq.from).await;
                 }
@@ -141,6 +143,7 @@ fn update_user_activity_handler() -> BotHandler {
 }
 
 pub fn get_approved_handler() -> (BotHandler, BotCommands) {
+    modules::download::file_send::initialize_temp_directory();
     (
         dptree::entry()
             .branch(ignore_channel_messages())

@@ -22,8 +22,7 @@ use std::convert::Infallible;
 use std::sync::Arc;
 
 use crate::bots_manager::bot_manager_client::delete_bot;
-use crate::bots_manager::BOTS_ROUTES;
-use crate::bots_manager::COMMANDS_SET_BOT_IDS;
+use crate::bots_manager::{BOTS_STATE_LOCK, BOTS_VERSIONS, COMMANDS_SET_BOT_TOKENS};
 use crate::config;
 
 use super::closable_sender::ClosableSender;
@@ -31,6 +30,19 @@ use super::utils::tuple_first_mut;
 use super::BotData;
 
 pub const UPDATE_CHANNEL_CAPACITY: usize = 1024;
+
+pub(super) fn telegram_bot(token: &str) -> Bot {
+    static CLIENT: std::sync::LazyLock<reqwest::Client> = std::sync::LazyLock::new(|| {
+        teloxide::net::default_reqwest_settings()
+            .timeout(std::time::Duration::from_secs(
+                config::CONFIG.telegram_request_timeout_secs,
+            ))
+            .connect_timeout(std::time::Duration::from_secs(5))
+            .build()
+            .expect("Failed to build Telegram HTTP client")
+    });
+    Bot::with_client(token, CLIENT.clone()).set_api_url(config::CONFIG.telegram_bot_api.clone())
+}
 
 type UpdateSender = mpsc::Sender<Result<Update, std::convert::Infallible>>;
 
@@ -62,7 +74,7 @@ pub async fn set_webhook(bot_data: &BotData) -> bool {
 async fn set_webhook_with_retry(bot_data: &BotData, max_retries: u32) -> bool {
     log::info!("Set webhook Bot(id={})!", bot_data.id);
 
-    let bot = Bot::new(bot_data.token.clone()).set_api_url(config::CONFIG.telegram_bot_api.clone());
+    let bot = telegram_bot(&bot_data.token);
 
     let token = &bot_data.token;
 
@@ -138,26 +150,24 @@ async fn set_webhook_with_retry(bot_data: &BotData, max_retries: u32) -> bool {
     }
 }
 
-pub async fn start_bot(bot_data: &BotData) {
+pub(super) async fn start_bot(bot_data: &BotData, version: u64) -> super::StopTokenWithSender {
     // `check_slow_mode` makes Throttle look up the chat's slow mode delay on a
     // `RetryAfter` error. When slow mode is the cause (e.g. SLOWMODE_WAIT_899 in a
     // group), only that chat is delayed instead of freezing the whole bot for
     // every user.
     let bot = Throttle::spawn_with_settings(
-        Bot::new(bot_data.token.clone()).set_api_url(config::CONFIG.telegram_bot_api.clone()),
+        telegram_bot(&bot_data.token),
         Settings::default()
             .limits(Limits::default())
             .check_slow_mode(),
     )
     .cache_me();
 
-    let token = bot.inner().inner().token();
-
     log::info!("Start Bot(id={})!", bot_data.id);
 
     let (handler, commands) = crate::bots::get_bot_handler();
 
-    if !COMMANDS_SET_BOT_IDS.contains_key(&bot_data.id) {
+    if !COMMANDS_SET_BOT_TOKENS.contains_key(&bot_data.token) {
         let set_command_result = match commands {
             Some(v) => bot.set_my_commands::<Vec<BotCommand>>(v).send().await,
             None => bot.delete_my_commands().send().await,
@@ -165,7 +175,12 @@ pub async fn start_bot(bot_data: &BotData) {
 
         match set_command_result {
             Ok(_) => {
-                COMMANDS_SET_BOT_IDS.insert(bot_data.id, ()).await;
+                let _guard = BOTS_STATE_LOCK.lock().await;
+                if BOTS_VERSIONS.get(&bot_data.token).await == Some(version) {
+                    COMMANDS_SET_BOT_TOKENS
+                        .insert(bot_data.token.clone(), ())
+                        .await;
+                }
             }
             Err(err) => log::error!("{err:?}"),
         }
@@ -206,17 +221,12 @@ pub async fn start_bot(bot_data: &BotData) {
         }
     }));
 
-    BOTS_ROUTES
-        .insert(
-            token.to_string(),
-            (
-                stop_token,
-                stop_flag,
-                ClosableSender::new(tx),
-                dispatcher_handle,
-            ),
-        )
-        .await;
+    (
+        stop_token,
+        stop_flag,
+        ClosableSender::new(tx),
+        dispatcher_handle,
+    )
 }
 
 #[cfg(test)]
@@ -224,12 +234,12 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn commands_set_bot_ids_tracks_membership() {
-        let bot_id = 900_101;
-        assert!(!COMMANDS_SET_BOT_IDS.contains_key(&bot_id));
+    async fn commands_set_bot_tokens_tracks_membership() {
+        let token = "commands-membership-test-token";
+        assert!(!COMMANDS_SET_BOT_TOKENS.contains_key(token));
 
-        COMMANDS_SET_BOT_IDS.insert(bot_id, ()).await;
+        COMMANDS_SET_BOT_TOKENS.insert(token.to_string(), ()).await;
 
-        assert!(COMMANDS_SET_BOT_IDS.contains_key(&bot_id));
+        assert!(COMMANDS_SET_BOT_TOKENS.contains_key(token));
     }
 }

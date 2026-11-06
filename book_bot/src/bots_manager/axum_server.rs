@@ -17,9 +17,31 @@ use tower_http::trace::{self, TraceLayer};
 use tracing::log;
 use tracing::Level;
 
+use super::{publish_started_bot, BOTS_STATE_LOCK, BOTS_VERSIONS};
 use crate::bots_manager::utils::{mask_token, mask_uri_path, truncate_for_log};
 use crate::bots_manager::{internal::start_bot, BOTS_DATA, BOTS_ROUTES};
 use crate::config;
+
+#[derive(Default)]
+struct StartBotLocks(
+    std::sync::Mutex<std::collections::HashMap<String, std::sync::Weak<Mutex<()>>>>,
+);
+
+impl StartBotLocks {
+    fn for_token(&self, token: &str) -> Arc<Mutex<()>> {
+        let mut locks = self.0.lock().expect("Bot startup locks poisoned");
+        locks.retain(|_, lock| lock.strong_count() > 0);
+        let slot = locks.entry(token.to_string()).or_default();
+        match slot.upgrade() {
+            Some(lock) => lock,
+            None => {
+                let lock = Arc::new(Mutex::new(()));
+                *slot = Arc::downgrade(&lock);
+                lock
+            }
+        }
+    }
+}
 
 #[derive(Clone)]
 struct BotIdMakeSpan;
@@ -45,7 +67,7 @@ pub async fn start_axum_server(
     mut shutdown_rx: watch::Receiver<()>,
 ) -> std::io::Result<tokio::task::JoinHandle<()>> {
     async fn telegram_request(
-        State(start_bot_mutex): State<Arc<Mutex<()>>>,
+        State(start_bot_locks): State<Arc<StartBotLocks>>,
         Path(token): Path<String>,
         headers: HeaderMap,
         input: String,
@@ -59,24 +81,32 @@ pub async fn start_axum_server(
             return StatusCode::FORBIDDEN;
         }
 
+        if !BOTS_DATA.contains_key(&token) {
+            return StatusCode::NOT_FOUND;
+        }
+
         let (_, stop_flag, r_tx, _dispatcher_handle) = match BOTS_ROUTES.get(&token).await {
             Some(tx) => tx,
             None => {
-                let bot_data = match BOTS_DATA.get(&token).await {
-                    Some(v) => v,
-                    None => {
-                        return StatusCode::NOT_FOUND;
-                    }
-                };
-
                 'creator: {
+                    let start_bot_mutex = start_bot_locks.for_token(&token);
                     let _guard = start_bot_mutex.lock().await;
 
                     if BOTS_ROUTES.contains_key(&token) {
                         break 'creator;
                     }
 
-                    start_bot(&bot_data).await
+                    let (bot_data, version) = {
+                        let _state_guard = BOTS_STATE_LOCK.lock().await;
+                        match (BOTS_DATA.get(&token).await, BOTS_VERSIONS.get(&token).await) {
+                            (Some(data), Some(version)) => (data, version),
+                            _ => return StatusCode::NOT_FOUND,
+                        }
+                    };
+                    let route = start_bot(&bot_data, version).await;
+                    if !publish_started_bot(token.clone(), version, route).await {
+                        return StatusCode::NOT_FOUND;
+                    }
                 }
 
                 match BOTS_ROUTES.get(&token).await {
@@ -128,6 +158,15 @@ pub async fn start_axum_server(
                     return StatusCode::OK;
                 }
 
+                // Serialize this cheap membership check + nonblocking send with
+                // manager removal; never dispatch via a leftover stale route.
+                let _state_guard = BOTS_STATE_LOCK.lock().await;
+                if !BOTS_DATA.contains_key(&token) {
+                    return StatusCode::NOT_FOUND;
+                }
+                if stop_flag.is_stopped() {
+                    return StatusCode::SERVICE_UNAVAILABLE;
+                }
                 match tx.try_send(Ok(update)) {
                     Ok(()) => {}
                     Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
@@ -171,11 +210,11 @@ pub async fn start_axum_server(
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
 
-    let start_bot_mutex = Arc::new(Mutex::new(()));
+    let start_bot_locks = Arc::new(StartBotLocks::default());
 
     let app_router = axum::Router::new()
         .route("/{token}/", post(telegram_request))
-        .with_state(start_bot_mutex)
+        .with_state(start_bot_locks)
         .layer(prometheus_layer);
 
     let metric_router = axum::Router::new()
@@ -216,6 +255,18 @@ pub async fn start_axum_server(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn startup_is_single_flight_per_token_not_across_tokens() {
+        let locks = StartBotLocks::default();
+        let first = locks.for_token("first");
+        let same = locks.for_token("first");
+        let other = locks.for_token("other");
+        assert!(Arc::ptr_eq(&first, &same));
+        let _guard = first.lock().await;
+        assert!(same.try_lock().is_err());
+        assert!(other.try_lock().is_ok());
+    }
 
     #[tokio::test]
     async fn bind_webhook_listener_fails_when_port_already_taken() {

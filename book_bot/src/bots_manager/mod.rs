@@ -79,9 +79,35 @@ pub static BOTS_ROUTES: LazyLock<Cache<String, StopTokenWithSender>> = LazyLock:
 });
 
 pub static BOTS_DATA: LazyLock<Cache<String, BotData>> = LazyLock::new(|| Cache::builder().build());
-pub static INITED_BOTS_IDS: LazyLock<Cache<u32, ()>> = LazyLock::new(|| Cache::builder().build());
-pub static COMMANDS_SET_BOT_IDS: LazyLock<Cache<u32, ()>> =
+// Only protects local state transitions, never Telegram HTTP requests.
+pub(super) static BOTS_STATE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+static BOTS_VERSIONS: LazyLock<Cache<String, u64>> = LazyLock::new(|| Cache::builder().build());
+static NEXT_BOT_VERSION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+pub static INITED_BOT_TOKENS: LazyLock<Cache<String, ()>> =
     LazyLock::new(|| Cache::builder().build());
+pub static COMMANDS_SET_BOT_TOKENS: LazyLock<Cache<String, ()>> =
+    LazyLock::new(|| Cache::builder().build());
+
+async fn remove_bot_state(token: &str) {
+    BOTS_DATA.invalidate(token).await;
+    BOTS_VERSIONS.invalidate(token).await;
+    INITED_BOT_TOKENS.invalidate(token).await;
+    COMMANDS_SET_BOT_TOKENS.invalidate(token).await;
+    BOTS_ROUTES.remove(token).await;
+}
+
+async fn publish_started_bot(token: String, version: u64, route: StopTokenWithSender) -> bool {
+    let _guard = BOTS_STATE_LOCK.lock().await;
+    if BOTS_DATA.contains_key(&token) && BOTS_VERSIONS.get(&token).await == Some(version) {
+        BOTS_ROUTES.insert(token, route).await;
+        true
+    } else {
+        let (stop_token, _, mut sender, _) = route;
+        stop_token.stop();
+        sender.close();
+        false
+    }
+}
 
 async fn record_webhook_check_success(bot_id: u32) {
     WEBHOOK_CHECK_ERRORS_COUNT.insert(bot_id, 0).await;
@@ -151,6 +177,7 @@ pub struct BotsManager;
 
 impl BotsManager {
     async fn check_bots_data(bots: &[BotData]) {
+        let _guard = BOTS_STATE_LOCK.lock().await;
         let fresh_tokens: std::collections::HashSet<&str> = bots
             .iter()
             .map(|bot_data| bot_data.token.as_str())
@@ -160,10 +187,14 @@ impl BotsManager {
             // Token is the cache key, so a token change shows up as stale
             // below; a cache-mode change needs the route (dispatcher deps)
             // to be recreated.
-            if let Some(existing) = BOTS_DATA.get(&bot_data.token).await {
-                if existing.cache != bot_data.cache || existing.id != bot_data.id {
-                    BOTS_ROUTES.remove(&bot_data.token).await;
-                }
+            if BOTS_DATA.get(&bot_data.token).await.as_ref() != Some(bot_data) {
+                remove_bot_state(&bot_data.token).await;
+                BOTS_VERSIONS
+                    .insert(
+                        bot_data.token.clone(),
+                        NEXT_BOT_VERSION.fetch_add(1, Ordering::Relaxed),
+                    )
+                    .await;
             }
 
             BOTS_DATA
@@ -178,8 +209,7 @@ impl BotsManager {
             .collect();
 
         for token in stale_tokens {
-            BOTS_DATA.invalidate(&token).await;
-            BOTS_ROUTES.remove(&token).await;
+            remove_bot_state(&token).await;
         }
     }
 
@@ -188,7 +218,7 @@ impl BotsManager {
         let mut set_webhook_tasks = JoinSet::new();
 
         for bot_data in bots_data.iter() {
-            if INITED_BOTS_IDS.contains_key(&bot_data.id) {
+            if INITED_BOT_TOKENS.contains_key(&bot_data.token) {
                 continue;
             }
 
@@ -197,11 +227,21 @@ impl BotsManager {
             let semaphore = semaphore.clone();
             set_webhook_tasks.spawn(async move {
                 let _permit = semaphore.acquire().await.unwrap();
+                let version = {
+                    let _guard = BOTS_STATE_LOCK.lock().await;
+                    if BOTS_DATA.get(&bot_data.token).await.as_ref() != Some(&bot_data) {
+                        return;
+                    }
+                    BOTS_VERSIONS.get(&bot_data.token).await
+                };
 
                 let webhook_status = set_webhook(&bot_data).await;
 
                 if webhook_status {
-                    INITED_BOTS_IDS.insert(bot_data.id, ()).await;
+                    let _guard = BOTS_STATE_LOCK.lock().await;
+                    if version.is_some() && BOTS_VERSIONS.get(&bot_data.token).await == version {
+                        INITED_BOT_TOKENS.insert(bot_data.token.clone(), ()).await;
+                    }
                 }
 
                 drop(_permit);
@@ -269,9 +309,7 @@ impl BotsManager {
                 continue;
             }
 
-            let bot = Bot::new(token.clone().as_str())
-                .set_api_url(crate::config::CONFIG.telegram_bot_api.clone())
-                .throttle(Limits::default());
+            let bot = internal::telegram_bot(token.as_str()).throttle(Limits::default());
 
             let result = bot.get_webhook_info().send().await;
 
@@ -299,7 +337,10 @@ impl BotsManager {
                     let error_message = err.to_string();
 
                     if error_message.contains("Invalid bot token") {
-                        BOTS_DATA.invalidate(token.as_str()).await;
+                        {
+                            let _guard = BOTS_STATE_LOCK.lock().await;
+                            remove_bot_state(token.as_str()).await;
+                        }
                         if let Err(d_err) = delete_bot(bot_data.id).await {
                             log::error!("Error deleting bot {}: {:?}", bot_data.id, d_err);
                         };
@@ -506,6 +547,30 @@ mod tests {
             .await
             .expect("kept bot should remain");
         assert_eq!(kept.cache, BotCache::NoCache);
+
+        let old_version = BOTS_VERSIONS.get(&kept_token).await.unwrap();
+        INITED_BOT_TOKENS.insert(kept_token.clone(), ()).await;
+        let rotated = BotData {
+            id: kept.id,
+            token: "sync-test-rotated-token".to_string(),
+            cache: kept.cache,
+        };
+        BotsManager::check_bots_data(std::slice::from_ref(&rotated)).await;
+        assert!(!INITED_BOT_TOKENS.contains_key(&kept_token));
+        assert!(!INITED_BOT_TOKENS.contains_key(&rotated.token));
+        let stale_route = fake_route();
+        let stale_flag = stale_route.1.clone();
+        let stale_sender = stale_route.2.clone();
+        assert!(!publish_started_bot(kept_token.clone(), old_version, stale_route).await);
+        assert!(stale_flag.is_stopped());
+        assert!(stale_sender.get().is_none());
+        assert!(!BOTS_ROUTES.contains_key(&kept_token));
+
+        // Removing then re-adding identical data must not revive an in-flight
+        // startup from the previous generation (ABA).
+        BotsManager::check_bots_data(&fresh).await;
+        assert_ne!(BOTS_VERSIONS.get(&kept_token).await, Some(old_version));
+        assert!(!publish_started_bot(kept_token, old_version, fake_route()).await);
     }
 
     #[tokio::test]

@@ -8,7 +8,7 @@ use teloxide::{
 };
 
 use crate::bots::approved_bot::services::book_library::{
-    formatters::{Format, FormatTitle},
+    formatters::{truncate_utf16, Format, FormatTitle},
     types::Page,
 };
 
@@ -181,8 +181,11 @@ where
     }
 
     let page = std::cmp::min(page, items_page.pages);
-    let formatted_page = items_page.format(page, super::constants::TELEGRAM_MESSAGE_MAX_LENGTH);
-    let message_text = format!("{header}{formatted_page}");
+    let limit = super::constants::TELEGRAM_MESSAGE_MAX_LENGTH;
+    let header = truncate_utf16(header, limit);
+    let formatted_page =
+        items_page.format(page, limit.saturating_sub(header.encode_utf16().count()));
+    let message_text = truncate_utf16(&format!("{header}{formatted_page}"), limit);
 
     if is_message_text_equals(cq_message, &message_text) {
         return Ok(());

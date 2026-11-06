@@ -7,7 +7,7 @@ use crate::{
         build_url, check_response, check_status,
         rate_limit::retry_on_429,
         user_settings::{get_user_file_name_lang_for, FileNameLang},
-        FILE_HTTP_CLIENT, HTTP_CLIENT,
+        CACHE_HTTP_CLIENT, FILE_HTTP_CLIENT,
     },
     bots_manager::BotCache,
     config,
@@ -16,6 +16,9 @@ use crate::{
 use self::types::{CachedMessage, DownloadFile};
 
 pub mod types;
+
+// TFCS used 204 before switching absent books/files to 404.
+const ABSENT_STATUSES: &[StatusCode] = &[StatusCode::NOT_FOUND, StatusCode::NO_CONTENT];
 
 pub async fn get_cached_message(
     download_data: &DownloadQueryData,
@@ -49,7 +52,7 @@ pub async fn get_cached_message(
     }
 
     let response = retry_on_429(user_id.is_some(), || {
-        let mut req = HTTP_CLIENT
+        let mut req = CACHE_HTTP_CLIENT
             .get(url.clone())
             .header("Authorization", &config::CONFIG.cache_server_api_key);
 
@@ -61,7 +64,7 @@ pub async fn get_cached_message(
     })
     .await?;
 
-    let cached: Option<CachedMessage> = check_response(response, &[StatusCode::NO_CONTENT]).await?;
+    let cached: Option<CachedMessage> = check_response(response, ABSENT_STATUSES).await?;
 
     // The server echoes back the mode it actually used. If it disagrees
     // with what we requested, we're talking to an older / misconfigured
@@ -124,7 +127,7 @@ pub async fn download_file(
     }
 
     let response = retry_on_429(user_id.is_some(), || {
-        let mut req = FILE_HTTP_CLIENT
+        let mut req = CACHE_HTTP_CLIENT
             .get(url.clone())
             .header("Authorization", &config::CONFIG.cache_server_api_key);
 
@@ -136,7 +139,7 @@ pub async fn download_file(
     })
     .await?;
 
-    let Some(response) = check_status(response, &[StatusCode::NO_CONTENT]).await? else {
+    let Some(response) = check_status(response, ABSENT_STATUSES).await? else {
         return Ok(None);
     };
 
@@ -175,6 +178,33 @@ pub async fn download_file_by_link(
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn absent_books_accept_old_and_new_tfcs_statuses() {
+        for status in [204, 404] {
+            let response = reqwest::Response::from(
+                http::Response::builder()
+                    .status(status)
+                    .body(Vec::<u8>::new())
+                    .unwrap(),
+            );
+            assert!(
+                super::check_response::<serde_json::Value>(response, super::ABSENT_STATUSES)
+                    .await
+                    .unwrap()
+                    .is_none()
+            );
+            let response = reqwest::Response::from(
+                http::Response::builder()
+                    .status(status)
+                    .body(Vec::<u8>::new())
+                    .unwrap(),
+            );
+            assert!(super::check_status(response, super::ABSENT_STATUSES)
+                .await
+                .unwrap()
+                .is_none());
+        }
+    }
     use super::decode_b64_header;
     use reqwest::header::HeaderMap;
 

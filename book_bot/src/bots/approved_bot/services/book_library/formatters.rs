@@ -11,6 +11,27 @@ use super::types::{
 
 const NO_LIMIT: usize = 4096;
 
+/// Truncate on scalar boundaries while budgeting Telegram UTF-16 units.
+pub fn truncate_utf16(text: &str, max_size: usize) -> String {
+    if text.encode_utf16().count() <= max_size {
+        return text.to_owned();
+    }
+    if max_size == 0 {
+        return String::new();
+    }
+    let mut result = String::new();
+    let mut size = 0;
+    for ch in text.chars() {
+        if size + ch.len_utf16() > max_size - 1 {
+            break;
+        }
+        result.push(ch);
+        size += ch.len_utf16();
+    }
+    result.push('…');
+    result
+}
+
 #[derive(Clone)]
 pub struct FormatResult {
     pub result: String,
@@ -114,7 +135,7 @@ fn format_list<T>(items: &[T], count: usize, header: &str, fmt: impl Fn(&T) -> S
 }
 
 impl Format for Author {
-    fn format(&self, _max_size: usize) -> FormatResult {
+    fn format(&self, max_size: usize) -> FormatResult {
         let Author {
             id,
             last_name,
@@ -131,36 +152,45 @@ impl Format for Author {
         };
 
         let result = format!("{title}{link}{annotation}");
-        let result_len = result.len();
+        let full_len = result.encode_utf16().count();
+        let suffix = format!("{link}{annotation}");
+        let title = truncate_utf16(
+            &title,
+            max_size.saturating_sub(suffix.encode_utf16().count()),
+        );
+        let result = truncate_utf16(&format!("{title}{suffix}"), max_size);
+        let result_len = result.encode_utf16().count();
 
         FormatResult {
             result,
             current_size: result_len,
-            max_size: result_len,
+            max_size: full_len,
         }
     }
 }
 
 impl Format for Sequence {
-    fn format(&self, _max_size: usize) -> FormatResult {
+    fn format(&self, max_size: usize) -> FormatResult {
         let Sequence { id, name, .. } = self;
 
         let title = format!("📚 {name}");
         let link = format!("/s_{id}");
 
         let result = format!("{title} {link}");
-        let result_len = result.len();
+        let full_len = result.encode_utf16().count();
+        let result = truncate_utf16(&result, max_size);
+        let result_len = result.encode_utf16().count();
 
         FormatResult {
             result,
             current_size: result_len,
-            max_size: result_len,
+            max_size: full_len,
         }
     }
 }
 
 impl Format for Translator {
-    fn format(&self, _max_size: usize) -> FormatResult {
+    fn format(&self, max_size: usize) -> FormatResult {
         let Translator {
             id,
             last_name,
@@ -177,12 +207,19 @@ impl Format for Translator {
         };
 
         let result = format!("{title}{link}{annotation}");
-        let result_len = result.len();
+        let full_len = result.encode_utf16().count();
+        let suffix = format!("{link}{annotation}");
+        let title = truncate_utf16(
+            &title,
+            max_size.saturating_sub(suffix.encode_utf16().count()),
+        );
+        let result = truncate_utf16(&format!("{title}{suffix}"), max_size);
+        let result_len = result.encode_utf16().count();
 
         FormatResult {
             result,
             current_size: result_len,
-            max_size: result_len,
+            max_size: full_len,
         }
     }
 }
@@ -386,12 +423,14 @@ fn format_common(data: FormatData, max_size: usize) -> FormatResult {
     let result = format!(
         "{book_title}{annotations}{authors}{translators}{sequences}{genres}{download_links}"
     );
-    let result_len = result.len();
+    let full_len = result.encode_utf16().count();
+    let result = truncate_utf16(&result, max_size);
+    let result_len = result.encode_utf16().count();
 
     FormatResult {
         result,
         current_size: result_len,
-        max_size: max_result_size + required_data_len,
+        max_size: (max_result_size + required_data_len).max(full_len),
     }
 }
 
@@ -504,6 +543,34 @@ impl Format for SequenceBook {
 mod tests {
     use super::super::types::{Person, PersonKind};
     use super::{format_list, FormatInline, FormatTitle, FormatVectorsCounts};
+
+    #[test]
+    fn five_very_long_authors_fit_message_budget() {
+        use super::super::types::{Author, Empty, Page};
+        use super::{truncate_utf16, Format};
+        let page: Page<Author, Empty> = Page {
+            items: (0..5)
+                .map(|id| Author {
+                    id,
+                    last_name: "😀".repeat(5000),
+                    first_name: "я".repeat(5000),
+                    middle_name: "m".repeat(5000),
+                    annotation_exists: true,
+                })
+                .collect(),
+            pages: 1,
+            parent_item: None,
+        };
+        let header = "Результаты поиска:\n";
+        let text = format!(
+            "{header}{}",
+            page.format(1, 4096 - header.encode_utf16().count())
+        );
+        assert!(text.encode_utf16().count() <= 4096);
+        assert!(text.contains('…'));
+        assert_eq!(page.items[0].format(100).result.encode_utf16().count(), 100);
+        assert_eq!(truncate_utf16("😀abc", 2), "…");
+    }
 
     fn make_person(kind: PersonKind) -> Person {
         Person {

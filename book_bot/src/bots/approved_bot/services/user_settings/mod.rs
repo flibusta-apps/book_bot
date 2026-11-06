@@ -215,10 +215,47 @@ pub async fn create_or_update_user_settings(
     Ok(settings)
 }
 
-/// Thin wrapper around `create_or_update_user_settings` that does the
-/// `Option<String>` → `&str` unpacking shared by every settings-mutation
-/// call site (`settings::mod`'s three handlers, and the background
-/// activity-update fallback in `approved_bot::mod`).
+/// A setting mutation carries only the field being edited, never a profile
+/// snapshot. `DefaultSearch { default_search: None }` explicitly clears it.
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum UserSettingsPatch {
+    Languages {
+        allowed_langs: SmallVec<[SmartString; 3]>,
+    },
+    DefaultSearch {
+        default_search: Option<DefaultSearchType>,
+    },
+    FileNameLang {
+        file_name_lang: FileNameLang,
+    },
+}
+
+pub async fn patch_user_settings(
+    user_id: UserId,
+    patch: UserSettingsPatch,
+) -> anyhow::Result<UserSettings> {
+    let url = build_url(
+        &config::CONFIG.user_settings_url,
+        ["users", &user_id.to_string()],
+    )?;
+    let response = HTTP_CLIENT
+        .patch(url)
+        .body(serde_json::to_string(&patch)?)
+        .header("Authorization", &config::CONFIG.user_settings_api_key)
+        .header("Content-Type", "application/json")
+        .send()
+        .await?;
+    let settings: UserSettings = check_response(response, &[])
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("user-settings service returned an empty response"))?;
+    USER_SETTINGS_CACHE
+        .insert(user_id, Some(settings.clone()))
+        .await;
+    Ok(settings)
+}
+
+/// Creation wrapper used by the background activity-update fallback.
 pub async fn save_user_settings(
     user: &teloxide::types::User,
     me: &teloxide::types::Me,
@@ -299,17 +336,17 @@ pub async fn update_user_activity(user_id: UserId) -> anyhow::Result<bool> {
         .is_some())
 }
 
-pub async fn is_need_donate_notifications(
+pub async fn try_claim_donate_notification(
     chat_id: ChatId,
     is_private: bool,
 ) -> anyhow::Result<bool> {
     let url = build_url(
         &config::CONFIG.user_settings_url,
-        ["donate_notifications", &chat_id.to_string(), "is_need_send"],
+        ["donate_notifications", &chat_id.to_string(), "try_claim"],
     )?;
 
     let response = HTTP_CLIENT
-        .get(url)
+        .post(url)
         .query(&[("is_private", is_private.to_string())])
         .header("Authorization", &config::CONFIG.user_settings_api_key)
         .send()
@@ -320,26 +357,41 @@ pub async fn is_need_donate_notifications(
         .ok_or_else(|| anyhow::anyhow!("user-settings service returned an empty response"))
 }
 
-pub async fn mark_donate_notification_sent(chat_id: ChatId) -> anyhow::Result<()> {
-    let url = build_url(
-        &config::CONFIG.user_settings_url,
-        ["donate_notifications", &chat_id.to_string()],
-    )?;
-
-    let response = HTTP_CLIENT
-        .post(url)
-        .header("Authorization", &config::CONFIG.user_settings_api_key)
-        .send()
-        .await?;
-
-    check_status(response, &[]).await?;
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn patches_serialize_only_the_selected_field() {
+        for (patch, expected) in [
+            (
+                UserSettingsPatch::Languages {
+                    allowed_langs: smallvec!["uk".into()],
+                },
+                json!({"allowed_langs": ["uk"]}),
+            ),
+            (
+                UserSettingsPatch::DefaultSearch {
+                    default_search: Some(DefaultSearchType::Author),
+                },
+                json!({"default_search": "author"}),
+            ),
+            (
+                UserSettingsPatch::DefaultSearch {
+                    default_search: None,
+                },
+                json!({"default_search": null}),
+            ),
+            (
+                UserSettingsPatch::FileNameLang {
+                    file_name_lang: FileNameLang::Original,
+                },
+                json!({"file_name_lang": "original"}),
+            ),
+        ] {
+            assert_eq!(serde_json::to_value(patch).unwrap(), expected);
+        }
+    }
 
     fn lang(code: &str) -> Lang {
         Lang {

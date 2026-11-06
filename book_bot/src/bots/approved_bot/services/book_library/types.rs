@@ -2,7 +2,7 @@ use core::fmt::Debug;
 use serde::Deserialize;
 use smallvec::SmallVec;
 
-use super::formatters::{Format, FormatResult, FormatTitle};
+use super::formatters::{truncate_utf16, Format, FormatResult, FormatTitle};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PersonKind {
@@ -135,13 +135,17 @@ where
         let total_pages = self.pages;
         let footer = format!("\n\nСтраница {page}/{total_pages}");
 
+        let title = truncate_utf16(
+            &title,
+            max_size.saturating_sub(footer.encode_utf16().count()),
+        );
         let formated_items = self.format_items(
             max_size
-                .saturating_sub(title.len())
-                .saturating_sub(footer.len()),
+                .saturating_sub(title.encode_utf16().count())
+                .saturating_sub(footer.encode_utf16().count()),
         );
 
-        format!("{title}{formated_items}{footer}")
+        truncate_utf16(&format!("{title}{formated_items}{footer}"), max_size)
     }
 
     fn format_items(&self, max_size: usize) -> String {

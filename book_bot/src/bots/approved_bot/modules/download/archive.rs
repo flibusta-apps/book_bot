@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 
@@ -85,24 +85,73 @@ async fn send_archive_link(
     Ok(())
 }
 
-/// Task ids that currently have a background waiter / finisher running.
-static ACTIVE_TASKS: LazyLock<Mutex<HashSet<String>>> =
-    LazyLock::new(|| Mutex::new(HashSet::new()));
+#[derive(Clone)]
+struct Subscriber {
+    bot: CacheMe<Throttle<Bot>>,
+    message: Message,
+}
+
+static ACTIVE_TASKS: LazyLock<Mutex<HashMap<String, Vec<Subscriber>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 struct ActiveTaskGuard(String);
-
 impl ActiveTaskGuard {
-    /// Returns `None` if the task is already being handled.
-    fn acquire(task_id: &str) -> Option<Self> {
-        let mut set = ACTIVE_TASKS.lock().unwrap_or_else(|e| e.into_inner());
-        if set.insert(task_id.to_string()) {
-            Some(Self(task_id.to_string()))
-        } else {
-            None
+    fn acquire(task_id: &str, bot: &CacheMe<Throttle<Bot>>, message: &Message) -> Option<Self> {
+        let mut tasks = ACTIVE_TASKS.lock().unwrap_or_else(|e| e.into_inner());
+        let is_new = !tasks.contains_key(task_id);
+        let subscribers = tasks.entry(task_id.to_owned()).or_default();
+        if !subscribers.iter().any(|s| {
+            s.bot.inner().inner().token() == bot.inner().inner().token()
+                && s.message.chat.id == message.chat.id
+                && s.message.id == message.id
+        }) {
+            subscribers.push(Subscriber {
+                bot: bot.clone(),
+                message: message.clone(),
+            });
+        }
+        is_new.then(|| Self(task_id.to_owned()))
+    }
+
+    async fn deliver(mut self, task: Option<&Task>) {
+        loop {
+            let subscribers = {
+                let mut tasks = ACTIVE_TASKS.lock().unwrap_or_else(|e| e.into_inner());
+                let Some(subscribers) = tasks.get_mut(&self.0) else {
+                    break;
+                };
+                if subscribers.is_empty() {
+                    tasks.remove(&self.0);
+                    self.0.clear();
+                    break;
+                }
+                std::mem::take(subscribers)
+            };
+            for subscriber in subscribers {
+                if let Some(task) = task {
+                    if let Err(err) =
+                        finish_task(&subscriber.bot, &subscriber.message, task.clone()).await
+                    {
+                        log::warn!("Archive delivery failed: {err:?}");
+                        send_error_message(
+                            &subscriber.bot,
+                            subscriber.message.chat.id,
+                            subscriber.message.id,
+                        )
+                        .await;
+                    }
+                } else {
+                    send_error_message(
+                        &subscriber.bot,
+                        subscriber.message.chat.id,
+                        subscriber.message.id,
+                    )
+                    .await;
+                }
+            }
         }
     }
 }
-
 impl Drop for ActiveTaskGuard {
     fn drop(&mut self) {
         ACTIVE_TASKS
@@ -166,7 +215,7 @@ pub async fn wait_archive(
         }
     };
 
-    let Some(_guard) = ActiveTaskGuard::acquire(&task_id) else {
+    let Some(guard) = ActiveTaskGuard::acquire(&task_id, &bot, &message) else {
         return Ok(());
     };
 
@@ -179,7 +228,7 @@ pub async fn wait_archive(
         let task = match get_task(&task_id).await {
             Ok(v) => v,
             Err(err) => {
-                send_error_message(&bot, message.chat.id, message.id).await;
+                guard.deliver(None).await;
                 log::error!("{err:?}");
                 return Err(err);
             }
@@ -191,14 +240,23 @@ pub async fn wait_archive(
 
         if time::Instant::now() >= deadline {
             log::warn!("Archive task {task_id} wait deadline exceeded");
-            send_error_message(&bot, message.chat.id, message.id).await;
+            guard.deliver(None).await;
             return Ok(());
         }
 
-        show_progress(&bot, &message, &task).await?;
+        let subscribers = ACTIVE_TASKS
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(&task_id)
+            .cloned()
+            .unwrap_or_default();
+        for subscriber in subscribers {
+            let _ = show_progress(&subscriber.bot, &subscriber.message, &task).await;
+        }
     };
 
-    finish_task(&bot, &message, task).await
+    guard.deliver(Some(&task)).await;
+    Ok(())
 }
 
 /// Handles the "check status" button: a single `get_task`, no new loop.
@@ -229,11 +287,12 @@ pub async fn check_archive_status(
     }
 
     // Finished. If a background waiter is active it will deliver the result.
-    let Some(_guard) = ActiveTaskGuard::acquire(&task_id) else {
+    let Some(guard) = ActiveTaskGuard::acquire(&task_id, &bot, &message) else {
         return Ok(());
     };
 
-    finish_task(&bot, &message, task).await
+    guard.deliver(Some(&task)).await;
+    Ok(())
 }
 
 async fn finish_task(
@@ -422,4 +481,30 @@ pub async fn download_archive(
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn identical_tasks_keep_both_subscribers_and_only_one_poller() {
+        use teloxide::adaptors::throttle::Limits;
+        let bot = Bot::new("123:TEST").throttle(Limits::default()).cache_me();
+        let message = |chat_id: i64| {
+            serde_json::from_value::<Message>(serde_json::json!({
+                "message_id": 1, "date": 1,
+                "chat": {"id": chat_id, "type": "private", "first_name": "Test"},
+                "text": "wait"
+            }))
+            .unwrap()
+        };
+        let task_id = "subscriber-regression";
+        let guard = ActiveTaskGuard::acquire(task_id, &bot, &message(1)).unwrap();
+        assert!(ActiveTaskGuard::acquire(task_id, &bot, &message(2)).is_none());
+        assert!(ActiveTaskGuard::acquire(task_id, &bot, &message(2)).is_none());
+        assert_eq!(ACTIVE_TASKS.lock().unwrap().get(task_id).unwrap().len(), 2);
+        drop(guard);
+        assert!(!ACTIVE_TASKS.lock().unwrap().contains_key(task_id));
+    }
 }

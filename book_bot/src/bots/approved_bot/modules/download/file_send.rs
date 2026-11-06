@@ -1,5 +1,9 @@
+use crate::bots::approved_bot::services::positive_env;
 use futures::TryStreamExt;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    LazyLock,
+};
 use teloxide::{
     adaptors::{CacheMe, Throttle},
     prelude::*,
@@ -95,29 +99,40 @@ pub async fn _send_downloaded_file(
     // Stream into a temp file (bounded by an overall deadline) and send it
     // via `InputFile::file`, so Throttle retries re-open the file instead of
     // depending on a one-shot stream or buffering the whole body in memory.
-    let path = std::env::temp_dir().join(format!(
+    let _permit = DOWNLOAD_SEMAPHORE.acquire().await?;
+    let temp = TempFile(temp_directory().join(format!(
         "book_bot_{}_{}.tmp",
         std::process::id(),
         TEMP_COUNTER.fetch_add(1, Ordering::Relaxed)
-    ));
+    )));
+    let path = &temp.0;
 
     let result = async {
         tokio::time::timeout(
             FILE_DOWNLOAD_DEADLINE,
-            save_response_to_file(response, &path),
+            save_response_to_file(response, path),
         )
         .await
         .map_err(|_| anyhow::anyhow!("file download deadline exceeded"))??;
 
-        let document = InputFile::file(path.clone()).file_name(filename);
+        let document = InputFile::file(path.to_path_buf()).file_name(filename);
         safe_send_document(bot, message.chat().id, document, caption).await
     }
     .await;
 
-    let _ = tokio::fs::remove_file(&path).await;
+    drop(temp);
 
     if let Err(err) = result {
-        notify_user(bot, message, BOOK_SEND_FAILED).await;
+        notify_user(
+            bot,
+            message,
+            if err.downcast_ref::<FileTooLarge>().is_some() {
+                "Файл слишком большой для отправки в Telegram. Выбери другой формат."
+            } else {
+                BOOK_SEND_FAILED
+            },
+        )
+        .await;
         return Err(err);
     }
 
@@ -137,9 +152,31 @@ async fn save_response_to_file(
     response: reqwest::Response,
     path: &std::path::Path,
 ) -> anyhow::Result<()> {
-    let mut file = tokio::fs::File::create(path).await?;
+    save_response_to_file_with_limit(response, path, max_file_bytes()).await
+}
+
+async fn save_response_to_file_with_limit(
+    response: reqwest::Response,
+    path: &std::path::Path,
+    limit: u64,
+) -> anyhow::Result<()> {
+    if response.content_length().is_some_and(|size| size > limit) {
+        return Err(FileTooLarge.into());
+    }
+    let mut written = 0u64;
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .await?;
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.try_next().await? {
+        written = written
+            .checked_add(chunk.len() as u64)
+            .ok_or(FileTooLarge)?;
+        if written > limit {
+            return Err(FileTooLarge.into());
+        }
         file.write_all(&chunk).await?;
     }
     file.flush().await?;
@@ -218,5 +255,86 @@ pub async fn download_handler(
             )
             .await
         }
+    }
+}
+
+// Local Bot API documentation specifies uploads up to 2000 MB, not 2 GiB.
+fn max_file_bytes() -> u64 {
+    positive_env("MAX_DOWNLOAD_FILE_BYTES", 2_000_000_000).min(2_000_000_000)
+}
+
+static DOWNLOAD_SEMAPHORE: LazyLock<tokio::sync::Semaphore> = LazyLock::new(|| {
+    tokio::sync::Semaphore::new(positive_env("MAX_CONCURRENT_DOWNLOADS", 8).min(1024) as usize)
+});
+
+#[derive(Debug)]
+struct FileTooLarge;
+impl std::fmt::Display for FileTooLarge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("file exceeds download byte limit")
+    }
+}
+impl std::error::Error for FileTooLarge {}
+
+struct TempFile(std::path::PathBuf);
+impl Drop for TempFile {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
+fn temp_directory() -> &'static std::path::PathBuf {
+    static DIRECTORY: LazyLock<std::path::PathBuf> = LazyLock::new(|| {
+        let dir = std::env::temp_dir().join("book_bot_downloads");
+        if let Err(err) = std::fs::create_dir_all(&dir) {
+            log::error!("Cannot create download temp directory: {err}");
+        }
+        // Called once, before handlers start; never clean another temp namespace.
+        if let Ok(entries) = std::fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                if entry.file_name().to_string_lossy().starts_with("book_bot_")
+                    && entry.path().extension().is_some_and(|ext| ext == "tmp")
+                {
+                    let _ = std::fs::remove_file(entry.path());
+                }
+            }
+        }
+        dir
+    });
+    &DIRECTORY
+}
+
+pub fn initialize_temp_directory() {
+    let _ = temp_directory();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn temp_guard_removes_file() {
+        let path = temp_directory().join(format!(
+            "book_bot_test_{}.tmp",
+            TEMP_COUNTER.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::write(&path, b"test").unwrap();
+        drop(TempFile(path.clone()));
+        assert!(!path.exists());
+    }
+    #[tokio::test]
+    async fn oversized_stream_is_rejected_before_writing_excess_bytes() {
+        let response =
+            reqwest::Response::from(http::Response::builder().body(vec![0u8; 11]).unwrap());
+        let temp = TempFile(temp_directory().join(format!(
+            "book_bot_oversize_{}.tmp",
+            TEMP_COUNTER.fetch_add(1, Ordering::Relaxed)
+        )));
+        assert!(save_response_to_file_with_limit(response, &temp.0, 10)
+            .await
+            .unwrap_err()
+            .is::<FileTooLarge>());
+        // Known response lengths may reject before creating the file; unknown
+        // lengths reject before writing the first over-budget chunk.
+        assert!(std::fs::metadata(&temp.0).map_or(true, |metadata| metadata.len() == 0));
     }
 }
