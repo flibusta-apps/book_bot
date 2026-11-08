@@ -3,7 +3,6 @@ use std::str::FromStr;
 use sentry::integrations::debug_images::DebugImagesIntegration;
 use sentry::types::Dsn;
 use sentry::ClientOptions;
-use sentry_tracing::EventFilter;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::watch;
 use tracing::log;
@@ -15,6 +14,7 @@ mod bots;
 mod bots_manager;
 mod config;
 pub mod handler_metrics;
+mod observability;
 
 /// Builds the log filter from `RUST_LOG` (e.g. `debug,tower_http=warn`),
 /// falling back to `info` when the variable is unset or fails to parse.
@@ -37,15 +37,11 @@ async fn main() {
         sentry::init(())
     };
 
-    let sentry_layer = sentry_tracing::layer().event_filter(|md| match md.level() {
-        &tracing::Level::ERROR => EventFilter::Event,
-        _ => EventFilter::Ignore,
-    });
-
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer().with_target(false))
         .with(build_env_filter(std::env::var("RUST_LOG").ok()))
-        .with(sentry_layer)
+        .with(observability::sentry_span_layer())
+        .with(observability::sentry_error_layer())
         .init();
 
     let (shutdown_tx, shutdown_rx) = watch::channel(());

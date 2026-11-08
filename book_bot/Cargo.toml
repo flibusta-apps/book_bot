@@ -24,8 +24,8 @@ tower-http = { version = "0.7.0", features = ["trace"] }
 # Observability
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-sentry-tracing = "0.49.2"
-sentry = { version = "0.49.2", features = ["debug-images"] }
+sentry-tracing = "0.49.5"
+sentry = { version = "0.49.5", features = ["debug-images"] }
 
 # HTTP client
 reqwest = { version = "0.13.4", features = ["json", "stream", "query"] }
@@ -62,3 +62,4 @@ thiserror = "2.0.19"
 
 [dev-dependencies]
 http = "1"
+sentry = { version = "0.49.5", features = ["test"] }
